@@ -1,3 +1,9 @@
+# Node package lock file
+package-lock.json
+
+# Build directory
+build
+
 # Logs
 logs
 *.log
