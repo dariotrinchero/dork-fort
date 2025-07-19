@@ -1,6 +1,6 @@
 import { RenderPassSequence } from "types/renderPipeline";
 
-import { createFramebuffer, createTexture } from "webgl";
+import { createFramebuffer, createTexture } from "webglHelpers";
 
 export default class RenderPipeline {
     private inTex: WebGLTexture;
@@ -30,10 +30,10 @@ export default class RenderPipeline {
      * @param sequence sequence of render passes to run
      */
     public runPasses(sequence: RenderPassSequence) {
-        sequence.forEach(({ pass, uniforms, needsPrevPassOutput }, i) => {
-            const prevPass = needsPrevPassOutput === undefined ? i !== 0 : needsPrevPassOutput;
+        sequence.forEach(({ pass, uniforms, attribs, instances, needsPrevPassOutput }, i) => {
+            const prevPass = needsPrevPassOutput ?? i !== 0;
             const outBuffer = i === sequence.length - 1 ? null : this.outBuffer;
-            pass.run(uniforms, prevPass ? this.inTex : undefined, outBuffer);
+            pass.run(uniforms, attribs, instances ?? 1, prevPass ? this.inTex : undefined, outBuffer);
             this.swap();
         });
     }

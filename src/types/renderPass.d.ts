@@ -1,3 +1,5 @@
+// uniforms
+
 type UniformType = "1f" | "2f" | "tex";
 
 interface UniformValue<T> {
@@ -18,4 +20,17 @@ type Uniform = U1f | U2f | UTex;
 
 export interface Uniforms {
     [name: string]: Uniform;
+}
+
+// vertex attributes
+
+interface VertexAttrib {
+    buffer: WebGLBuffer;
+    size: number;
+    instanced?: boolean;
+    type?: GLenum; // assumed to be float if omitted
+}
+
+export interface VertexAttribs {
+    [name: string]: VertexAttrib;
 }

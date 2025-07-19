@@ -1,8 +1,13 @@
 import type RenderPass from "renderPass";
-import type { Uniforms } from "types/renderPass";
 
-export type RenderPassSequence = {
+import type { Uniforms, VertexAttribs } from "types/renderPass";
+
+interface RenderPassData {
     pass: RenderPass;
     uniforms: Uniforms;
+    attribs: VertexAttribs;
+    instances?: number;
     needsPrevPassOutput?: boolean;
-}[];
+}
+
+export type RenderPassSequence = RenderPassData[];

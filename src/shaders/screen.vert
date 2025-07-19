@@ -1,6 +1,6 @@
 #version 300 es
 
-in vec2 aPos; // quad vertex position
+in vec2 aPos; // quad vertex positions
 out vec2 vUV; // output UV coordinate
 
 void main() {

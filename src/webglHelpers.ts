@@ -1,4 +1,4 @@
-import type { ShaderType } from "types/webgl";
+import type { ShaderType } from "types/webglHelpers";
 
 /**
  * Compile WebGL shader from given source code. 
@@ -85,4 +85,18 @@ export const createFramebuffer = (gl: WebGLRenderingContext, texture: WebGLTextu
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
     return fb;
+};
+
+/**
+ * TODO
+ * 
+ * @param gl 
+ * @param data 
+ * @returns 
+ */
+export const createInstanceBuffer = (gl: WebGLRenderingContext, data: Float32Array): WebGLBuffer => {
+    const buf = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    return buf;
 };
