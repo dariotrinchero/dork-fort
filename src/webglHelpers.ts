@@ -48,7 +48,7 @@ export const createProgram = (gl: WebGLRenderingContext, vsSrc: string, fsSrc: s
  * @returns created texture
  */
 export const createTexture = (gl: WebGLRenderingContext, width: number, height: number, fill: boolean = false): WebGLTexture => {
-    // TODO temp
+    // TODO temporary - delete this block
     let data = null;
     if (fill) {
         data = new Uint8Array(width * height * 4);

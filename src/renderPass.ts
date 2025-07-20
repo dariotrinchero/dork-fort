@@ -6,7 +6,7 @@ export default class RenderPass {
         private gl: WebGL2RenderingContext,
         private program: WebGLProgram,
         private dimensions: [number, number], // assume fixed for all runs
-    ) {}
+    ) { }
 
     /**
      * Set (or update) the uniforms used by this WebGL program.
@@ -14,20 +14,23 @@ export default class RenderPass {
      * @param uniforms uniforms needed by WebGL program
      */
     private setUniforms(uniforms: Uniforms): void {
-        for (const name in uniforms) {
-            const loc = this.gl.getUniformLocation(this.program, name);
-            if (loc === -1) continue;
+        Object.entries(uniforms).forEach(([name, uniform]) => {
+            // store location in uniform if absent
+            if (uniform.location === undefined) {
+                uniform.location = this.gl.getUniformLocation(this.program, name) ?? undefined;
+                if (uniform.location === undefined) return;
+            }
 
-            const { type, value } = uniforms[name]!;
-            if (type === "1f") this.gl.uniform1f(loc, value);
-            else if (type === "2f") this.gl.uniform2f(loc, ...value);
+            const { location, type, value } = uniform;
+            if (type === "1f") this.gl.uniform1f(location, value);
+            else if (type === "2f") this.gl.uniform2f(location, ...value);
             else if (type === "tex") {
                 const unit: number = value.unit || 0;
                 this.gl.activeTexture(this.gl.TEXTURE0 + unit);
                 this.gl.bindTexture(this.gl.TEXTURE_2D, value.tex);
-                this.gl.uniform1i(loc, unit);
+                this.gl.uniform1i(location, unit);
             }
-        }
+        });
     }
 
     /**
@@ -36,17 +39,19 @@ export default class RenderPass {
      * @param attribs 
      */
     private setVertexAttribs(attribs: VertexAttribs): void {
-        for (const name in attribs) {
-            const { buffer, size, type, instanced } = attribs[name]!;
+        Object.entries(attribs).forEach(([name, attrib]) => {
+            // store location in attrib if absent
+            if (attrib.location === undefined || attrib.location === -1) {
+                attrib.location = this.gl.getAttribLocation(this.program, name);
+                if (attrib.location === -1) return;
+            }
+
+            const { buffer, itemSize, type, instanced, location } = attrib;
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-
-            const loc = this.gl.getAttribLocation(this.program, name);
-            if (loc === -1) continue;
-
-            this.gl.enableVertexAttribArray(loc);
-            this.gl.vertexAttribPointer(loc, size, type ?? this.gl.FLOAT, false, 0, 0);
-            if (instanced) this.gl.vertexAttribDivisor(loc, 1);
-        }
+            this.gl.enableVertexAttribArray(location);
+            this.gl.vertexAttribPointer(location, itemSize, type ?? this.gl.FLOAT, false, 0, 0);
+            if (instanced) this.gl.vertexAttribDivisor(location, 1);
+        });
     }
 
     /**
