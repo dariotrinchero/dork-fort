@@ -34,7 +34,7 @@ export default class RenderPass {
     }
 
     /**
-     * TODO Also consider merging bindGeometry() with this.
+     * TODO
      * 
      * @param attribs 
      */

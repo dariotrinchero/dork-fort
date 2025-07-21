@@ -13,7 +13,7 @@ const float SCANLINE_WIDTH = 3.0;
 const float SCANLINE_HEIGHT = 3.0;
 const float BRIGHTNESS = 0.5;
 const int SEPARATION_PIXELS = 2;
-const float FLICKER_MAGNITUDE = 0.05;
+const float FLICKER_MAGNITUDE = 0.06;
 
 // pseudorandom number based on time
 float random(in float time) {

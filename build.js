@@ -5,7 +5,7 @@ import { watch } from "chokidar";
 
 const rebuild = async () => {
     try {
-        execSync("tsc --noEmit", { stdio: "inherit" });
+        execSync("tsc --noEmit --project tsconfig.json", { stdio: "inherit" });
 
         await build({
             entryPoints: [ "src/index.ts" ],

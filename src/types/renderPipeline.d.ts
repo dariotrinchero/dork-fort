@@ -2,7 +2,7 @@ import type RenderPass from "renderPass";
 
 import type { Uniforms, VertexAttribs } from "types/renderPass";
 
-interface RenderPassData {
+export interface RenderPassData {
     pass: RenderPass;
     uniforms: Uniforms;
     attribs: VertexAttribs;

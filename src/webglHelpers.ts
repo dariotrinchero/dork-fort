@@ -92,10 +92,11 @@ export const createFramebuffer = (gl: WebGLRenderingContext, texture: WebGLTextu
  * 
  * @param gl 
  * @param data 
+ * @param buf 
  * @returns 
  */
-export const createInstanceBuffer = (gl: WebGLRenderingContext, data: Float32Array): WebGLBuffer => {
-    const buf = gl.createBuffer()!;
+export const createInstanceBuffer = (gl: WebGLRenderingContext, data: Float32Array, buf?: WebGLBuffer): WebGLBuffer => {
+    buf = buf ?? gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
     return buf;
