@@ -1,9 +1,8 @@
+import type { Dimensions, Pos, RGB } from "types/global";
 import type { RenderPassData } from "types/renderPipeline";
-import type { CharTile, Color, FontAtlas, GlyphSet } from "types/textRendering";
+import type { CharTile, FontAtlas, GlyphSet } from "types/textRenderer";
 
-import { createInstanceBuffer, createProgram } from "webglHelpers";
-
-import RenderPass from "renderPass";
+import { arrayBufFromData, createProgram, createTexture } from "webglHelpers";
 
 // shader source code
 import textFrag from "shaders/text.frag";
@@ -21,11 +20,11 @@ const SCREEN_PADDING = 10;
 
 export default class TextRenderer {
     private textGrid: Map<string, CharTile> = new Map<string, CharTile>();
-    private cursorPos: [number, number] = [0, 0];
-    private gridDims: [number, number];
+    private cursorPos: Pos = [0, 0];
+    private gridDims: Dimensions;
     private staleBuffers: boolean = true;
 
-    private renderPass: RenderPass;
+    private program: WebGLProgram;
 
     // buffers & their data arrays
     private screenPosData: Float32Array;
@@ -39,34 +38,35 @@ export default class TextRenderer {
     private constructor(
         private gl: WebGL2RenderingContext,
         private fontAtlas: FontAtlas,
-        private screenDims: [number, number],
+        private textureDims: Dimensions,
     ) {
         // allocate space for character data
         this.gridDims = [
-            Math.floor(screenDims[0] / fontAtlas.charDims[0]),
-            Math.floor(screenDims[1] / fontAtlas.charDims[1])
+            Math.floor(textureDims[0] / fontAtlas.charDims[0]),
+            Math.floor(textureDims[1] / fontAtlas.charDims[1])
         ];
         const maxCharCount = this.gridDims[0] * this.gridDims[1];
+        console.debug("Grid dimensions", ...this.gridDims); // TODO delete
 
         this.screenPosData = new Float32Array(maxCharCount * 2);
         this.atlasPosData = new Float32Array(maxCharCount * 2);
         this.colorData = new Float32Array(maxCharCount * 3);
 
         // create buffers
-        this.screenPosBuf = createInstanceBuffer(gl, this.screenPosData);
-        this.atlasPosBuf = createInstanceBuffer(gl, this.atlasPosData);
-        this.colorBuf = createInstanceBuffer(gl, this.colorData);
-        this.clipQuadBuf = createInstanceBuffer(gl, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
+        this.screenPosBuf = arrayBufFromData(gl, this.screenPosData);
+        this.atlasPosBuf = arrayBufFromData(gl, this.atlasPosData);
+        this.colorBuf = arrayBufFromData(gl, this.colorData);
+        this.clipQuadBuf = arrayBufFromData(gl, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
 
         // create render pass
-        this.renderPass = new RenderPass(gl, createProgram(gl, textVert, textFrag), screenDims);
+        this.program = createProgram(gl, textVert, textFrag);
     }
 
     public static async new(
         gl: WebGL2RenderingContext,
         fontName: string,
         fontSize: number,
-        textureDims: [number, number],
+        textureDims: Dimensions,
         glyphSet: GlyphSet = DEFAULT_GLYPHS,
     ): Promise<TextRenderer> {
         await this.loadFont(fontName);
@@ -84,18 +84,6 @@ export default class TextRenderer {
         );
         await font.load();
         document.fonts.add(font);
-    };
-
-    // TODO consolidate with createTexture in webglHelpers.ts
-    private static createAtlasTexture(gl: WebGL2RenderingContext, atlasCanvas: HTMLCanvasElement): WebGLTexture {
-        const tex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlasCanvas);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        return tex;
     };
 
     private static generateFontAtlas(
@@ -121,7 +109,7 @@ export default class TextRenderer {
         const tmp = document.createElement("canvas").getContext("2d")!;
         tmp.font = `${fontSize}px ${fontName}`;
         const fullBox = tmp.measureText("█");
-        const charDims: [number, number] = [
+        const charDims: Dimensions = [
             fullBox.width,
             fullBox.actualBoundingBoxAscent + fullBox.actualBoundingBoxDescent
         ];
@@ -132,7 +120,7 @@ export default class TextRenderer {
 
         const rows = Math.ceil(glyphs.length / cols);
         const padding = 8; // prevent overlaps on atlas
-        const atlasDims: [number, number] = [canvas.width, canvas.height] = [
+        const atlasDims: Dimensions = [canvas.width, canvas.height] = [
             Math.ceil(cols * (charDims[0] + padding)),
             Math.ceil(rows * (charDims[1] + padding))
         ];
@@ -146,7 +134,7 @@ export default class TextRenderer {
         ctx.fillStyle = "white";
 
         // populate atlas
-        const charMap = new Map<string, [number, number]>();
+        const charMap = new Map<string, Pos>();
         glyphs.forEach((g, i) => {
             const x = (i % cols + 0.5) * (charDims[0] + padding);
             const y = (Math.floor(i / cols) + 0.5) * (charDims[1] + padding);
@@ -154,7 +142,7 @@ export default class TextRenderer {
             charMap.set(g, [x, y]);
         });
 
-        return { atlas: this.createAtlasTexture(gl, canvas), charMap, charDims, atlasDims };
+        return { atlas: createTexture(gl, atlasDims, canvas, gl.NEAREST), charMap, charDims, atlasDims };
     };
 
     /**
@@ -165,7 +153,7 @@ export default class TextRenderer {
      * @param color RGB color of character
      * @returns whether coordinates, character, and color are all well-formed
      */
-    private validTile(coords: [number, number], ch?: string, color?: Color): boolean {
+    private validTile(coords: Pos, ch?: string, color?: RGB): boolean {
         const [x, y] = coords;
         let valid = x >= 0 && x < this.gridDims[0] && y >= 0 && y < this.gridDims[1];
         if (ch !== undefined) valid &&= this.fontAtlas.charMap.get(ch) !== undefined;
@@ -184,7 +172,7 @@ export default class TextRenderer {
      * @param color RGB color of character
      * @returns whether assignment succeeded
      */
-    public setChar(coords: [number, number], ch: string, color: Color = [1, 1, 1]): boolean {
+    public setChar(coords: Pos, ch: string, color: RGB = [1, 1, 1]): boolean {
         if (!this.validTile(coords, ch, color)) return false;
         this.textGrid.set(`${coords[0]},${coords[1]}`, { ch, color });
         this.staleBuffers = true;
@@ -197,7 +185,7 @@ export default class TextRenderer {
      * @param coords grid coordinates of character tile
      * @returns whether deletion succeeded
      */
-    public delChar(coords: [number, number]): boolean {
+    public delChar(coords: Pos): boolean {
         if (!this.validTile(coords)) return false;
         this.textGrid.delete(`${coords[0]},${coords[1]}`);
         this.staleBuffers = true;
@@ -210,7 +198,7 @@ export default class TextRenderer {
      * @param coords grid coordinates of character tile
      * @returns character tile at given coordinates (possibly undefined)
      */
-    public getChar(coords: [number, number]): CharTile | undefined {
+    public getChar(coords: Pos): CharTile | undefined {
         if (!this.validTile(coords)) return undefined;
         return this.textGrid.get(`${coords[0]},${coords[1]}`);
     }
@@ -221,7 +209,7 @@ export default class TextRenderer {
      * @param text 
      * @param color 
      */
-    public print(text: string, color: Color = [1, 1, 1]): void {
+    public print(text: string, color: RGB = [1, 1, 1]): void {
         for (const ch of [...text]) {
             if (this.cursorPos[1] >= this.gridDims[1] - 1) return; // out of lines
             if (ch === "\n" || this.cursorPos[0] === this.gridDims[0] - 1) { // wrap text
@@ -241,15 +229,15 @@ export default class TextRenderer {
         if (this.staleBuffers) this.refreshBuffers();
 
         return {
-            pass: this.renderPass,
+            program: this.program,
             uniforms: {
                 uGlyphSize: { type: "2f", value: this.fontAtlas.charDims },
                 uAtlasSize: { type: "2f", value: this.fontAtlas.atlasDims },
-                uResolution: { type: "2f", value: this.screenDims },
+                uResolution: { type: "2f", value: this.textureDims },
                 uAtlas: { type: "tex", value: { tex: this.fontAtlas.atlas } }
             },
             attribs: {
-                aPos: { buffer: this.clipQuadBuf, itemSize: 2 },
+                aQuadVertPos: { buffer: this.clipQuadBuf, itemSize: 2 },
                 iCharScreenPos: { buffer: this.screenPosBuf, itemSize: 2, instanced: true },
                 iCharAtlasPos: { buffer: this.atlasPosBuf, itemSize: 2, instanced: true },
                 iCharColor: { buffer: this.colorBuf, itemSize: 3, instanced: true }
@@ -279,9 +267,9 @@ export default class TextRenderer {
         }
 
         // reassign buffer data
-        this.screenPosBuf = createInstanceBuffer(this.gl, this.screenPosData, this.screenPosBuf);
-        this.atlasPosBuf = createInstanceBuffer(this.gl, this.atlasPosData, this.atlasPosBuf);
-        this.colorBuf = createInstanceBuffer(this.gl, this.colorData, this.colorBuf);
+        this.screenPosBuf = arrayBufFromData(this.gl, this.screenPosData, this.screenPosBuf);
+        this.atlasPosBuf = arrayBufFromData(this.gl, this.atlasPosData, this.atlasPosBuf);
+        this.colorBuf = arrayBufFromData(this.gl, this.colorData, this.colorBuf);
         this.staleBuffers = false;
     }
 }

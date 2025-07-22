@@ -1,8 +1,8 @@
-import type { VertexAttribs } from "types/renderPass";
+import type { Dimensions } from "types/global";
+import type { VertexAttribs } from "types/renderPipeline";
 
-import { createInstanceBuffer, createProgram } from "webglHelpers";
+import { arrayBufFromData, createProgram } from "webglHelpers";
 
-import RenderPass from "renderPass";
 import RenderPipeline from "renderPipeline";
 import TextRenderer from "textRenderer";
 
@@ -24,17 +24,17 @@ window.onload = async () => {
     const gl = canvas.getContext("webgl2")!;
 
     // dimensions
-    const screenDims: [number, number] = [canvas.width, canvas.height] = [window.innerWidth, window.innerHeight];
-    const texDims: [number, number] = [Math.floor(TEX_SCALE * screenDims[0]), Math.floor(TEX_SCALE * screenDims[1])];
+    const screenDims: Dimensions = [canvas.width, canvas.height] = [window.innerWidth, window.innerHeight];
+    const texDims: Dimensions = [Math.floor(TEX_SCALE * screenDims[0]), Math.floor(TEX_SCALE * screenDims[1])];
 
     // fullscreen quad geometry
-    const fsQuad = createInstanceBuffer(gl, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
-    const geometryAttrib: VertexAttribs = { aPos: { buffer: fsQuad, itemSize: 2 } };
+    const fsQuad = arrayBufFromData(gl, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
+    const geometryAttrib: VertexAttribs = { aQuadVertPos: { buffer: fsQuad, itemSize: 2 } };
 
     // render passes & pipeline
-    const pipeline = new RenderPipeline(gl, texDims);
-    const crtPass = new RenderPass(gl, createProgram(gl, screenVert, crtFrag), texDims);
-    const warpPass = new RenderPass(gl, createProgram(gl, screenVert, warpFrag), screenDims);
+    const pipeline = new RenderPipeline(gl, texDims, screenDims);
+    const crtProgram = createProgram(gl, screenVert, crtFrag);
+    const warpProgram = createProgram(gl, screenVert, warpFrag);
 
     // text renderer
     const textRenderer: TextRenderer = await TextRenderer.new(gl, FONT_NAME, FONT_SIZE, texDims);
@@ -74,18 +74,21 @@ window.onload = async () => {
     // animation loop
     const render = (time: number): void => {
         pipeline.runPasses([
-            textRenderer.renderPassData(),
             {
-                pass: crtPass,
+                ...textRenderer.renderPassData(),
+                // prevOutputHandling: "draw over" // TODO remove this line
+            },
+            {
+                program: crtProgram,
                 uniforms: {
                     uResolution: { type: "2f", value: texDims },
                     uTime: { type: "1f", value: time * 0.001 }
                 },
                 attribs: geometryAttrib,
-                // needsPrevPassOutput: true // TODO remove this line
+                // prevOutputHandling: "input" // TODO remove this line
             },
             {
-                pass: warpPass,
+                program: warpProgram,
                 uniforms: {},
                 attribs: geometryAttrib,
             },

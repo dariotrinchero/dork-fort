@@ -10,5 +10,5 @@ out vec4 fragColor;
 void main() {
     float mask = texture(uAtlas, vUV).r;
     if (mask < 0.01) discard;
-    fragColor = vec4(vColor * mask, 1.0);
+    fragColor = vec4(vColor, mask);
 }
