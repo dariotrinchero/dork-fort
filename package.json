@@ -5,17 +5,16 @@
   "main": "build.js",
   "type": "module",
   "scripts": {
-    "build": "node build.js",
-    "dev": "node build.js & npx serve . -l 3000 --single",
+    "build": "node build.js --prod",
+    "dev": "node build.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "chokidar": "^4.0.3",
     "esbuild": "^0.25.6",
-    "serve": "^14.2.4",
+    "esbuild-plugin-glsl": "^1.4.0",
     "typescript": "^5.8.3"
   }
 }

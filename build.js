@@ -1,38 +1,63 @@
 import { execSync } from "child_process";
-import { build } from "esbuild";
-import { copyFileSync } from "fs";
-import { watch } from "chokidar";
+import { copyFileSync, cpSync, rmSync, mkdirSync } from "fs";
+import { context, build } from "esbuild";
+import { glsl } from "esbuild-plugin-glsl";
 
-const rebuild = async () => {
-    try {
-        execSync("tsc --noEmit --project tsconfig.json", { stdio: "inherit" });
+const isProd = process.argv.includes("--prod");
 
-        await build({
-            entryPoints: [ "src/index.ts" ],
-            bundle: true,
-            outfile: "build/index.js",
-            sourcemap: true,
-            jsx: "automatic",
-            logLevel: "silent",
-            loader: {
-                ".glsl": "text",
-                ".vert": "text",
-                ".frag": "text",
+const buildOptions = {
+    entryPoints: [ "src/index.ts" ],
+    bundle: true,
+    outfile: "build/index.js",
+    sourcemap: isProd ? false : true,
+    minify: isProd,
+    jsx: "automatic",
+    loader: {
+        ".glsl": "text",
+        ".vert": "text",
+        ".frag": "text",
+    },
+    plugins: [
+        glsl({ minify: true }),
+        {
+            name: "type-check-and-copy-assets",
+            setup(build) {
+                // run Typescript before building
+                build.onStart(() => {
+                    try {
+                        execSync("tsc --noEmit --project tsconfig.json", { stdio: "inherit" });
+                    } catch {
+                        return { errors: [ { text: "TypeScript type check failed; skipping build." } ] };
+                    }
+                });
+
+                // copy static assets
+                build.onEnd(result => {
+                    if (result.errors.length > 0) return;
+                    copyFileSync("src/style.css", "build/style.css");
+                    copyFileSync("index.html", "build/index.html");
+                    cpSync("public", "build/public", { recursive: true });
+                    console.log("Build complete");
+                });
             }
-        });
+        }
+    ]
+};
 
-        // copy CSS manually
-        copyFileSync("src/style.css", "build/style.css");
+const run = async () => {
+    // clean build directory
+    rmSync("build", { recursive: true, force: true });
+    mkdirSync("build", { recursive: true });
 
-        console.log("Build complete");
-    } catch (e) {
-        console.error("Build error:", e);
+    if (isProd) {
+        await build(buildOptions);
+        console.log("Production build complete");
+    } else {
+        const ctx = await context(buildOptions);
+        await ctx.watch();
+        await ctx.serve({ servedir: "build" });
+        console.log("Serving on http://localhost:8000");
     }
 };
 
-rebuild();
-
-watch("src", { ignoreInitial: true }).on("all", async (_, path) => {
-    console.log(`Rebuilding due to change in ${path}`);
-    await rebuild();
-});
+run();

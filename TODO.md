@@ -7,5 +7,4 @@
 ## To-do list
 
 - [ ] Set up hot reloading dev environment. Add linting.
-- [ ] De-duplicate and organize code better. We create textures in a few places.
 - [ ] Document methods.
