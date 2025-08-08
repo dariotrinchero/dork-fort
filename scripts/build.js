@@ -32,7 +32,7 @@ const buildOptions = {
                     try {
                         execSync("tsc --noEmit --project tsconfig.json", { stdio: "inherit" });
                     } catch {
-                        return { errors: [ { text: "TypeScript typecheck failed; skipping build" } ] };
+                        return { errors: [ { text: "TypeScript linting failed; skipping build" } ] };
                     } finally {
                         try {
                             execSync("eslint 'src/**/*.{ts,tsx}'", { stdio: "inherit" });

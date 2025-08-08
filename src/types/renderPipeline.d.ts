@@ -33,9 +33,10 @@ export type VertexAttribs = Record<string, VertexAttrib>;
 
 // render pass data
 
-type PrevPassOutputHandling = "input" // input previous output as texture uniform "uPrevRender"
-    | "draw over"                     // draw over previous output without clearing
-    | "discard";                      // discard previous output
+type PrevPassOutputHandling =
+    | "input"      // input previous output as texture uniform "uPrevRender"
+    | "draw over"  // draw over previous output without clearing
+    | "discard";   // discard previous output
 
 export interface RenderPassData {
     // WebGL program & inputs

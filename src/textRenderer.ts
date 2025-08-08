@@ -1,6 +1,6 @@
 import type { Dimensions, Pos, RGB } from "types/global";
 import type { RenderPassData } from "types/renderPipeline";
-import type { CharTile, FontAtlas, GlyphSet } from "types/textRenderer";
+import type { CharTile, FontAtlas, GlyphSet, TextRendererSize, TextRendererSizeSpec, TextSize } from "types/textRenderer";
 
 import { arrayBufFromData, createProgram, createTexture } from "webglHelpers";
 
@@ -21,7 +21,6 @@ const SCREEN_PADDING = 10;
 export default class TextRenderer {
     private textGrid: Map<string, CharTile> = new Map<string, CharTile>();
     private cursorPos: Pos = [0, 0];
-    private gridDims: Dimensions;
     private staleBuffers = true;
 
     private program: WebGLProgram;
@@ -38,15 +37,10 @@ export default class TextRenderer {
     private constructor(
         private gl: WebGL2RenderingContext,
         private fontAtlas: FontAtlas,
-        private textureDims: Dimensions,
+        private size: TextRendererSize,
     ) {
         // allocate space for character data
-        this.gridDims = [
-            Math.floor(textureDims[0] / fontAtlas.charDims[0]),
-            Math.floor(textureDims[1] / fontAtlas.charDims[1])
-        ];
-        const maxCharCount = this.gridDims[0] * this.gridDims[1];
-        console.debug("Grid dimensions", ...this.gridDims); // TODO delete
+        const maxCharCount = this.size.gridDims[0] * this.size.gridDims[1];
 
         this.screenPosData = new Float32Array(maxCharCount * 2);
         this.atlasPosData = new Float32Array(maxCharCount * 2);
@@ -65,16 +59,21 @@ export default class TextRenderer {
     public static async new(
         gl: WebGL2RenderingContext,
         fontName: string,
-        fontSize: number,
-        textureDims: Dimensions,
+        sizeSpec: TextRendererSizeSpec,
         glyphSet: GlyphSet = DEFAULT_GLYPHS,
     ): Promise<TextRenderer> {
         await this.loadFont(fontName);
-
-        const atlas = this.generateFontAtlas(gl, fontName, fontSize, glyphSet);
-        return new TextRenderer(gl, atlas, textureDims);
+        const size = this.computeMissingDims(sizeSpec, fontName);
+        console.debug("Text renderer dimensions: ", JSON.stringify(size, undefined, 2)); // TODO delete this?
+        const atlas = this.generateFontAtlas(gl, fontName, size, glyphSet);
+        return new TextRenderer(gl, atlas, size);
     }
 
+    /**
+     * Load font with given name into document.
+     * 
+     * @param name name of font to load
+     */
     private static async loadFont(name: string): Promise<void> {
         const font = new FontFace(
             "DejaVuSansMono",
@@ -87,7 +86,7 @@ export default class TextRenderer {
     };
 
     /**
-     * Split unicode string into graphemes.
+     * Split Unicode string into graphemes.
      * 
      * @param str string to be split
      * @returns list of graphemes in given string
@@ -97,14 +96,104 @@ export default class TextRenderer {
         return Array.from(itr, ({ segment }) => segment);
     }
 
-    private static generateFontAtlas(
-        gl: WebGL2RenderingContext,
-        fontName: string,
-        fontSize: number,
-        glyphSet: GlyphSet,
-        cols = 16
-    ): FontAtlas {
-        // collect glyphs to render
+    /**
+     * Get width & height (in pixels) of full Unicode box character '█' when rendered in given font at given size.
+     * 
+     * @param ctx 2D canvas rendering context to use for measurement
+     * @param fontName name of font in which to render character
+     * @param fontSize font size at which to render character
+     * @returns width & height (in pixels) of rendered full Unicode box character, '█'
+     */
+    private static measureText(ctx: CanvasRenderingContext2D, fontName: string, fontSize: number): Dimensions {
+        ctx.font = `${fontSize.toFixed()}px ${fontName}`;
+        const box = ctx.measureText("█");
+        return [box.width, box.actualBoundingBoxAscent + box.actualBoundingBoxDescent];
+    }
+
+    /**
+     * Binary search for the largest font size such that characters (specifically the full Unicode box character,
+     * '█') fit within given bounds.
+     * 
+     * @param ctx 2D canvas rendering context to use for measurement
+     * @param fontName name of font in which to render character
+     * @param charBounds maximum permissible dimensions (in pixels) of rendered full Unicode box character, '█' 
+     * @returns optimal font size & measurements of full Unicode box character, '█'
+     */
+    private static findFontSize(ctx: CanvasRenderingContext2D, fontName: string, charBounds: Dimensions): TextSize {
+        let low = 1, high = 1000, best = 1;
+        while (low <= high) {
+            const mid = (low + high) / 2;
+            const charDims = this.measureText(ctx, fontName, mid);
+            if (charDims[0] <= charBounds[0] && charDims[1] <= charBounds[1]) {
+                best = mid;
+                low = mid + 0.5;
+            } else high = mid - 0.5;
+        }
+        return { fontSize: best, charDims: this.measureText(ctx, fontName, best) };
+    }
+
+    /**
+     * Given any two of the following sizes,
+     * (1) font size, (2) grid size, (3) resolution,
+     * compute the third (and the dimensions of characters as rendered in the font size).
+     * 
+     * @param sizeSpec specification of text grid sizes, where one of 3 sizes is omitted
+     * @param fontName name of font in which to render text
+     * @returns full specification of text grid size, with missing dimensions computed
+     */
+    private static computeMissingDims(sizeSpec: TextRendererSizeSpec, fontName: string): TextRendererSize {
+        // create temporary canvas to measure text dimensions
+        const tmp = document.createElement("canvas");
+        const ctx = tmp.getContext("2d");
+        if (!ctx) throw new Error("Unable to measure font dimensions");
+
+        // declare dimensions we need
+        let fontSize: number;
+        let charDims: Dimensions;
+        let resolution: Dimensions;
+        let gridDims: Dimensions;
+
+        // compute missing set of dimensions from other two given in size spec
+        if (sizeSpec.fontSize !== undefined) {
+            fontSize = sizeSpec.fontSize;
+            charDims = this.measureText(ctx, fontName, fontSize);
+
+            if (sizeSpec.gridDims !== undefined) { // get resolution from grid & character dimensions
+                gridDims = sizeSpec.gridDims;
+                resolution = [charDims[0] * gridDims[0], charDims[1] * gridDims[1]];
+            } else { // get grid dimensions from resolution & character dimensions
+                resolution = sizeSpec.resolution;
+                gridDims = [Math.floor(resolution[0] / charDims[0]), Math.floor(resolution[1] / charDims[1])];
+            }
+        } else { // get character dimensions from resolution & grid dimensions;
+            resolution = sizeSpec.resolution;
+            gridDims = sizeSpec.gridDims;
+
+            // find largest font size such that characters fit within grid cells
+            const cellDims: Dimensions = [resolution[0] / gridDims[0], resolution[1] / gridDims[1]];
+            const textSize = this.findFontSize(ctx, fontName, cellDims);
+            fontSize = textSize.fontSize;
+            charDims = textSize.charDims;
+
+            if (!sizeSpec.preserveGridDims) {
+                // unless overridden, recompute grid dimensions, since (due to font size quantization) characters ma
+                //  not perfectly fill current grid cells
+                gridDims = [Math.floor(resolution[0] / charDims[0]), Math.floor(resolution[1] / charDims[1])];
+            }
+        }
+
+        tmp.remove(); // clean up by removing temporary canvas
+        return { charDims, resolution, gridDims, fontSize };
+    }
+
+    /**
+     * Convert given glyph set, which is a shorthand representation of a collection of Unicode glyphs, into a
+     * list of the actual glyphs represented.
+     * 
+     * @param glyphSet shorthand representation of the collection of Unicode glyphs
+     * @returns list of actual Unicode glyphs represented by given glyph set
+     */
+    private static expandGlyphSet(glyphSet: GlyphSet): string[] {
         const glyphs: string[] = [];
         glyphSet.forEach(set => {
             if (typeof set === "string") glyphs.push(...this.splitGraphemes(set));
@@ -115,33 +204,44 @@ export default class TextRenderer {
                 glyphs.push(...newGlyphs);
             }
         });
+        return glyphs;
+    }
 
-        // measure text dimensions (using temporary canvas)
-        const tmp = document.createElement("canvas").getContext("2d");
-        if (!tmp) throw new Error("Unable to measure font dimensions");
-        tmp.font = `${fontSize.toFixed()}px ${fontName}`;
-        const fullBox = tmp.measureText("█");
-        const charDims: Dimensions = [
-            fullBox.width,
-            fullBox.actualBoundingBoxAscent + fullBox.actualBoundingBoxDescent
-        ];
-
-        // create canvas & context
+    /**
+     * Generate font atlas; this comprises a WebGL texture showing a grid of characters from the given glyph set,
+     * pre-rendered in the given font (at the given font size).
+     * 
+     * @param gl WebGL rendering context
+     * @param fontName name of font in which to render glyphs
+     * @param textSize font size & size of each glyph in pixels
+     * @param glyphSet shorthand representation of the collection of Unicode glyphs to be rendered
+     * @param cols number of columns of characters in the atlas' grid
+     * @returns object containing rendered atlas, size data, & map from glyph to uv-coordinates in atlas
+     */
+    private static generateFontAtlas(
+        gl: WebGL2RenderingContext,
+        fontName: string,
+        textSize: TextSize,
+        glyphSet: GlyphSet,
+        cols = 16
+    ): FontAtlas {
+        // create canvas & context for atlas
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("Unable to generate font atlas");
 
+        const glyphs = this.expandGlyphSet(glyphSet);
         const rows = Math.ceil(glyphs.length / cols);
         const padding = 8; // prevent overlaps on atlas
         const atlasDims: Dimensions = [canvas.width, canvas.height] = [
-            Math.ceil(cols * (charDims[0] + padding)),
-            Math.ceil(rows * (charDims[1] + padding))
+            Math.ceil(cols * (textSize.charDims[0] + padding)),
+            Math.ceil(rows * (textSize.charDims[1] + padding))
         ];
 
         // text style
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, ...atlasDims);
-        ctx.font = `${fontSize.toFixed()}px ${fontName}`;
+        ctx.font = `${textSize.fontSize.toFixed()}px ${fontName}`;
         ctx.textBaseline = "middle";
         ctx.textAlign = "center";
         ctx.fillStyle = "white";
@@ -149,13 +249,13 @@ export default class TextRenderer {
         // populate atlas
         const charMap = new Map<string, Pos>();
         glyphs.forEach((g, i) => {
-            const x = (i % cols + 0.5) * (charDims[0] + padding);
-            const y = (Math.floor(i / cols) + 0.5) * (charDims[1] + padding);
+            const x = (i % cols + 0.5) * (textSize.charDims[0] + padding);
+            const y = (Math.floor(i / cols) + 0.5) * (textSize.charDims[1] + padding);
             ctx.fillText(g, x, y);
             charMap.set(g, [x, y]);
         });
 
-        return { atlas: createTexture(gl, atlasDims, canvas, gl.NEAREST), charMap, charDims, atlasDims };
+        return { atlas: createTexture(gl, atlasDims, canvas, gl.NEAREST), charMap, atlasDims };
     };
 
     /**
@@ -168,7 +268,7 @@ export default class TextRenderer {
      */
     private validTile(coords: Pos, ch?: string, color?: RGB): boolean {
         const [x, y] = coords;
-        let valid = x >= 0 && x < this.gridDims[0] && y >= 0 && y < this.gridDims[1];
+        let valid = x >= 0 && x < this.size.gridDims[0] && y >= 0 && y < this.size.gridDims[1];
         if (ch !== undefined) valid &&= this.fontAtlas.charMap.get(ch) !== undefined;
         if (color !== undefined) {
             const [r, g, b] = color;
@@ -224,8 +324,8 @@ export default class TextRenderer {
      */
     public print(text: string, color: RGB = [1, 1, 1]): void {
         for (const ch of TextRenderer.splitGraphemes(text)) {
-            if (this.cursorPos[1] >= this.gridDims[1] - 1) return; // out of lines
-            if (ch === "\n" || this.cursorPos[0] === this.gridDims[0] - 1) { // wrap text
+            if (this.cursorPos[1] >= this.size.gridDims[1] - 1) return; // out of lines
+            if (ch === "\n" || this.cursorPos[0] === this.size.gridDims[0] - 1) { // wrap text
                 this.cursorPos[0] = 0;
                 this.cursorPos[1]++;
             }
@@ -244,9 +344,9 @@ export default class TextRenderer {
         return {
             program: this.program,
             uniforms: {
-                uGlyphSize: { type: "2f", value: this.fontAtlas.charDims },
+                uGlyphSize: { type: "2f", value: this.size.charDims },
                 uAtlasSize: { type: "2f", value: this.fontAtlas.atlasDims },
-                uResolution: { type: "2f", value: this.textureDims },
+                uResolution: { type: "2f", value: this.size.resolution },
                 uAtlas: { type: "tex", value: { tex: this.fontAtlas.atlas } }
             },
             attribs: {
@@ -265,16 +365,15 @@ export default class TextRenderer {
      * @returns total number of characters (instance count)
      */
     private refreshBuffers(): void {
-        const { charMap, charDims } = this.fontAtlas;
-
+        // write character details to data arrays to send to GPU
         let i = 0;
         for (const [key, tile] of this.textGrid) {
             const [gridX, gridY] = key.split(",").map(Number) as [number, number];
             this.screenPosData.set([
-                SCREEN_PADDING + (gridX + 0.5) * charDims[0],
-                SCREEN_PADDING + (gridY + 0.5) * charDims[1]
+                SCREEN_PADDING + (gridX + 0.5) * this.size.charDims[0],
+                SCREEN_PADDING + (gridY + 0.5) * this.size.charDims[1]
             ], i * 2);
-            this.atlasPosData.set(charMap.get(tile.ch) ?? [0, 0], i * 2);
+            this.atlasPosData.set(this.fontAtlas.charMap.get(tile.ch) ?? [0, 0], i * 2);
             this.colorData.set(tile.color, i * 3);
             i++;
         }

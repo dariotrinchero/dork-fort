@@ -11,12 +11,9 @@ import screenVert from "shaders/screen.vert";
 import crtFrag from "shaders/crt.frag";
 import warpFrag from "shaders/warp.frag";
 
-// font
+// global constants
 const FONT_NAME = "DejaVuSansMono";
-const FONT_SIZE = 28;
-
-// global scale factor for intermediate render passes
-const TEX_SCALE = 1.0;
+const TEX_SCALE = 1.0; // global scale factor for intermediate render passes
 
 window.onload = async () => {
     // canvas & rendering context
@@ -39,7 +36,7 @@ window.onload = async () => {
     const warpProgram = createProgram(gl, screenVert, warpFrag);
 
     // text renderer
-    const textRenderer: TextRenderer = await TextRenderer.new(gl, FONT_NAME, FONT_SIZE, texDims);
+    const textRenderer: TextRenderer = await TextRenderer.new(gl, FONT_NAME, { resolution: texDims, gridDims: [151, 43], preserveGridDims: true });
     textRenderer.print("Once upon a midnight dreary, while I pondered, weak and weary\n" +
         " Over many a quaint and curious volume of forgotten lore,\n" +
         " While I nodded, nearly napping, suddenly there came a tapping,\n" +
@@ -84,7 +81,7 @@ window.onload = async () => {
                 program: crtProgram,
                 uniforms: {
                     uResolution: { type: "2f", value: texDims },
-                    uTime: { type: "1f", value: time * 0.001 }
+                    uTime: { type: "1f", value: time * 0.003 }
                 },
                 attribs: geometryAttrib,
                 // prevOutputHandling: "input" // TODO remove this line
