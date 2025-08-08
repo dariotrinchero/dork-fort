@@ -12,12 +12,14 @@ type MinMagFilterType = WebGLRenderingContext["NEAREST"] | WebGLRenderingContext
  * @returns the compiled WebGL shader
  */
 const compileShader = (gl: WebGLRenderingContext, type: ShaderType, src: string): WebGLShader => {
-    const shader = gl.createShader(type)!;
+    const shader = gl.createShader(type);
+    if (!shader) throw new Error("Error in creating shader of given type");
+
     gl.shaderSource(shader, src);
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
-        throw new Error(gl.getShaderInfoLog(shader) || "Shader compile error");
+        throw new Error(gl.getShaderInfoLog(shader) ?? "Shader compile error");
 
     return shader;
 };
@@ -31,13 +33,13 @@ const compileShader = (gl: WebGLRenderingContext, type: ShaderType, src: string)
  * @returns compiled and linked WebGL program
  */
 export const createProgram = (gl: WebGLRenderingContext, vsSrc: string, fsSrc: string): WebGLProgram => {
-    const program = gl.createProgram()!;
+    const program = gl.createProgram();
     gl.attachShader(program, compileShader(gl, gl.VERTEX_SHADER, vsSrc));
     gl.attachShader(program, compileShader(gl, gl.FRAGMENT_SHADER, fsSrc));
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS))
-        throw new Error(gl.getProgramInfoLog(program) || "Program link error");
+        throw new Error(gl.getProgramInfoLog(program) ?? "Program link error");
 
     return program;
 };
@@ -57,7 +59,7 @@ export const createTexture = (
     texData?: ((pos: Pos) => RGBA) | TexImageSource,
     minMagFilters: MinMagFilterType = gl.LINEAR
 ): WebGLTexture => {
-    const tex = gl.createTexture()!;
+    const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
 
     // inititalize texture
@@ -98,7 +100,7 @@ export const createTexture = (
  * @returns the created frame buffer
  */
 export const createFramebuffer = (gl: WebGLRenderingContext, texture: WebGLTexture): WebGLFramebuffer => {
-    const fb = gl.createFramebuffer()!;
+    const fb = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
     return fb;
@@ -113,7 +115,7 @@ export const createFramebuffer = (gl: WebGLRenderingContext, texture: WebGLTextu
  * @returns newly-created or refreshed buffer
  */
 export const arrayBufFromData = (gl: WebGLRenderingContext, data: Float32Array, buf?: WebGLBuffer): WebGLBuffer => {
-    buf = buf ?? gl.createBuffer()!;
+    buf = buf ?? gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
     return buf;

@@ -26,15 +26,4 @@ jobs:
       - name: Upload to Neocities
         env:
           NEOCITIES_API_KEY: ${{ secrets.NEOCITIES_API_KEY }}
-        run: |
-          # Install curl
-          sudo apt-get update && sudo apt-get install -y curl
-
-          # Iterate all files in build/ and upload via Neocities API
-          for file in $(find build -type f); do
-            relative_path=${file#build/}
-            echo "Uploading $relative_path"
-            curl -X POST "https://neocities.org/api/upload" \
-              -H "Authorization: Bearer $NEOCITIES_API_KEY" \
-              -F "${relative_path}=@${file}"
-          done
+        run: npm run publish

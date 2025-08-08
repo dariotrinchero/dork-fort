@@ -20,8 +20,10 @@ const TEX_SCALE = 1.0;
 
 window.onload = async () => {
     // canvas & rendering context
-    const canvas = document.querySelector("canvas")!;
-    const gl = canvas.getContext("webgl2")!;
+    const canvas = document.querySelector("canvas");
+    if (!canvas) throw new Error("Unable to locate canvas for CRT screen");
+    const gl = canvas.getContext("webgl2");
+    if (!gl) throw new Error("WebGL2 is not supported");
 
     // dimensions
     const screenDims: Dimensions = [canvas.width, canvas.height] = [window.innerWidth, window.innerHeight];

@@ -6,5 +6,5 @@
 
 ## To-do list
 
-- [ ] Set up hot reloading dev environment. Add linting.
+- [ ] Set up hot reloading dev environment.
 - [ ] Document methods.

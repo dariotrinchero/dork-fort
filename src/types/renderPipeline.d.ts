@@ -17,9 +17,7 @@ interface U1f extends Uniform<number> { type: "1f"; }
 interface U2f extends Uniform<[number, number]> { type: "2f"; }
 interface UTex extends Uniform<UTexValue> { type: "tex"; }
 
-export interface Uniforms {
-    [name: string]: U1f | U2f | UTex;
-}
+export type Uniforms = Record<string, U1f | U2f | UTex>;
 
 // vertex attributes
 
@@ -31,9 +29,7 @@ interface VertexAttrib {
     location?: number; // store locations to save lookups
 }
 
-export interface VertexAttribs {
-    [name: string]: VertexAttrib;
-}
+export type VertexAttribs = Record<string, VertexAttrib>;
 
 // render pass data
 

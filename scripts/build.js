@@ -9,7 +9,7 @@ const buildOptions = {
     entryPoints: [ "src/index.ts" ],
     bundle: true,
     outfile: "build/index.js",
-    sourcemap: isProd ? false : true,
+    sourcemap: !isProd,
     minify: isProd,
     jsx: "automatic",
     loader: {
@@ -20,14 +20,21 @@ const buildOptions = {
     plugins: [
         glsl({ minify: true }),
         {
-            name: "type-check-and-copy-assets",
+            name: "typecheck-and-copy-assets",
             setup(build) {
-                // run Typescript before building
+                // typecheck & lint
                 build.onStart(() => {
                     try {
                         execSync("tsc --noEmit --project tsconfig.json", { stdio: "inherit" });
                     } catch {
-                        return { errors: [ { text: "TypeScript type check failed; skipping build." } ] };
+                        return { errors: [ { text: "TypeScript typecheck failed; skipping build" } ] };
+                    } finally {
+                        try {
+                            execSync("eslint 'src/**/*.{ts,tsx}'", { stdio: "inherit" });
+                        } catch {
+                            if (isProd) return { errors: [ { text: "ESLint linting failed; skipping build" } ] };
+                            console.log("ESLint linting failed; building anyway...");
+                        }
                     }
                 });
 

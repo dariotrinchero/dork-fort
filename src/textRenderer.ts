@@ -22,7 +22,7 @@ export default class TextRenderer {
     private textGrid: Map<string, CharTile> = new Map<string, CharTile>();
     private cursorPos: Pos = [0, 0];
     private gridDims: Dimensions;
-    private staleBuffers: boolean = true;
+    private staleBuffers = true;
 
     private program: WebGLProgram;
 
@@ -86,17 +86,28 @@ export default class TextRenderer {
         document.fonts.add(font);
     };
 
+    /**
+     * Split unicode string into graphemes.
+     * 
+     * @param str string to be split
+     * @returns list of graphemes in given string
+     */
+    private static splitGraphemes(str: string): string[] {
+        const itr = new Intl.Segmenter("en", { granularity: 'grapheme' }).segment(str);
+        return Array.from(itr, ({ segment }) => segment);
+    }
+
     private static generateFontAtlas(
         gl: WebGL2RenderingContext,
         fontName: string,
         fontSize: number,
         glyphSet: GlyphSet,
-        cols: number = 16
+        cols = 16
     ): FontAtlas {
         // collect glyphs to render
         const glyphs: string[] = [];
         glyphSet.forEach(set => {
-            if (typeof set === "string") glyphs.push(...set);
+            if (typeof set === "string") glyphs.push(...this.splitGraphemes(set));
             else {
                 const [start, end] = set;
                 const newGlyphs = Array.from({ length: end + 1 - start }, (_, k) => k + start)
@@ -106,8 +117,9 @@ export default class TextRenderer {
         });
 
         // measure text dimensions (using temporary canvas)
-        const tmp = document.createElement("canvas").getContext("2d")!;
-        tmp.font = `${fontSize}px ${fontName}`;
+        const tmp = document.createElement("canvas").getContext("2d");
+        if (!tmp) throw new Error("Unable to measure font dimensions");
+        tmp.font = `${fontSize.toFixed()}px ${fontName}`;
         const fullBox = tmp.measureText("█");
         const charDims: Dimensions = [
             fullBox.width,
@@ -116,7 +128,8 @@ export default class TextRenderer {
 
         // create canvas & context
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d")!;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Unable to generate font atlas");
 
         const rows = Math.ceil(glyphs.length / cols);
         const padding = 8; // prevent overlaps on atlas
@@ -128,7 +141,7 @@ export default class TextRenderer {
         // text style
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, ...atlasDims);
-        ctx.font = `${fontSize}px ${fontName}`;
+        ctx.font = `${fontSize.toFixed()}px ${fontName}`;
         ctx.textBaseline = "middle";
         ctx.textAlign = "center";
         ctx.fillStyle = "white";
@@ -174,7 +187,7 @@ export default class TextRenderer {
      */
     public setChar(coords: Pos, ch: string, color: RGB = [1, 1, 1]): boolean {
         if (!this.validTile(coords, ch, color)) return false;
-        this.textGrid.set(`${coords[0]},${coords[1]}`, { ch, color });
+        this.textGrid.set(`${coords[0].toFixed()},${coords[1].toFixed()}`, { ch, color });
         this.staleBuffers = true;
         return true;
     }
@@ -187,7 +200,7 @@ export default class TextRenderer {
      */
     public delChar(coords: Pos): boolean {
         if (!this.validTile(coords)) return false;
-        this.textGrid.delete(`${coords[0]},${coords[1]}`);
+        this.textGrid.delete(`${coords[0].toFixed()},${coords[1].toFixed()}`);
         this.staleBuffers = true;
         return true;
     }
@@ -200,7 +213,7 @@ export default class TextRenderer {
      */
     public getChar(coords: Pos): CharTile | undefined {
         if (!this.validTile(coords)) return undefined;
-        return this.textGrid.get(`${coords[0]},${coords[1]}`);
+        return this.textGrid.get(`${coords[0].toFixed()},${coords[1].toFixed()}`);
     }
 
     /**
@@ -210,7 +223,7 @@ export default class TextRenderer {
      * @param color 
      */
     public print(text: string, color: RGB = [1, 1, 1]): void {
-        for (const ch of [...text]) {
+        for (const ch of TextRenderer.splitGraphemes(text)) {
             if (this.cursorPos[1] >= this.gridDims[1] - 1) return; // out of lines
             if (ch === "\n" || this.cursorPos[0] === this.gridDims[0] - 1) { // wrap text
                 this.cursorPos[0] = 0;
@@ -256,10 +269,10 @@ export default class TextRenderer {
 
         let i = 0;
         for (const [key, tile] of this.textGrid) {
-            const [gridX, gridY] = key.split(",").map(Number);
+            const [gridX, gridY] = key.split(",").map(Number) as [number, number];
             this.screenPosData.set([
-                SCREEN_PADDING + (gridX! + 0.5) * charDims[0],
-                SCREEN_PADDING + (gridY! + 0.5) * charDims[1]
+                SCREEN_PADDING + (gridX + 0.5) * charDims[0],
+                SCREEN_PADDING + (gridY + 0.5) * charDims[1]
             ], i * 2);
             this.atlasPosData.set(charMap.get(tile.ch) ?? [0, 0], i * 2);
             this.colorData.set(tile.color, i * 3);

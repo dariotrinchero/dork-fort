@@ -1,20 +1,23 @@
 {
   "name": "dork-fort",
   "version": "1.0.0",
-  "description": "",
+  "description": "Personal Neocities website",
   "main": "build.js",
   "type": "module",
   "scripts": {
-    "build": "node build.js --prod",
-    "dev": "node build.js",
+    "build": "node scripts/build.js --prod",
+    "publish": "node scripts/deploy.js",
+    "dev": "node scripts/build.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["Neocities"],
+  "author": "Dario Trinchero",
   "license": "ISC",
   "devDependencies": {
+    "@eslint/js": "^9.32.0",
     "esbuild": "^0.25.6",
     "esbuild-plugin-glsl": "^1.4.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.0"
   }
 }

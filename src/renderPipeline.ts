@@ -57,7 +57,7 @@ export default class RenderPipeline {
 
             // input previous output if needed
             prevOutputHandling ??= i !== 0 ? "input" : "discard";
-            if (prevOutputHandling === "input") uniforms["uPrevRender"] = { type: "tex", value: { tex: this.inTex } };
+            if (prevOutputHandling === "input") uniforms.uPrevRender = { type: "tex", value: { tex: this.inTex } };
 
             this.draw(program, uniforms, attribs, instances ?? 1, i === sequence.length - 1, clearOutBuffer);
         });
@@ -79,7 +79,7 @@ export default class RenderPipeline {
         attribs: VertexAttribs,
         instances: number,
         outputToScreen?: boolean,
-        clearBuffer: boolean = true
+        clearBuffer = true
     ): void {
         // set uniforms & attributes
         this.gl.useProgram(program);
@@ -115,8 +115,8 @@ export default class RenderPipeline {
             const { location, type, value } = uniform;
             if (type === "1f") this.gl.uniform1f(location, value);
             else if (type === "2f") this.gl.uniform2f(location, ...value);
-            else if (type === "tex") {
-                const unit: number = value.unit || 0;
+            else { // type === "tex"
+                const unit: number = value.unit ?? 0;
                 this.gl.activeTexture(this.gl.TEXTURE0 + unit);
                 this.gl.bindTexture(this.gl.TEXTURE_2D, value.tex);
                 this.gl.uniform1i(location, unit);
