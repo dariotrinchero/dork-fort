@@ -6,9 +6,13 @@ import { glsl } from "esbuild-plugin-glsl";
 const isProd = process.argv.includes("--prod");
 
 const buildOptions = {
-    entryPoints: [ "src/index.ts" ],
+    entryPoints: [
+        "src/index.ts",
+        "src/style.css", // expand if more stylesheets are added
+    ],
     bundle: true,
-    outfile: "build/index.js",
+    outdir: "build",
+    inject: isProd ? [] : [ "scripts/hot-reload.js" ],
     sourcemap: !isProd,
     minify: isProd,
     jsx: "automatic",
@@ -24,6 +28,7 @@ const buildOptions = {
             setup(build) {
                 // typecheck & lint
                 build.onStart(() => {
+                    console.log(" ⟳ Rebuilding...");
                     try {
                         execSync("tsc --noEmit --project tsconfig.json", { stdio: "inherit" });
                     } catch {
@@ -41,10 +46,9 @@ const buildOptions = {
                 // copy static assets
                 build.onEnd(result => {
                     if (result.errors.length > 0) return;
-                    copyFileSync("src/style.css", "build/style.css");
                     copyFileSync("index.html", "build/index.html");
                     cpSync("public", "build/public", { recursive: true });
-                    console.log("Build complete");
+                    console.log(" ✔ Build complete");
                 });
             }
         }
@@ -57,8 +61,8 @@ const run = async () => {
     mkdirSync("build", { recursive: true });
 
     if (isProd) {
+        console.log("Building in production mode");
         await build(buildOptions);
-        console.log("Production build complete");
     } else {
         const ctx = await context(buildOptions);
         await ctx.watch();

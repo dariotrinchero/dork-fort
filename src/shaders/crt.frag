@@ -11,29 +11,13 @@ out vec4 fragColor;
 // parameters
 const float SCANLINE_WIDTH = 3.0;
 const float SCANLINE_HEIGHT = 3.0;
-const float BRIGHTNESS = 0.5;
+const float BRIGHTNESS = 0.6;
 const int SEPARATION_PIXELS = 2;
-const float FLICKER_MAGNITUDE = 0.06;
+const float FLICKER_MAGNITUDE = 0.08;
 
-// pseudorandom number based on time
-float random(in float time) {
-    return fract(sin(time) * 100000.0);
-}
-
-// scanlines effect via RGB subpixel masking
-vec4 screenDoor(vec4 color) {
-    vec2 modPos = vUV * uResolution;
-    float x = mod(modPos.x, SCANLINE_WIDTH) / 3.0;
-    float y = mod(modPos.y, SCANLINE_HEIGHT + 1.0);
-
-    vec2 bvector = vec2(BRIGHTNESS);
-    if (x < 0.33) color.gb *= bvector;
-    else if (x < 0.66) color.rb *= bvector;
-    else color.rg *= bvector;
-
-    if (y <= 1.0) color.rgb *= vec3(0);
-
-    return color;
+// pseudorandom number in [0,1)
+float random(in float seed) {
+    return fract(sin(seed) * 100000.0);
 }
 
 // chromatic aberration (color separation)
@@ -50,6 +34,29 @@ vec4 flicker(vec4 color) {
     return color;
 }
 
+// scanlines effect via RGB subpixel masking
+vec4 screenDoor(vec4 color) {
+    vec2 modPos = vUV * uResolution;
+    float x = mod(modPos.x, SCANLINE_WIDTH) / 3.0;
+    float y = mod(modPos.y, SCANLINE_HEIGHT + 1.0);
+
+    vec2 bvector = vec2(BRIGHTNESS);
+    if (x < 0.33) color.gb *= bvector;
+    else if (x < 0.66) color.rb *= bvector;
+    else color.rg *= bvector;
+
+    if (y <= 1.0) color.rgb *= vec3(0.5 * abs(1.0 - y) * random(vUV.y));
+
+    return color;
+}
+
+// darken corners of screen
+vec4 vignette(vec4 color) {
+    float dist = distance(vUV, vec2(0.5));
+    color.rgb *= smoothstep(0.83, 0.5, dist);
+    return color;
+}
+
 void main() {
-    fragColor = screenDoor(flicker(separate()));
+    fragColor = vignette(screenDoor(flicker(separate())));
 }
