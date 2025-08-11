@@ -1,19 +1,28 @@
 import type { Dimensions } from "types/global";
 import type { VertexAttribs } from "types/renderPipeline";
 
-import { arrayBufFromData, createProgram } from "webglHelpers";
+import { arrayBufFromData, createProgram, createTexture } from "webglHelpers";
 
 import RenderPipeline from "renderPipeline";
 import TextRenderer from "textRenderer";
 
 // shader source code
-import screenVert from "shaders/screen.vert";
 import crtFrag from "shaders/crt.frag";
+import screenVert from "shaders/screen.vert";
 import warpFrag from "shaders/warp.frag";
 
 // global constants
 const FONT_NAME = "DejaVuSansMono";
 const TEX_SCALE = 1.0; // global scale factor for intermediate render passes
+
+const loadImg = async (url: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.src = url;
+        img.onload = () => { resolve(img); };
+        img.onerror = reject;
+    });
+};
 
 window.onload = async () => {
     // canvas & rendering context
@@ -31,12 +40,28 @@ window.onload = async () => {
     const geometryAttrib: VertexAttribs = { aQuadVertPos: { buffer: fsQuad, itemSize: 2 } };
 
     // render passes & pipeline
-    const pipeline = new RenderPipeline(gl, texDims, screenDims);
+    const pipeline = new RenderPipeline(gl, {
+        colorFn: ([x, y]) => { // TODO temporary test gradient
+            const xFrac = x / texDims[0], yFrac = y / texDims[1];
+            return [
+                Math.floor(xFrac * 255),
+                Math.floor(yFrac * 255),
+                Math.floor(255 * (1 - xFrac)),
+                255,
+            ];
+        },
+        dims: texDims,
+    }, true);
     const crtProgram = createProgram(gl, screenVert, crtFrag);
     const warpProgram = createProgram(gl, screenVert, warpFrag);
 
     // text renderer
-    const textRenderer: TextRenderer = await TextRenderer.new(gl, FONT_NAME, { resolution: texDims, gridDims: [151, 43], preserveGridDims: true });
+    const textRenderer: TextRenderer = await TextRenderer.new(gl, FONT_NAME, { gridDims: [151, 43], preserveGridDims: true, resolution: texDims }); // TODO temporary
+
+    // TODO temporary image testing
+    const blackHole = createTexture(gl, await loadImg("public/bh.jpg"));
+    const { gridDims } = textRenderer.getSize();
+
     textRenderer.print("Once upon a midnight dreary, while I pondered, weak and weary\n" +
         " Over many a quaint and curious volume of forgotten lore,\n" +
         " While I nodded, nearly napping, suddenly there came a tapping,\n" +
@@ -72,24 +97,26 @@ window.onload = async () => {
 
     // animation loop
     const render = (time: number): void => {
+        void time;
         pipeline.runPasses([
             {
-                ...textRenderer.renderPassData(),
-                // prevOutputHandling: "draw over" // TODO remove this line
+                ...textRenderer.renderPass(),
+                composition: { mode: "series" } // TODO comment out to draw over initial texture
             },
             {
+                attribs: geometryAttrib,
+                composition: { mode: "series" },
                 program: crtProgram,
                 uniforms: {
                     uResolution: { type: "2f", value: texDims },
                     uTime: { type: "1f", value: time * 0.003 }
                 },
-                attribs: geometryAttrib,
-                // prevOutputHandling: "input" // TODO remove this line
             },
             {
+                attribs: geometryAttrib,
+                composition: { mode: "series", outputDims: screenDims },
                 program: warpProgram,
                 uniforms: {},
-                attribs: geometryAttrib,
             },
         ]);
         requestAnimationFrame(render);

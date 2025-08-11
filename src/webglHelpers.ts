@@ -1,7 +1,8 @@
-import type { Dimensions, Pos, RGBA } from "types/global";
-
-type ShaderType = WebGLRenderingContextBase["FRAGMENT_SHADER"] | WebGLRenderingContextBase["VERTEX_SHADER"];
-type MinMagFilterType = WebGLRenderingContext["NEAREST"] | WebGLRenderingContext["LINEAR"];
+import type {
+    MinMagFilterType,
+    ShaderType,
+    TextureData
+} from "types/webglHelpers";
 
 /**
  * Compile WebGL shader from given source code. 
@@ -48,41 +49,35 @@ export const createProgram = (gl: WebGLRenderingContext, vsSrc: string, fsSrc: s
  * Create WebGL texture of given width & height with 0 mip level, no border, and initial data as given.
  * 
  * @param gl WebGL rendering context
- * @param texDims dimensions of texture to create
- * @param texData texture image source, or function mapping pixel coordinates to RGBA
+ * @param data initial data with which to create texture
  * @param minMagFilters minification & magnification filters for resizing texture
  * @returns created texture
  */
-export const createTexture = (
-    gl: WebGLRenderingContext,
-    texDims: Dimensions,
-    texData?: ((pos: Pos) => RGBA) | TexImageSource,
-    minMagFilters: MinMagFilterType = gl.LINEAR
-): WebGLTexture => {
+export const createTexture = (gl: WebGLRenderingContext, data: TextureData, minMagFilters: MinMagFilterType = gl.LINEAR): WebGLTexture => {
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
 
-    // inititalize texture
-    if (typeof texData === "function") {
-        // initialize from function
-        const data = new Uint8Array(texDims[0] * texDims[1] * 4);
-        for (let y = 0; y < texDims[1]; y++) {
-            for (let x = 0; x < texDims[0]; x++) {
-                const i = (y * texDims[0] + x) * 4;
-                const [r, g, b, a] = texData([x, y]);
-                data[i + 0] = r;
-                data[i + 1] = g;
-                data[i + 2] = b;
-                data[i + 3] = a;
+    if ("dims" in data) {
+        let dataArr = null;
+
+        if (data.colorFn !== undefined) {
+            dataArr = new Uint8Array(data.dims[0] * data.dims[1] * 4);
+            for (let y = 0; y < data.dims[1]; y++) {
+                for (let x = 0; x < data.dims[0]; x++) {
+                    const i = (y * data.dims[0] + x) * 4;
+                    const [r, g, b, a] = data.colorFn([x, y]);
+                    dataArr[i + 0] = r;
+                    dataArr[i + 1] = g;
+                    dataArr[i + 2] = b;
+                    dataArr[i + 3] = a;
+                }
             }
         }
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ...texDims, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-    } else if (texData !== undefined) {
-        // initialize from image source
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texData);
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ...data.dims, 0, gl.RGBA, gl.UNSIGNED_BYTE, dataArr);
     } else {
-        // no initial data
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ...texDims, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        // initialize from image source (<img>, <canvas>, etc)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
     }
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);

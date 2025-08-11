@@ -1,47 +1,51 @@
-import type { Dimensions } from "types/global";
-import type { Uniforms, VertexAttribs, RenderPassSequence } from "types/renderPipeline";
+import type { FrameBuffer, RenderPassSequence, Uniforms, VertexAttribs } from "types/renderPipeline";
+import type { NewTexture } from "types/webglHelpers";
 
 import { createFramebuffer, createTexture } from "webglHelpers";
 
+const INPUT_UNIFORM_NAME = "uPrevRender";
+
 export default class RenderPipeline {
-    private inTex: WebGLTexture;
-    private outTex: WebGLTexture;
-    private inBuffer: WebGLFramebuffer;
-    private outBuffer: WebGLFramebuffer;
+    // input & output frame buffers
+    private input!: FrameBuffer;
+    private output!: FrameBuffer;
 
     constructor(
         private gl: WebGL2RenderingContext,
-        private textureDims: Dimensions,
-        private screenDims: Dimensions
+        private initTexData: NewTexture,
+        private drawToScreen?: boolean
     ) {
         // TODO make blending configurable
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-        // TODO make initial texture configurable
-        this.inTex = createTexture(gl, textureDims);
-        this.outTex = createTexture(gl, textureDims,
-            ([x, y]) => { // TODO temporary test gradient
-                const xFrac = x / textureDims[0], yFrac = y / textureDims[1];
-                return [
-                    Math.floor(xFrac * 255),
-                    Math.floor(yFrac * 255),
-                    Math.floor(255 * (1 - xFrac)),
-                    255,
-                ];
-            }
-        );
-
-        this.inBuffer = createFramebuffer(gl, this.inTex);
-        this.outBuffer = createFramebuffer(gl, this.outTex);
     }
 
     /**
-     * Swap input & output textures & buffers to prepare for next pass in multi-pass rendering pipeline.
+     * Swap input & output frame buffers.
      */
-    private swap(): void {
-        [this.inTex, this.outTex] = [this.outTex, this.inTex];
-        [this.inBuffer, this.outBuffer] = [this.outBuffer, this.inBuffer];
+    private swap(): void { [this.input, this.output] = [this.output, this.input]; }
+
+    /**
+     * Construct & return frame buffer (with associated texture & dimension data) from given initialization data.
+     * 
+     * @param newTexData data about new texture including dimensions & optional initialization function
+     * @returns newly-created frame buffer
+     */
+    private createFrameBuffer(newTexData: NewTexture): FrameBuffer {
+        const texture = createTexture(this.gl, newTexData);
+        const buffer = createFramebuffer(this.gl, texture);
+        return { buffer, dims: newTexData.dims, texture };
+    }
+
+    /**
+     * Reassign initial dimensions & textures to frame buffers to reset pipeline for next run.
+     * 
+     * @param firstParallel whether first pass in pipeline is in "parallel" composition mode
+     */
+    private initializeBuffers(firstParallel?: boolean): void {
+        this.input = this.createFrameBuffer(this.initTexData);
+        this.output = this.createFrameBuffer({ dims: this.initTexData.dims });
+        if (firstParallel) this.swap(); // if 1st pass is parallel, init tex should be in output
     }
 
     /**
@@ -50,16 +54,55 @@ export default class RenderPipeline {
      * @param sequence sequence of render passes to run
      */
     public runPasses(sequence: RenderPassSequence): void {
-        sequence.forEach(({ program, uniforms, attribs, instances, prevOutputHandling }, i) => {
-            // swap buffers if not drawing over previous output
-            const clearOutBuffer = prevOutputHandling !== "draw over";
-            if (clearOutBuffer) this.swap();
+        /**
+         * TODO: Having to reinitialize buffers every single frame is probably quite slow. Here's a better idea:
+         * 
+         * When constructing RenderPipeline, provide some information about passes up-front — this can be missing uniforms,
+         * attributes, etc, but should include at least composition modes & output dimensions. While constructing, we walk
+         * through this list & create all necessary framebuffers in a list. We also record, for each pass, the indices (into
+         * this list of buffers) of the input & output for that pass. Then we can simply reuse this list of buffers for every
+         * pass in every Pipeline run, never having to rebuild it. (This assumes that buffer dimensions are constant in time.)
+         * 
+         * eg. Suppose our passes are
+         * ┏━━━━━━┓
+         * ┃      ┃ -[1. ser]-> ┏━━━┓             ┏━━━┓             ┏━━━┓             ┏━┓
+         * ┃  A   ┃ -[2. par]-> ┃ B ┃ -[3. ser]-> ┃ B ┃ -[4. ser]-> ┃ B ┃ -[5. ser]-> ┃C┃ -[6. ser]-> (screen)
+         * ┃      ┃             ┗━━━┛             ┗━━━┛             ┗━━━┛             ┗━┛
+         * ┗━━━━━━┛
+         * where A, B, C denote different dimensions. We create 4 buffers of sizes [A, B, B, C], & record indices:
+         * [
+         *    { in: 0, out: 1 },  // pass 1
+         *    { in: 0, out: 1 },  // pass 2
+         *    { in: 1, out: 2 },  // pass 3
+         *    { in: 2, out: 1 },  // pass 4
+         *    { in: 1, out: 3 },  // pass 5
+         *    { in: 3, out: -1 }, // pass 6, -1 meaning output to screen
+         * ]
+         */
+        this.initializeBuffers(sequence[0]?.composition.mode !== "series");
+
+        // final series pass may have to output to screen
+        const finalOutput = Math.max(0, sequence.findLastIndex(({ composition }) => composition.mode === "series"));
+
+        sequence.forEach(({ program, uniforms, attribs, instances, composition }, i) => {
+            const inSeries = composition.mode === "series";
+
+            if (inSeries) {
+                this.swap();
+
+                // resize output frame buffer if needed
+                const reqOutDims = composition.outputDims ?? this.output.dims;
+                if (reqOutDims[0] !== this.output.dims[0] || reqOutDims[1] !== this.output.dims[1]) {
+                    this.output = this.createFrameBuffer({ dims: reqOutDims });
+                }
+            }
 
             // input previous output if needed
-            prevOutputHandling ??= i !== 0 ? "input" : "discard";
-            if (prevOutputHandling === "input") uniforms.uPrevRender = { type: "tex", value: { tex: this.inTex } };
+            if (inSeries || !composition.ignoreInput) {
+                uniforms[INPUT_UNIFORM_NAME] = { type: "tex", value: { tex: this.input.texture } };
+            }
 
-            this.draw(program, uniforms, attribs, instances ?? 1, i === sequence.length - 1, clearOutBuffer);
+            this.draw(program, uniforms, attribs, instances ?? 1, this.drawToScreen && i === finalOutput, inSeries);
         });
     }
 
@@ -87,8 +130,8 @@ export default class RenderPipeline {
         this.setUniforms(program, uniforms);
 
         // render to output
-        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, outputToScreen ? null : this.outBuffer);
-        this.gl.viewport(0, 0, ...(outputToScreen ? this.screenDims : this.textureDims));
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, outputToScreen ? null : this.output.buffer);
+        this.gl.viewport(0, 0, ...this.output.dims);
 
         if (clearBuffer) {
             this.gl.clearColor(0, 0, 0, 1);

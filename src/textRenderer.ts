@@ -1,6 +1,6 @@
-import type { Dimensions, Pos, RGB } from "types/global";
-import type { RenderPassData } from "types/renderPipeline";
 import type { CharTile, FontAtlas, GlyphSet, TextRendererSize, TextRendererSizeSpec, TextSize } from "types/textRenderer";
+import type { Dimensions, Pos, RGB } from "types/global";
+import type { RenderPass } from "types/renderPipeline";
 
 import { arrayBufFromData, createProgram, createTexture } from "webglHelpers";
 
@@ -64,7 +64,6 @@ export default class TextRenderer {
     ): Promise<TextRenderer> {
         await this.loadFont(fontName);
         const size = this.computeMissingDims(sizeSpec, fontName);
-        console.debug("Text renderer dimensions: ", JSON.stringify(size, undefined, 2)); // TODO delete this?
         const atlas = this.generateFontAtlas(gl, fontName, size, glyphSet);
         return new TextRenderer(gl, atlas, size);
     }
@@ -116,7 +115,7 @@ export default class TextRenderer {
      * 
      * @param ctx 2D canvas rendering context to use for measurement
      * @param fontName name of font in which to render character
-     * @param charBounds maximum permissible dimensions (in pixels) of rendered full Unicode box character, '█' 
+     * @param charBounds maximum permissible dimensions (in pixels) of rendered full Unicode box character, '█'
      * @returns optimal font size & measurements of full Unicode box character, '█'
      */
     private static findFontSize(ctx: CanvasRenderingContext2D, fontName: string, charBounds: Dimensions): TextSize {
@@ -129,7 +128,7 @@ export default class TextRenderer {
                 low = mid + 0.5;
             } else high = mid - 0.5;
         }
-        return { fontSize: best, charDims: this.measureText(ctx, fontName, best) };
+        return { charDims: this.measureText(ctx, fontName, best), fontSize: best };
     }
 
     /**
@@ -183,7 +182,7 @@ export default class TextRenderer {
         }
 
         tmp.remove(); // clean up by removing temporary canvas
-        return { charDims, resolution, gridDims, fontSize };
+        return { charDims, fontSize, gridDims, resolution };
     }
 
     /**
@@ -255,8 +254,18 @@ export default class TextRenderer {
             charMap.set(g, [x, y]);
         });
 
-        return { atlas: createTexture(gl, atlasDims, canvas, gl.NEAREST), charMap, atlasDims };
+        return { atlas: createTexture(gl, canvas, gl.NEAREST), atlasDims, charMap };
     };
+
+    /**
+     * Get various dimensions associated with the text renderer, including (1) font size, (2) grid size,
+     * (3) resolution, & (4) dimensions (in pixels) of rendered full Unicode box character, '█'.
+     * 
+     * @returns various dimensions associated with text grid
+     */
+    public getSize(): TextRendererSize {
+        return this.size;
+    }
 
     /**
      * Check whether given coordinates (and optionally character & color) denote a valid tile.
@@ -338,24 +347,25 @@ export default class TextRenderer {
      * 
      * @returns 
      */
-    public renderPassData(): RenderPassData {
+    public renderPass(): RenderPass {
         if (this.staleBuffers) this.refreshBuffers();
 
         return {
-            program: this.program,
-            uniforms: {
-                uGlyphSize: { type: "2f", value: this.size.charDims },
-                uAtlasSize: { type: "2f", value: this.fontAtlas.atlasDims },
-                uResolution: { type: "2f", value: this.size.resolution },
-                uAtlas: { type: "tex", value: { tex: this.fontAtlas.atlas } }
-            },
             attribs: {
                 aQuadVertPos: { buffer: this.clipQuadBuf, itemSize: 2 },
-                iCharScreenPos: { buffer: this.screenPosBuf, itemSize: 2, instanced: true },
-                iCharAtlasPos: { buffer: this.atlasPosBuf, itemSize: 2, instanced: true },
-                iCharColor: { buffer: this.colorBuf, itemSize: 3, instanced: true }
+                iCharAtlasPos: { buffer: this.atlasPosBuf, instanced: true, itemSize: 2 },
+                iCharColor: { buffer: this.colorBuf, instanced: true, itemSize: 3 },
+                iCharScreenPos: { buffer: this.screenPosBuf, instanced: true, itemSize: 2 },
             },
-            instances: this.textGrid.size
+            composition: { ignoreInput: true, mode: "parallel" },
+            instances: this.textGrid.size,
+            program: this.program,
+            uniforms: {
+                uAtlas: { type: "tex", value: { tex: this.fontAtlas.atlas } },
+                uAtlasSize: { type: "2f", value: this.fontAtlas.atlasDims },
+                uGlyphSize: { type: "2f", value: this.size.charDims },
+                uResolution: { type: "2f", value: this.size.resolution },
+            },
         };
     }
 

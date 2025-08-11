@@ -12,6 +12,10 @@ export default [
     {
       rules: { // manual rule overrides
         "@typescript-eslint/no-misused-spread": "warn",
+        "sort-keys": "error",
+        "sort-imports": [ "error", {
+          allowSeparatedGroups: true,
+        } ]
       },
       languageOptions: {
         parserOptions: {
