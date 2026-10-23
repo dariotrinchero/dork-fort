@@ -14,9 +14,15 @@ const float SCANLINE_WIDTH = 3.0; // should be >= 3
 const float SCANLINE_HEIGHT = 2.0;
 const float SCANLINE_GAP = 1.0;
 
-const float BRIGHTNESS = 0.6;
+const float BRIGHTNESS = 0.6;          // brightness of masked subpixels
+const float GAIN = 1.4;                // overall brightness boost, applied after masking to preserve its contrast
 const float SEPARATION_PIXELS = 2.5;
 const float FLICKER_MAGNITUDE = 0.08;
+
+const float GLOW_RADIUS = 8.0;         // in CSS pixels
+const float GLOW_STRENGTH = 0.25;
+const int GLOW_TAPS = 24;
+const float GOLDEN_ANGLE = 2.39996323;
 
 // chromatic aberration (color separation)
 vec4 separate() {
@@ -48,6 +54,21 @@ vec4 screenDoor(vec4 color) {
     return color;
 }
 
+// soft glow (halation), as weighted average of samples spread evenly over a disc (Vogel spiral)
+vec3 glow() {
+    vec2 radius = GLOW_RADIUS * uPixelScale / uResolution;
+    vec3 sum = vec3(0.0);
+    float totalWeight = 0.0;
+    for (int i = 0; i < GLOW_TAPS; i++) {
+        float r = sqrt((float(i) + 0.5) / float(GLOW_TAPS));
+        float theta = float(i) * GOLDEN_ANGLE;
+        float weight = exp(-3.0 * r * r); // approximately Gaussian falloff
+        sum += weight * texture(uPrevRender, vUV + radius * r * vec2(cos(theta), sin(theta))).rgb;
+        totalWeight += weight;
+    }
+    return sum / totalWeight;
+}
+
 // darken corners of screen
 vec4 vignette(vec4 color) {
     float dist = distance(vUV, vec2(0.5));
@@ -56,5 +77,7 @@ vec4 vignette(vec4 color) {
 }
 
 void main() {
-    fragColor = vignette(screenDoor(flicker(separate())));
+    vec4 color = screenDoor(separate());
+    color.rgb = color.rgb * GAIN + glow() * GLOW_STRENGTH;
+    fragColor = vignette(flicker(color));
 }

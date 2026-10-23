@@ -1,7 +1,9 @@
 import { execSync } from "child_process";
 import { copyFileSync, cpSync, existsSync, rmSync, mkdirSync } from "fs";
 import { context, build } from "esbuild";
+import { readFile } from "fs/promises";
 import { glsl } from "esbuild-plugin-glsl";
+import { bakeQR } from "./bakeQR.js";
 
 const isProd = process.argv.includes("--prod");
 
@@ -22,6 +24,16 @@ const buildOptions = {
     },
     plugins: [
         glsl({ minify: true }),
+        {
+            name: "bake-qr-svg",
+            setup(build) {
+                // parse imported QR code SVGs into module data, bundled as JSON
+                build.onLoad({ filter: /\.svg$/ }, async ({ path }) => ({
+                    contents: JSON.stringify(bakeQR(await readFile(path, "utf8"))),
+                    loader: "json",
+                }));
+            }
+        },
         {
             name: "typecheck-and-copy-assets",
             setup(build) {
