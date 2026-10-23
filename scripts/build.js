@@ -1,9 +1,10 @@
 import { execSync } from "child_process";
 import { copyFileSync, cpSync, existsSync, rmSync, mkdirSync } from "fs";
+import { readFile, writeFile } from "fs/promises";
 import { context, build } from "esbuild";
-import { readFile } from "fs/promises";
 import { glsl } from "esbuild-plugin-glsl";
 import { bakeQR } from "./bakeQR.js";
+import { subsetToGlyphSet } from "./subsetFont.js";
 
 const isProd = process.argv.includes("--prod");
 
@@ -55,11 +56,16 @@ const buildOptions = {
                     return { errors };
                 });
 
-                // copy static assets
-                build.onEnd(result => {
+                // copy static assets & subset font to glyphs used by text renderer
+                build.onEnd(async result => {
                     if (result.errors.length > 0) return;
                     copyFileSync("index.html", "build/index.html");
                     if (existsSync("public")) cpSync("public", "build/public", { recursive: true });
+                    mkdirSync("build/fonts", { recursive: true });
+                    await writeFile(
+                        "build/fonts/DejaVuSansMono.woff2",
+                        await subsetToGlyphSet("src/assets/DejaVuSansMono.ttf", "src/assets/glyphs.json")
+                    );
                     console.log(" ✔ Build complete");
                 });
             }

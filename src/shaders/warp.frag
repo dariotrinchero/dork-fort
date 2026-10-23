@@ -3,13 +3,13 @@ precision highp float;
 
 uniform sampler2D uPrevRender; // result of previous render pass (to warp)
 
+// parameters of warp (see warp.ts, which mirrors this shader for pointer hit-testing)
+uniform float uRadius;
+uniform float uMagnitude;
+uniform float uCutoff;
+
 in vec2 vUV;
 out vec4 fragColor;
-
-// parameters
-const float RADIUS = 0.5;
-const float MAGNITUDE = 0.05;
-const float CUTOFF = 0.3;
 
 // quartic easing function
 float easeInQuart(float t, float b, float c, float d) {
@@ -21,7 +21,7 @@ float easeInQuart(float t, float b, float c, float d) {
 vec2 curvedMonitor(vec2 uv) {
     vec2 center = vec2(0.5);
     vec2 coords = uv - center;
-    coords *= easeInQuart(length(coords), 1.0 / CUTOFF - MAGNITUDE, MAGNITUDE, RADIUS) * CUTOFF;
+    coords *= easeInQuart(length(coords), 1.0 / uCutoff - uMagnitude, uMagnitude, uRadius) * uCutoff;
     return coords + center;
 }
 

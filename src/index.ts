@@ -1,9 +1,14 @@
 import type { Dimensions } from "types/global";
+import type { TextRendererSizeSpec } from "types/textRenderer";
 
 import { createProgram, createQuadBuffer, createVertexArray } from "webglHelpers";
+import { warpUniforms } from "warp";
 
+import DESTINATIONS from "destinations";
+import QRMenu from "menu";
 import QRRenderer from "qrRenderer";
 import RenderPipeline from "renderPipeline";
+import TextRenderer from "textRenderer";
 
 // QR code module data (baked from SVG at compile time)
 import qrData from "assets/qr.svg";
@@ -16,6 +21,9 @@ import warpFrag from "shaders/warp.frag";
 // global constants
 const TEX_SCALE = 1.0; // global scale factor for intermediate render passes
 const MAX_TEX_DPR = 2; // cap on intermediate render pass pixels per CSS pixel, to limit cost on high-DPI phones
+const FONT_NAME = "DejaVuSansMono";
+const FONT_SIZE = 24; // in CSS pixels
+const MAX_FRAME_TIME = 0.1; // cap (in seconds) on animation time step, eg. after tab was in background
 
 window.onload = () => {
     // canvas & rendering context
@@ -30,7 +38,7 @@ window.onload = () => {
 
     /**
      * Match canvas resolution to its displayed size (in device pixels), & compute dimensions of intermediate
-     * render passes. Sizes of CRT effects are given in CSS pixels, so that they scale with browser zoom.
+     * render passes. Sizes of text & CRT effects are given in CSS pixels, so that they scale with browser zoom.
      * 
      * @returns dimensions of intermediate render passes, or undefined if size is unchanged
      */
@@ -63,19 +71,42 @@ window.onload = () => {
     const warpProgram = createProgram(gl, screenVert, warpFrag);
     const warpVAO = createVertexArray(gl, warpProgram, { aQuadVertPos: { buffer: fsQuad, itemSize: 2 } });
 
-    // render pipeline & QR code
+    // render pipeline, QR code, & interactive menu
     const pipeline = new RenderPipeline(gl, texDims);
-    const qrRenderer = new QRRenderer(gl, qrData, texDims, 0.8); // slightly darken background
+    const qrRenderer = new QRRenderer(gl, qrData, texDims, {
+        bgBrightness: 0.8, // slightly darken background
+        regions: DESTINATIONS.map(({ group }) => group),
+    });
+    const menu = new QRMenu(canvas, qrRenderer, DESTINATIONS);
+
+    // text renderer for menu labels becomes available once font loads (QR code renders in the meantime)
+    let textRenderer: TextRenderer | undefined;
+    const textSize = (): TextRendererSizeSpec => ({ fontSize: Math.round(FONT_SIZE * texScale), resolution: texDims });
+    TextRenderer.new(gl, FONT_NAME, textSize())
+        .then(text => {
+            text.resize(textSize()); // in case of resize while font was loading
+            textRenderer = text;
+            menu.setTextRenderer(text);
+        })
+        .catch((e: unknown) => { console.error("Unable to create text renderer:", e); });
 
     // animation loop
-    const render = (): void => {
+    let lastTime: number | undefined;
+    const render = (time: number): void => {
+        const dt = Math.min(MAX_FRAME_TIME, (time - (lastTime ?? time)) / 1000);
+        lastTime = time;
+
         if (syncSize()) {
             pipeline.resize(texDims);
             qrRenderer.resize(texDims);
+            textRenderer?.resize(textSize());
+            menu.layout();
         }
+        menu.update(dt, time / 1000);
 
         pipeline.runPasses([
             qrRenderer.renderPass(),
+            ...textRenderer ? [textRenderer.renderPass()] : [],
             {
                 composition: { mode: "series" },
                 program: crtProgram,
@@ -89,7 +120,7 @@ window.onload = () => {
             {
                 composition: { mode: "series" },
                 program: warpProgram,
-                uniforms: {},
+                uniforms: warpUniforms(),
                 vao: warpVAO,
             },
         ]);

@@ -2,7 +2,7 @@ import type { Dimensions } from "types/global";
 
 //-- uniforms --------------------------------------------------------------------------------------------
 
-type UniformType = "1f" | "2f" | "tex";
+type UniformType = "1f" | "1fv" | "2f" | "tex";
 
 interface Uniform<T> {
     type: UniformType;
@@ -10,10 +10,11 @@ interface Uniform<T> {
 }
 
 interface U1f extends Uniform<number> { type: "1f"; }
+interface U1fv extends Uniform<Float32List> { type: "1fv"; } // float array
 interface U2f extends Uniform<[number, number]> { type: "2f"; }
 interface UTex extends Uniform<WebGLTexture> { type: "tex"; } // texture units are assigned automatically
 
-export type Uniforms = Record<string, U1f | U2f | UTex>;
+export type Uniforms = Record<string, U1f | U1fv | U2f | UTex>;
 
 //-- vertex attributes -----------------------------------------------------------------------------------
 

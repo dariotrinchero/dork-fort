@@ -6,4 +6,4 @@
 
 ## To-do list
 
-Nothing at present.
+1. Link each destination in the QR code menu (see `src/destinations.ts`) to its own page, & navigate on click/tap.

@@ -8,13 +8,10 @@ import { createProgram, createQuadBuffer, createTexture, createVertexArray } fro
 import textFrag from "shaders/text.frag";
 import textVert from "shaders/text.vert";
 
-const DEFAULT_GLYPHS: GlyphSet = [
-    [32, 126], // printable ASCII range
-    [0x2500, 0x259F], // box characters
-    "☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòû", // Dwarf Fortress tiles
-    "ùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■",
-    "—…〉", // miscellaneous
-];
+import glyphs from "assets/glyphs.json";
+
+// default glyph set, shared with build script, which subsets font to these glyphs
+const DEFAULT_GLYPHS = glyphs as GlyphSet;
 
 const SCREEN_PADDING = 10; // minimum padding (in pixels) around text grid
 
@@ -23,6 +20,7 @@ export default class TextRenderer {
     private cursorPos: Pos = [0, 0];
     private staleBuffers = true;
     private instanceCount = 0; // number of character tiles within text grid
+    private originOverride?: Pos; // position of text grid's top-left corner, if not centred
 
     private program: WebGLProgram;
     private vao: WebGLVertexArrayObject;
@@ -114,16 +112,14 @@ export default class TextRenderer {
     }
 
     /**
-     * Load font with given name into document.
+     * Load font with given name into document (as subsetted to the default glyph set at compile time).
      * 
      * @param name name of font to load
      */
     private static async loadFont(name: string): Promise<void> {
         const font = new FontFace(
             name,
-            `url(public/${name}.woff) format("woff"),
-            url(public/${name}.ttf) format("truetype"),
-            url(public/${name}.eot) format("embedded-opentype")`
+            `url(fonts/${name}.woff2) format("woff2")`
         );
         await font.load();
         document.fonts.add(font);
@@ -341,6 +337,26 @@ export default class TextRenderer {
     }
 
     /**
+     * Position top-left corner of text grid at given pixel coordinates (by default, the grid is centred).
+     * 
+     * @param origin position (in pixels from top-left of output) of top-left corner, or undefined to centre grid
+     */
+    public setOrigin(origin?: Pos): void {
+        if (origin?.[0] === this.originOverride?.[0] && origin?.[1] === this.originOverride?.[1]) return;
+        this.originOverride = origin;
+        this.staleBuffers = true;
+    }
+
+    /**
+     * Delete all character tiles, & reset cursor.
+     */
+    public clear(): void {
+        this.textGrid.clear();
+        this.cursorPos = [0, 0];
+        this.staleBuffers = true;
+    }
+
+    /**
      * Check whether given coordinates (and optionally character & color) denote a valid tile.
      * 
      * @param coords grid coordinates of character
@@ -445,8 +461,8 @@ export default class TextRenderer {
     private refreshBuffers(): void {
         const { charDims, gridDims, resolution } = this.size;
 
-        // center text grid on output, aligned to whole pixels
-        const origin: Pos = [
+        // center text grid on output (unless overridden), aligned to whole pixels
+        const origin: Pos = this.originOverride ?? [
             Math.floor((resolution[0] - gridDims[0] * charDims[0]) / 2),
             Math.floor((resolution[1] - gridDims[1] * charDims[1]) / 2),
         ];

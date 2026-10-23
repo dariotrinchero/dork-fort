@@ -8,13 +8,16 @@
     "publish": "node scripts/deploy.js",
     "dev": "node scripts/build.js"
   },
-  "keywords": ["Neocities"],
+  "keywords": [
+    "Neocities"
+  ],
   "author": "Dario Trinchero",
   "license": "ISC",
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "esbuild": "^0.25.6",
     "esbuild-plugin-glsl": "^1.4.0",
+    "subset-font": "^2.9.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.0"
   }
