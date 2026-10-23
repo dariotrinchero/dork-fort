@@ -60,7 +60,7 @@ const buildOptions = {
                 build.onEnd(async result => {
                     if (result.errors.length > 0) return;
                     copyFileSync("index.html", "build/index.html");
-                    if (existsSync("public")) cpSync("public", "build/public", { recursive: true });
+                    if (existsSync("public")) cpSync("public", "build", { recursive: true }); // served from site root
                     mkdirSync("build/fonts", { recursive: true });
                     await writeFile(
                         "build/fonts/DejaVuSansMono.woff2",

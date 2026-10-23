@@ -44,7 +44,8 @@ Assets in `src/assets/` are processed at compile time, & never deployed as-is:
 - `DejaVuSansMono.ttf` is subsetted by `scripts/subsetFont.js` to only the glyphs listed in `glyphs.json`, &
   output as `fonts/DejaVuSansMono.woff2`. Add glyphs to `glyphs.json` before using them in text.
 
-Static files that should be deployed as-is go in `public/`.
+Static files that should be deployed as-is (eg. `robots.txt`, & the 404 page `not_found.html`) go in `public/`,
+& are served from the root of the site.
 
 ## Deploying to Neocities
 
