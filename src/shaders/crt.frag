@@ -1,8 +1,9 @@
 #version 300 es
-precision mediump float;
+precision highp float;
 
-uniform float uTime;           // animation time
+uniform float uFlicker;        // pseudorandom value in [0,1), varying per frame
 uniform vec2 uResolution;      // render output size in pixels
+uniform float uPixelScale;     // render output pixels per 'CRT pixel' (whole number)
 uniform sampler2D uPrevRender; // result of previous render pass (to apply CRT effect to)
 
 in vec2 vUV;
@@ -17,28 +18,23 @@ const float BRIGHTNESS = 0.6;
 const float SEPARATION_PIXELS = 2.5;
 const float FLICKER_MAGNITUDE = 0.08;
 
-// pseudorandom number in [0,1)
-float random(in float seed) {
-    return fract(sin(seed) * 100000.0);
-}
-
 // chromatic aberration (color separation)
 vec4 separate() {
-    float offset = 0.5 * SEPARATION_PIXELS / uResolution.x;
+    float offset = 0.5 * SEPARATION_PIXELS * uPixelScale / uResolution.x;
     vec4 blue = texture(uPrevRender, vUV - vec2(offset, 0.0)) * vec4(0, 0.5, 1, 1);
     vec4 red = texture(uPrevRender, vUV + vec2(offset, 0.0)) * vec4(1, 0.5, 0, 1);
-    return blue + red;
+    return vec4(blue.rgb + red.rgb, 0.5 * (blue.a + red.a));
 }
 
 // CRT flicker using pseudo-random time variation
 vec4 flicker(vec4 color) {
-    color.rgb *= vec3(1.0 - (random(uTime) * FLICKER_MAGNITUDE));
+    color.rgb *= vec3(1.0 - (uFlicker * FLICKER_MAGNITUDE));
     return color;
 }
 
 // scanlines effect via RGB subpixel masking
 vec4 screenDoor(vec4 color) {
-    vec2 pixelPos = vUV * uResolution;
+    vec2 pixelPos = floor(vUV * uResolution / uPixelScale) + 0.5; // center of 'CRT pixel' containing fragment
     float x = mod(pixelPos.x, SCANLINE_WIDTH) / SCANLINE_WIDTH;
     float y = mod(pixelPos.y, SCANLINE_HEIGHT + SCANLINE_GAP);
 

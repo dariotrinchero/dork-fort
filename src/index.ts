@@ -1,7 +1,7 @@
 import type { Dimensions } from "types/global";
-import type { VertexAttribs } from "types/renderPipeline";
+import type { TextRendererSizeSpec } from "types/textRenderer";
 
-import { arrayBufFromData, createProgram, createTexture } from "webglHelpers";
+import { createProgram, createQuadBuffer, createVertexArray } from "webglHelpers";
 
 import RenderPipeline from "renderPipeline";
 import TextRenderer from "textRenderer";
@@ -14,53 +14,59 @@ import warpFrag from "shaders/warp.frag";
 // global constants
 const FONT_NAME = "DejaVuSansMono";
 const TEX_SCALE = 1.0; // global scale factor for intermediate render passes
-
-const loadImg = async (url: string): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.src = url;
-        img.onload = () => { resolve(img); };
-        img.onerror = reject;
-    });
-};
+const MAX_TEX_DPR = 2; // cap on intermediate render pass pixels per CSS pixel, to limit cost on high-DPI phones
+const FONT_SIZE = 16; // in CSS pixels
 
 window.onload = async () => {
     // canvas & rendering context
     const canvas = document.querySelector("canvas");
     if (!canvas) throw new Error("Unable to locate canvas for CRT screen");
-    const gl = canvas.getContext("webgl2");
+    const gl = canvas.getContext("webgl2", { alpha: false, antialias: false });
     if (!gl) throw new Error("WebGL2 is not supported");
 
-    // dimensions
-    const screenDims: Dimensions = [canvas.width, canvas.height] = [window.innerWidth, window.innerHeight];
-    const texDims: Dimensions = [Math.floor(TEX_SCALE * screenDims[0]), Math.floor(TEX_SCALE * screenDims[1])];
+    // browsers may drop WebGL context (eg. when phone puts tab in background); simplest recovery is to reload
+    canvas.addEventListener("webglcontextlost", e => { e.preventDefault(); });
+    canvas.addEventListener("webglcontextrestored", () => { location.reload(); });
 
-    // fullscreen quad geometry
-    const fsQuad = arrayBufFromData(gl, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
-    const geometryAttrib: VertexAttribs = { aQuadVertPos: { buffer: fsQuad, itemSize: 2 } };
+    /**
+     * Match canvas resolution to its displayed size (in device pixels), & compute dimensions of intermediate
+     * render passes. Sizes of text & CRT effects are given in CSS pixels, so that they scale with browser zoom.
+     * 
+     * @returns dimensions of intermediate render passes, or undefined if size is unchanged
+     */
+    let texDims: Dimensions = [0, 0];
+    let texScale = 1; // intermediate render pass pixels per CSS pixel
+    const syncSize = (): Dimensions | undefined => {
+        const dpr = window.devicePixelRatio;
+        const width = Math.round(canvas.clientWidth * dpr);
+        const height = Math.round(canvas.clientHeight * dpr);
+        const newTexScale = TEX_SCALE * Math.min(dpr, MAX_TEX_DPR);
+        const newTexDims: Dimensions = [
+            Math.floor(newTexScale * canvas.clientWidth),
+            Math.floor(newTexScale * canvas.clientHeight),
+        ];
 
-    // render passes & pipeline
-    const pipeline = new RenderPipeline(gl, {
-        colorFn: ([x, y]) => { // TODO temporary test gradient
-            const xFrac = x / texDims[0], yFrac = y / texDims[1];
-            return [
-                Math.floor(xFrac * 255),
-                Math.floor(yFrac * 255),
-                Math.floor(255 * (1 - xFrac)),
-                255,
-            ];
-        },
-        dims: texDims,
-    }, true);
+        // browser zoom changes device pixel ratio, often without changing canvas size in device pixels
+        if (width === canvas.width && height === canvas.height && newTexScale === texScale
+            && newTexDims[0] === texDims[0] && newTexDims[1] === texDims[1]) return undefined;
+
+        [canvas.width, canvas.height] = [width, height];
+        texScale = newTexScale;
+        return texDims = newTexDims;
+    };
+    syncSize();
+
+    // fullscreen quad geometry & post-processing programs
+    const fsQuad = createQuadBuffer(gl);
     const crtProgram = createProgram(gl, screenVert, crtFrag);
+    const crtVAO = createVertexArray(gl, crtProgram, { aQuadVertPos: { buffer: fsQuad, itemSize: 2 } });
     const warpProgram = createProgram(gl, screenVert, warpFrag);
+    const warpVAO = createVertexArray(gl, warpProgram, { aQuadVertPos: { buffer: fsQuad, itemSize: 2 } });
 
-    // text renderer
-    const textRenderer: TextRenderer = await TextRenderer.new(gl, FONT_NAME, { gridDims: [151, 43], preserveGridDims: true, resolution: texDims }); // TODO temporary
-
-    // TODO temporary image testing
-    const blackHole = createTexture(gl, await loadImg("public/bh.jpg"));
-    const { gridDims } = textRenderer.getSize();
+    // render pipeline & text renderer
+    const pipeline = new RenderPipeline(gl, texDims);
+    const textSize = (): TextRendererSizeSpec => ({ fontSize: Math.round(FONT_SIZE * texScale), resolution: texDims });
+    const textRenderer = await TextRenderer.new(gl, FONT_NAME, textSize());
 
     textRenderer.print("Once upon a midnight dreary, while I pondered, weak and weary\n" +
         " Over many a quaint and curious volume of forgotten lore,\n" +
@@ -96,27 +102,29 @@ window.onload = async () => {
     );
 
     // animation loop
-    const render = (time: number): void => {
-        void time;
+    const render = (): void => {
+        if (syncSize()) {
+            pipeline.resize(texDims);
+            textRenderer.resize(textSize());
+        }
+
         pipeline.runPasses([
+            textRenderer.renderPass(),
             {
-                ...textRenderer.renderPass(),
-                composition: { mode: "series" } // TODO comment out to draw over initial texture
-            },
-            {
-                attribs: geometryAttrib,
                 composition: { mode: "series" },
                 program: crtProgram,
                 uniforms: {
+                    uFlicker: { type: "1f", value: Math.random() },
+                    uPixelScale: { type: "1f", value: Math.max(1, Math.round(texScale)) },
                     uResolution: { type: "2f", value: texDims },
-                    uTime: { type: "1f", value: time * 0.003 }
                 },
+                vao: crtVAO,
             },
             {
-                attribs: geometryAttrib,
-                composition: { mode: "series", outputDims: screenDims },
+                composition: { mode: "series" },
                 program: warpProgram,
                 uniforms: {},
+                vao: warpVAO,
             },
         ]);
         requestAnimationFrame(render);

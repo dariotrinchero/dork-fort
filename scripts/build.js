@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { copyFileSync, cpSync, rmSync, mkdirSync } from "fs";
+import { copyFileSync, cpSync, existsSync, rmSync, mkdirSync } from "fs";
 import { context, build } from "esbuild";
 import { glsl } from "esbuild-plugin-glsl";
 
@@ -15,7 +15,6 @@ const buildOptions = {
     inject: isProd ? [] : [ "scripts/hot-reload.js" ],
     sourcemap: !isProd,
     minify: isProd,
-    jsx: "automatic",
     loader: {
         ".glsl": "text",
         ".vert": "text",
@@ -26,28 +25,29 @@ const buildOptions = {
         {
             name: "typecheck-and-copy-assets",
             setup(build) {
-                // typecheck & lint
+                // typecheck & lint (lint errors only block production builds)
                 build.onStart(() => {
                     console.log(" ⟳ Rebuilding...");
+                    const errors = [];
                     try {
                         execSync("tsc --noEmit --project tsconfig.json", { stdio: "inherit" });
                     } catch {
-                        return { errors: [ { text: "TypeScript linting failed; skipping build" } ] };
-                    } finally {
-                        try {
-                            execSync("eslint 'src/**/*.{ts,tsx}'", { stdio: "inherit" });
-                        } catch {
-                            if (isProd) return { errors: [ { text: "ESLint linting failed; skipping build" } ] };
-                            console.log("ESLint linting failed; building anyway...");
-                        }
+                        errors.push({ text: "TypeScript type checking failed; skipping build" });
                     }
+                    try {
+                        execSync("eslint 'src/**/*.ts'", { stdio: "inherit" });
+                    } catch {
+                        if (isProd) errors.push({ text: "ESLint linting failed; skipping build" });
+                        else console.log("ESLint linting failed; building anyway...");
+                    }
+                    return { errors };
                 });
 
                 // copy static assets
                 build.onEnd(result => {
                     if (result.errors.length > 0) return;
                     copyFileSync("index.html", "build/index.html");
-                    cpSync("public", "build/public", { recursive: true });
+                    if (existsSync("public")) cpSync("public", "build/public", { recursive: true });
                     console.log(" ✔ Build complete");
                 });
             }

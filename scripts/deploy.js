@@ -1,76 +1,48 @@
-import fs from "fs";
+import { createHash } from "crypto";
+import { readdir, readFile } from "fs/promises";
 import path from "path";
-import https from "https";
 
 const BUILD_DIR = "build";
+const API_URL = "https://neocities.org/api";
 const API_KEY = process.env.NEOCITIES_API_KEY;
+const UPLOAD_BATCH_SIZE = 20; // files per upload request
 
-function walkDir(dir, callback) {
-    return fs.promises.readdir(dir, { withFileTypes: true }).then(entries => {
-        return Promise.all(entries.map(entry => {
-            const fullPath = path.join(dir, entry.name);
-            if (entry.isDirectory()) {
-                return walkDir(fullPath, callback);
-            } else if (entry.isFile()) {
-                return callback(fullPath);
-            }
-        }));
+const isDryRun = process.argv.includes("--dry-run");
+
+/**
+ * Send request to Neocities API.
+ *
+ * @param endpoint API endpoint, eg. "list"
+ * @param options fetch options
+ * @returns parsed JSON response
+ */
+async function request(endpoint, options = {}) {
+    const res = await fetch(`${API_URL}/${endpoint}`, {
+        ...options,
+        headers: { Authorization: `Bearer ${API_KEY}` },
     });
+    const json = await res.json();
+    if (json.result !== "success") throw new Error(`Neocities ${endpoint} failed: ${json.message ?? JSON.stringify(json)}`);
+    return json;
 }
 
-function uploadFile(filePath, relativePath) {
-    return new Promise((resolve, reject) => {
-        const boundary = "----NodeMultipartBoundary" + Math.random().toString(16);
-        const fileStream = fs.createReadStream(filePath);
-
-        const bodyStart =
-            `--${boundary}\r\n` +
-            `Content-Disposition: form-data; name="${relativePath}"; filename="${path.basename(relativePath)}"\r\n` +
-            `Content-Type: application/octet-stream\r\n\r\n`;
-        const bodyEnd = `\r\n--${boundary}--\r\n`;
-
-        const bodyStartBuffer = Buffer.from(bodyStart, "utf8");
-        const bodyEndBuffer = Buffer.from(bodyEnd, "utf8");
-
-        const options = {
-            method: "POST",
-            hostname: "neocities.org",
-            path: "/api/upload",
-            headers: {
-                "Authorization": `Bearer ${API_KEY}`,
-                "Content-Type": `multipart/form-data; boundary=${boundary}`,
-            },
-        };
-
-        fs.stat(filePath, (err, stats) => { // get file size to compute content-length
-            if (err) return reject(err);
-
-            options.headers[ "Content-Length" ] = bodyStartBuffer.length + stats.size + bodyEndBuffer.length;
-
-            const req = https.request(options, (res) => {
-                let data = "";
-                res.on("data", chunk => data += chunk);
-                res.on("end", () => {
-                    try {
-                        const json = JSON.parse(data);
-                        if (json.result === "success") {
-                            console.log(`Uploaded: ${relativePath}`);
-                            resolve();
-                        } else {
-                            console.error(`Failed to upload ${relativePath}:`, json);
-                            reject(new Error("Upload failed"));
-                        }
-                    } catch (e) { reject(e); }
-                });
-            });
-
-            req.on("error", reject);
-            req.write(bodyStartBuffer);
-            fileStream.pipe(req, { end: false });
-            fileStream.on("end", () => req.end(bodyEndBuffer));
-        });
-    });
+/**
+ * Read all files in directory (recursively).
+ *
+ * @param dir directory to read
+ * @param files map to which to add files, keyed by path relative to build directory
+ * @returns map from path (relative to build directory, with forward slashes) to file contents
+ */
+async function readFiles(dir, files = new Map()) {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) await readFiles(fullPath, files);
+        else if (entry.isFile()) files.set(path.relative(BUILD_DIR, fullPath).replace(/\\/g, "/"), await readFile(fullPath));
+    }
+    return files;
 }
+
+const sha1 = data => createHash("sha1").update(data).digest("hex");
 
 async function main() {
     if (!API_KEY) {
@@ -78,15 +50,44 @@ async function main() {
         process.exit(1);
     }
 
-    try {
-        await walkDir(BUILD_DIR, async (filePath) => {
-            const relativePath = path.relative(BUILD_DIR, filePath).replace(/\\/g, "/");
-            await uploadFile(filePath, relativePath);
-        });
-    } catch (e) {
-        console.error(e);
-        process.exit(1);
+    const local = await readFiles(BUILD_DIR);
+    const remote = (await request("list")).files;
+    const remoteHashes = new Map(remote.filter(f => !f.is_directory).map(f => [ f.path, f.sha1_hash ]));
+
+    // upload new & changed files
+    const changed = [ ...local ].filter(([ filePath, data ]) => remoteHashes.get(filePath) !== sha1(data));
+    for (let i = 0; i < changed.length; i += UPLOAD_BATCH_SIZE) {
+        const batch = changed.slice(i, i + UPLOAD_BATCH_SIZE);
+        if (!isDryRun) {
+            const form = new FormData();
+            batch.forEach(([ filePath, data ]) => form.append(filePath, new Blob([ data ]), path.basename(filePath)));
+            await request("upload", { body: form, method: "POST" });
+        }
+        batch.forEach(([ filePath ]) => console.log(`${isDryRun ? "Would upload" : "Uploaded"}: ${filePath}`));
     }
+
+    // delete remote files & directories absent from build (deleting a directory deletes its contents)
+    const localDirs = new Set([ ...local.keys() ].flatMap(filePath =>
+        filePath.split("/").slice(0, -1).map((_, i, parts) => parts.slice(0, i + 1).join("/"))
+    ));
+    const stale = remote
+        .filter(f => f.is_directory ? !localDirs.has(f.path) : !local.has(f.path))
+        .map(f => f.path);
+    const toDelete = stale.filter(p => !stale.some(dir => p.startsWith(`${dir}/`)));
+    if (toDelete.length > 0) {
+        if (!isDryRun) {
+            const form = new URLSearchParams();
+            toDelete.forEach(p => form.append("filenames[]", p));
+            await request("delete", { body: form, method: "POST" });
+        }
+        toDelete.forEach(p => console.log(`${isDryRun ? "Would delete" : "Deleted"}: ${p}`));
+    }
+
+    console.log(`${isDryRun ? "[dry run] " : ""}${changed.length} uploaded, ${toDelete.length} deleted, `
+        + `${local.size - changed.length} unchanged`);
 }
 
-main();
+main().catch(e => {
+    console.error(e);
+    process.exit(1);
+});

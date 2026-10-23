@@ -3,6 +3,7 @@ import type {
     ShaderType,
     TextureData
 } from "types/webglHelpers";
+import type { VertexAttribs } from "types/renderPipeline";
 
 /**
  * Compile WebGL shader from given source code. 
@@ -51,11 +52,19 @@ export const createProgram = (gl: WebGLRenderingContext, vsSrc: string, fsSrc: s
  * @param gl WebGL rendering context
  * @param data initial data with which to create texture
  * @param minMagFilters minification & magnification filters for resizing texture
+ * @param flipY flip data vertically on upload, so that its first row lies at v = 1 (eg. for images drawn on
+ *              screen quads, which have v = 0 at the bottom)
  * @returns created texture
  */
-export const createTexture = (gl: WebGLRenderingContext, data: TextureData, minMagFilters: MinMagFilterType = gl.LINEAR): WebGLTexture => {
+export const createTexture = (
+    gl: WebGLRenderingContext,
+    data: TextureData,
+    minMagFilters: MinMagFilterType = gl.LINEAR,
+    flipY = false
+): WebGLTexture => {
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
 
     if ("dims" in data) {
         let dataArr = null;
@@ -79,6 +88,7 @@ export const createTexture = (gl: WebGLRenderingContext, data: TextureData, minM
         // initialize from image source (<img>, <canvas>, etc)
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
     }
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -106,12 +116,52 @@ export const createFramebuffer = (gl: WebGLRenderingContext, texture: WebGLTextu
  * 
  * @param gl WebGL rendering context
  * @param data array of 32-bit floats to assign to buffer
- * @param buf previous instance of buffer; if supplied, buffer is merely refreshed rather than recreated
- * @returns newly-created or refreshed buffer
+ * @param usage usage hint; use DYNAMIC_DRAW for buffers that are updated often
+ * @returns newly-created buffer
  */
-export const arrayBufFromData = (gl: WebGLRenderingContext, data: Float32Array, buf?: WebGLBuffer): WebGLBuffer => {
-    buf = buf ?? gl.createBuffer();
+export const arrayBufFromData = (gl: WebGLRenderingContext, data: Float32Array, usage: GLenum = gl.STATIC_DRAW): WebGLBuffer => {
+    const buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, data, usage);
     return buf;
+};
+
+/**
+ * Create array buffer containing the vertices of a quad covering clip space, as two triangles.
+ * 
+ * @param gl WebGL rendering context
+ * @returns newly-created buffer of 6 2D vertices
+ */
+export const createQuadBuffer = (gl: WebGLRenderingContext): WebGLBuffer =>
+    arrayBufFromData(gl, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
+
+/**
+ * Create vertex array object binding given vertex attributes to given WebGL program. Attributes not used by
+ * the program are skipped.
+ * 
+ * @param gl WebGL rendering context
+ * @param program WebGL program whose attribute locations to bind
+ * @param attribs vertex attributes needed by WebGL program
+ * @returns vertex array object recording attribute bindings
+ */
+export const createVertexArray = (
+    gl: WebGL2RenderingContext,
+    program: WebGLProgram,
+    attribs: VertexAttribs
+): WebGLVertexArrayObject => {
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+
+    Object.entries(attribs).forEach(([name, { buffer, itemSize, type, instanced }]) => {
+        const location = gl.getAttribLocation(program, name);
+        if (location === -1) return;
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.enableVertexAttribArray(location);
+        gl.vertexAttribPointer(location, itemSize, type ?? gl.FLOAT, false, 0, 0);
+        gl.vertexAttribDivisor(location, instanced ? 1 : 0);
+    });
+
+    gl.bindVertexArray(null);
+    return vao;
 };
