@@ -23,6 +23,7 @@ const TEX_SCALE = 1.0; // global scale factor for intermediate render passes
 const MAX_TEX_DPR = 2; // cap on intermediate render pass pixels per CSS pixel, to limit cost on high-DPI phones
 const FONT_NAME = "DejaVuSansMono";
 const FONT_SIZE = 28; // in CSS pixels
+const MIN_FONT_SIZE = 14; // in CSS pixels; on screens too narrow for labels at this size, labels wrap instead
 const MAX_FRAME_TIME = 0.1; // cap (in seconds) on animation time step, eg. after tab was in background
 
 window.onload = () => {
@@ -81,7 +82,13 @@ window.onload = () => {
 
     // text renderer for menu labels becomes available once font loads (QR code renders in the meantime)
     let textRenderer: TextRenderer | undefined;
-    const textSize = (): TextRendererSizeSpec => ({ fontSize: Math.round(FONT_SIZE * texScale), resolution: texDims });
+    const textSize = (): TextRendererSizeSpec => {
+        // shrink font on narrow screens (down to a minimum), so that labels fit on one line below QR code
+        const [left, , right] = qrRenderer.contentRect();
+        const fitSize = TextRenderer.fitFontSize(FONT_NAME, right - left, menu.maxLineLength());
+        const [minSize, maxSize] = [MIN_FONT_SIZE, FONT_SIZE].map(size => Math.round(size * texScale)) as Dimensions;
+        return { fontSize: Math.max(minSize, Math.min(maxSize, fitSize)), resolution: texDims };
+    };
     TextRenderer.new(gl, FONT_NAME, textSize())
         .then(text => {
             text.resize(textSize()); // in case of resize while font was loading

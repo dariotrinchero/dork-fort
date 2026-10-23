@@ -1,4 +1,4 @@
-import type { Dimensions, Pos, RGB, RGBA } from "types/global";
+import type { Dimensions, Pos, RGB, RGBA, Rect } from "types/global";
 import type { HitBox, QRData, QRRendererOptions } from "types/qrRenderer";
 import type { RenderPass } from "types/renderPipeline";
 
@@ -194,7 +194,7 @@ export default class QRRenderer {
      *
      * @returns left, top, right, & bottom of QR code, in pixels from top-left of output
      */
-    public contentRect(): [number, number, number, number] {
+    public contentRect(): Rect {
         const [left, top, right, bottom] = this.contentBounds;
         const toPixels = (cells: number, axis: 0 | 1): number => this.origin[axis] + cells * this.moduleSize;
         return [toPixels(left, 0), toPixels(top, 1), toPixels(right, 0), toPixels(bottom, 1)];

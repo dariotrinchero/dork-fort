@@ -1,5 +1,5 @@
 import type { CharTile, FontAtlas, GlyphSet, TextRendererSize, TextRendererSizeSpec, TextSize } from "types/textRenderer";
-import type { Dimensions, Pos, RGB } from "types/global";
+import type { Dimensions, Pos, RGB, Rect } from "types/global";
 import type { RenderPass } from "types/renderPipeline";
 
 import { createProgram, createQuadBuffer, createTexture, createVertexArray } from "webglHelpers";
@@ -20,7 +20,11 @@ export default class TextRenderer {
     private cursorPos: Pos = [0, 0];
     private staleBuffers = true;
     private instanceCount = 0; // number of character tiles within text grid
-    private originOverride?: Pos; // position of text grid's top-left corner, if not centred
+    private bounds?: Rect; // region (in pixels) to which text grid is fitted, if not centred on whole output
+
+    // portion of text grid in use, fitted to bounds (see fitBounds()), & position (in pixels) of its top-left corner
+    private gridDims: Dimensions = [0, 0];
+    private origin: Pos = [0, 0];
 
     private program: WebGLProgram;
     private vao: WebGLVertexArrayObject;
@@ -41,6 +45,7 @@ export default class TextRenderer {
         private size: TextRendererSize,
     ) {
         this.fontAtlas = TextRenderer.generateFontAtlas(gl, fontName, size, glyphSet);
+        this.fitBounds();
 
         // create buffers & allocate space for character data
         this.screenPosBuf = gl.createBuffer();
@@ -88,6 +93,7 @@ export default class TextRenderer {
             this.allocateBuffers();
         }
 
+        this.fitBounds();
         this.staleBuffers = true;
     }
 
@@ -181,6 +187,24 @@ export default class TextRenderer {
             } else high = mid - 1;
         }
         return { charDims: this.measureText(ctx, fontName, best), fontSize: best };
+    }
+
+    /**
+     * Find the largest font size at which given number of characters fit on one line within given width.
+     *
+     * @param fontName name of font in which to render text
+     * @param width maximum permissible width (in pixels) of line
+     * @param chars number of characters in line
+     * @returns optimal font size (in whole pixels)
+     */
+    public static fitFontSize(fontName: string, width: number, chars: number): number {
+        const tmp = document.createElement("canvas");
+        const ctx = tmp.getContext("2d");
+        if (!ctx) throw new Error("Unable to measure font dimensions");
+
+        const { fontSize } = this.findFontSize(ctx, fontName, [width / chars, Infinity]);
+        tmp.remove();
+        return fontSize;
     }
 
     /**
@@ -337,14 +361,39 @@ export default class TextRenderer {
     }
 
     /**
-     * Position top-left corner of text grid at given pixel coordinates (by default, the grid is centred).
+     * Fit text grid to given region, with its top-left corner at the region's top-left corner, & text wrapping at
+     * the region's right edge (by default, the full grid is centred on the output).
      * 
-     * @param origin position (in pixels from top-left of output) of top-left corner, or undefined to centre grid
+     * @param bounds left, top, right, & bottom (in pixels from top-left of output) of region, or undefined to centre
      */
-    public setOrigin(origin?: Pos): void {
-        if (origin?.[0] === this.originOverride?.[0] && origin?.[1] === this.originOverride?.[1]) return;
-        this.originOverride = origin;
+    public setBounds(bounds?: Rect): void {
+        if (bounds?.every((b, i) => b === this.bounds?.[i]) ?? this.bounds === undefined) return;
+        this.bounds = bounds;
+        this.fitBounds();
         this.staleBuffers = true;
+    }
+
+    /**
+     * Compute portion of text grid in use & its position, from bounds (clipped to output, less SCREEN_PADDING) if
+     * set, or else the full grid centred on output, aligned to whole pixels. Characters falling outside the portion
+     * in use are hidden.
+     */
+    private fitBounds(): void {
+        const { charDims, gridDims, resolution } = this.size;
+        if (!this.bounds) {
+            this.gridDims = gridDims;
+            this.origin = [
+                Math.floor((resolution[0] - gridDims[0] * charDims[0]) / 2),
+                Math.floor((resolution[1] - gridDims[1] * charDims[1]) / 2),
+            ];
+            return;
+        }
+
+        const [left, top, right, bottom] = this.bounds;
+        const fit = (i: 0 | 1, start: number, end: number): number => Math.max(0, Math.min(gridDims[i],
+            Math.floor((Math.min(end, resolution[i] - SCREEN_PADDING) - start) / charDims[i])));
+        this.gridDims = [fit(0, left, right), fit(1, top, bottom)];
+        this.origin = [left, top];
     }
 
     /**
@@ -366,7 +415,7 @@ export default class TextRenderer {
      */
     private validTile(coords: Pos, ch?: string, color?: RGB): boolean {
         const [x, y] = coords;
-        let valid = x >= 0 && x < this.size.gridDims[0] && y >= 0 && y < this.size.gridDims[1];
+        let valid = x >= 0 && x < this.gridDims[0] && y >= 0 && y < this.gridDims[1];
         if (ch !== undefined) valid &&= this.fontAtlas.charMap.get(ch) !== undefined;
         if (color !== undefined) {
             const [r, g, b] = color;
@@ -423,11 +472,11 @@ export default class TextRenderer {
      */
     public print(text: string, color: RGB = [1, 1, 1]): void {
         for (const ch of TextRenderer.splitGraphemes(text)) {
-            if (ch === "\n" || this.cursorPos[0] >= this.size.gridDims[0]) { // wrap text
+            if (ch === "\n" || this.cursorPos[0] >= this.gridDims[0]) { // wrap text
                 this.cursorPos[0] = 0;
                 this.cursorPos[1]++;
             }
-            if (this.cursorPos[1] >= this.size.gridDims[1]) return; // out of lines
+            if (this.cursorPos[1] >= this.gridDims[1]) return; // out of lines
             if (ch !== "\n") this.setChar([this.cursorPos[0]++, this.cursorPos[1]], ch, color);
         }
     }
@@ -459,20 +508,15 @@ export default class TextRenderer {
      * Write position, atlas location, & color of each character tile to GPU buffers.
      */
     private refreshBuffers(): void {
-        const { charDims, gridDims, resolution } = this.size;
-
-        // center text grid on output (unless overridden), aligned to whole pixels
-        const origin: Pos = this.originOverride ?? [
-            Math.floor((resolution[0] - gridDims[0] * charDims[0]) / 2),
-            Math.floor((resolution[1] - gridDims[1] * charDims[1]) / 2),
-        ];
+        const { charDims } = this.size;
+        const [originX, originY] = this.origin;
 
         // write character details to data arrays to send to GPU, skipping tiles hidden by resizing
         let i = 0;
         for (const [key, tile] of this.textGrid) {
             const [gridX, gridY] = TextRenderer.parseKey(key);
             if (!this.validTile([gridX, gridY])) continue;
-            this.screenPosData.set([origin[0] + gridX * charDims[0], origin[1] + gridY * charDims[1]], i * 2);
+            this.screenPosData.set([originX + gridX * charDims[0], originY + gridY * charDims[1]], i * 2);
             this.atlasPosData.set(this.fontAtlas.charMap.get(tile.ch) ?? [0, 0], i * 2);
             this.colorData.set(tile.color, i * 3);
             i++;

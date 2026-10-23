@@ -23,6 +23,14 @@ interface Segment {
 }
 
 /**
+ * Get total length of label.
+ *
+ * @param segments segments of label
+ * @returns number of characters in label
+ */
+const labelLength = (segments: Segment[]): number => segments.reduce((sum, { text }) => sum + text.length, 0);
+
+/**
  * Split destination name into segments, where text wrapped in braces takes the given accent colour, & all other
  * text the default label colour.
  *
@@ -99,11 +107,21 @@ export default class QRMenu {
     }
 
     /**
-     * Position label below QR code, left-aligned with it; call whenever QR code or text renderer is resized.
+     * Get length of longest line shown below QR code, ie. longest label with prompt & cursor.
+     *
+     * @returns length of longest line, in characters
+     */
+    public maxLineLength(): number {
+        return PROMPT.length + Math.max(0, ...this.labels.map(labelLength)) + 1;
+    }
+
+    /**
+     * Position label below QR code, left-aligned with it & wrapping at its right edge; call whenever QR code or
+     * text renderer is resized.
      */
     public layout(): void {
-        const [left, , , bottom] = this.qr.contentRect();
-        this.text?.setOrigin([left, bottom + LABEL_GAP * this.qr.getModuleSize()]);
+        const [left, , right, bottom] = this.qr.contentRect();
+        this.text?.setBounds([left, bottom + LABEL_GAP * this.qr.getModuleSize(), right, Infinity]);
     }
 
     /**
@@ -123,8 +141,7 @@ export default class QRMenu {
             this.labelChars -= ERASE_RATE * dt;
             if (this.labelChars <= 0) [this.label, this.labelChars] = [this.hovered, 0];
         } else {
-            const length = (this.labels[this.label ?? -1] ?? []).reduce((sum, { text }) => sum + text.length, 0);
-            this.labelChars = Math.min(length, this.labelChars + TYPE_RATE * dt);
+            this.labelChars = Math.min(labelLength(this.labels[this.label ?? -1] ?? []), this.labelChars + TYPE_RATE * dt);
         }
 
         // rewrite text only when it changes, to avoid needless buffer uploads
