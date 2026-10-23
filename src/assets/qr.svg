@@ -4,7 +4,7 @@
    shape-rendering="crispEdges"
    version="1.1"
    id="svg378"
-   sodipodi:docname="dario.svg"
+   sodipodi:docname="qr.svg"
    inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -22,15 +22,15 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#131221"
-     inkscape:zoom="16"
-     inkscape:cx="8.71875"
-     inkscape:cy="8"
+     inkscape:zoom="11.313709"
+     inkscape:cx="27.046834"
+     inkscape:cy="6.0104076"
      inkscape:window-width="2560"
      inkscape:window-height="1371"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer1" />
+     inkscape:current-layer="g757" />
   <title
      id="title11">dario</title>
   <defs
@@ -5440,81 +5440,67 @@
          style="fill:#f0d58d" />
       <rect
          x="21"
-         y="4"
+         y="5"
          width="1"
          height="1"
          id="rect12"
          style="fill:#efd588" />
-      <rect
-         x="22"
-         y="4"
-         width="1"
-         height="1"
-         id="rect13"
-         style="fill:#f5dd87" />
-      <rect
-         x="23"
-         y="4"
-         width="1"
-         height="1"
-         id="rect14"
-         style="fill:#f3de8d" />
       <rect
          x="24"
          y="4"
          width="1"
          height="1"
          id="rect15"
-         style="fill:#f1de8b" />
+         style="fill:#fad97f" />
       <rect
          x="23"
          y="5"
          width="1"
          height="1"
          id="rect27"
-         style="fill:#f1de85" />
+         style="fill:#fbdb78" />
       <rect
          x="24"
          y="5"
          width="1"
          height="1"
          id="rect28"
-         style="fill:#f4d580" />
+         style="fill:#fecf73" />
       <rect
          x="23"
          y="6"
          width="1"
          height="1"
          id="rect43"
-         style="fill:#f3e489" />
+         style="fill:#fce07d" />
       <rect
          x="22"
          y="7"
          width="1"
          height="1"
          id="rect58"
-         style="fill:#f1dc84" />
+         style="fill:#fbd776" />
       <rect
          x="22"
          y="8"
          width="1"
          height="1"
          id="rect72"
-         style="fill:#f5e790" />
+         style="fill:#fee283" />
       <rect
          x="23"
          y="9"
          width="1"
          height="1"
          id="rect87"
-         style="fill:#f1d78b" />
+         style="fill:#fad07f" />
       <rect
          x="24"
          y="10"
          width="1"
          height="1"
          id="rect103"
-         style="fill:#f1e294" />
+         style="fill:#fadb87" />
       <rect
          x="23"
          y="11"
@@ -5528,7 +5514,7 @@
          width="1"
          height="1"
          id="rect118"
-         style="fill:#f6e08c" />
+         style="fill:#ffd681" />
     </g>
   </g>
 </svg>

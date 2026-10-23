@@ -18,7 +18,7 @@ const HIT_PADDING = 1; // padding (in modules) around hit boxes
  * @param hex hex colour string, eg. "1f9a94"
  * @returns red, green, & blue components, each in [0, 255]
  */
-const parseHex = (hex: string): RGB => [
+export const parseHex = (hex: string): RGB => [
     parseInt(hex.slice(0, 2), 16),
     parseInt(hex.slice(2, 4), 16),
     parseInt(hex.slice(4, 6), 16),
@@ -54,6 +54,8 @@ export default class QRRenderer {
     // bounding box of all coloured modules (ie. QR code without quiet zone), in modules
     private contentBounds: HitBox["bounds"];
 
+    private regionColors: RGB[]; // average colour of each region's modules, with components in [0, 1]
+
     constructor(
         private gl: WebGL2RenderingContext,
         private data: QRData,
@@ -70,6 +72,7 @@ export default class QRRenderer {
 
         this.cellRegions = QRRenderer.resolveCellRegions(data, groupRegions);
         this.contentBounds = boundingBox(data.modules.map(([x, y]): Pos => [x, y]));
+        this.regionColors = QRRenderer.averageRegionColors(data, groupRegions, regions.length);
 
         this.texture = QRRenderer.createModuleTexture(gl, data, groupRegions, bgBrightness);
         this.program = createProgram(gl, screenVert, qrFrag);
@@ -115,6 +118,25 @@ export default class QRRenderer {
             }
         }
         return cellRegions;
+    }
+
+    /**
+     * Average colour of modules in each region.
+     *
+     * @param data module data of QR code
+     * @param groupRegions index of region containing each group (-1 if none)
+     * @param regionCount number of regions
+     * @returns average colour of each region's modules, with components in [0, 1] (black if region is empty)
+     */
+    private static averageRegionColors({ modules }: QRData, groupRegions: number[], regionCount: number): RGB[] {
+        const sums = Array.from({ length: regionCount }, () => [0, 0, 0, 0]); // red, green, blue, & count
+        modules.forEach(([, , color, group]) => {
+            const sum = sums[groupRegions[group] ?? -1];
+            if (!sum) return;
+            parseHex(color).forEach((c, i) => { sum[i] = (sum[i] ?? 0) + c; });
+            sum[3] = (sum[3] ?? 0) + 1;
+        });
+        return sums.map(([r = 0, g = 0, b = 0, n = 0]) => [r, g, b].map(c => n && c / (255 * n)) as RGB);
     }
 
     /**
@@ -192,6 +214,16 @@ export default class QRRenderer {
 
         const region = this.cellRegions[Math.floor(y) * size + Math.floor(x)] ?? -1;
         return region === -1 ? undefined : region;
+    }
+
+    /**
+     * Get average colour of given region's modules.
+     *
+     * @param region index of region
+     * @returns average colour, with components in [0, 1]
+     */
+    public regionColor(region: number): RGB {
+        return this.regionColors[region] ?? [0, 0, 0];
     }
 
     /**

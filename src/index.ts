@@ -22,7 +22,7 @@ import warpFrag from "shaders/warp.frag";
 const TEX_SCALE = 1.0; // global scale factor for intermediate render passes
 const MAX_TEX_DPR = 2; // cap on intermediate render pass pixels per CSS pixel, to limit cost on high-DPI phones
 const FONT_NAME = "DejaVuSansMono";
-const FONT_SIZE = 24; // in CSS pixels
+const FONT_SIZE = 28; // in CSS pixels
 const MAX_FRAME_TIME = 0.1; // cap (in seconds) on animation time step, eg. after tab was in background
 
 window.onload = () => {

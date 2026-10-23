@@ -72,3 +72,9 @@ what would change without changing anything, run
 ```bash
 npm run publish -- --dry-run
 ```
+
+## Credits
+
+- QR code generated with Noel Friedrich's awesome [human-readable QR
+  code](https://www.noel-friedrich.de/hqr/) tool; see also his [QR
+  studio](https://www.noel-friedrich.de/qr/drawing/)
