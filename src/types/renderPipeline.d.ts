@@ -22,7 +22,6 @@ interface VertexAttrib {
     buffer: WebGLBuffer;
     itemSize: number;
     instanced?: boolean;
-    type?: GLenum; // assumed to be float if omitted
 }
 
 export type VertexAttribs = Record<string, VertexAttrib>;
@@ -76,20 +75,4 @@ export interface RenderPass {
 
     // whether to alpha-blend onto output buffer (false if omitted)
     blend?: boolean;
-}
-
-export type RenderPassSequence = RenderPass[];
-
-//-- input & output buffers ------------------------------------------------------------------------------
-
-export interface FrameBuffer {
-    texture: WebGLTexture;
-    dims: Dimensions;
-    buffer: WebGLFramebuffer;
-}
-
-export interface PassTarget {
-    input?: number; // index of input frame buffer (none if omitted)
-    output: number; // index of output frame buffer, or -1 for screen
-    clear: boolean; // whether to clear output buffer before drawing
 }

@@ -1,7 +1,7 @@
 import type { Dimensions, Pos, RGBA } from "types/global";
 
-export type ShaderType = WebGLRenderingContextBase["FRAGMENT_SHADER"] | WebGLRenderingContextBase["VERTEX_SHADER"];
-export type MinMagFilterType = WebGLRenderingContext["NEAREST"] | WebGLRenderingContext["LINEAR"];
+export type ShaderType = WebGL2RenderingContext["FRAGMENT_SHADER"] | WebGL2RenderingContext["VERTEX_SHADER"];
+export type MinMagFilterType = WebGL2RenderingContext["NEAREST"] | WebGL2RenderingContext["LINEAR"];
 
 export interface NewTexture {
     dims: Dimensions,             // dimensions of texture to create

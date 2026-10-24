@@ -18,8 +18,3 @@ export interface QRRendererOptions {
     bgBrightness?: number; // multiplier for background colour from SVG (0 for black); 1 if omitted
     regions?: string[];    // label path prefixes of SVG groups forming each interactive region, eg. "garden"
 }
-
-export interface HitBox {
-    region: number;                         // index of region
-    bounds: [number, number, number, number]; // left, top, right, bottom (exclusive), in modules
-}

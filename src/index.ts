@@ -37,14 +37,15 @@ window.onload = () => {
     canvas.addEventListener("webglcontextlost", e => { e.preventDefault(); });
     canvas.addEventListener("webglcontextrestored", () => { location.reload(); });
 
+    let texDims: Dimensions = [0, 0];
+    let texScale = 1; // intermediate render pass pixels per CSS pixel
+
     /**
      * Match canvas resolution to its displayed size (in device pixels), & compute dimensions of intermediate
      * render passes. Sizes of text & CRT effects are given in CSS pixels, so that they scale with browser zoom.
      * 
      * @returns dimensions of intermediate render passes, or undefined if size is unchanged
      */
-    let texDims: Dimensions = [0, 0];
-    let texScale = 1; // intermediate render pass pixels per CSS pixel
     const syncSize = (): Dimensions | undefined => {
         const dpr = window.devicePixelRatio;
         const width = Math.round(canvas.clientWidth * dpr);
@@ -107,7 +108,6 @@ window.onload = () => {
             pipeline.resize(texDims);
             qrRenderer.resize(texDims);
             textRenderer?.resize(textSize());
-            menu.layout();
         }
         menu.update(dt, time / 1000);
 

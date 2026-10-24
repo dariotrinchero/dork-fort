@@ -18,13 +18,8 @@ const buildOptions = {
     inject: isProd ? [] : [ "scripts/hot-reload.js" ],
     sourcemap: !isProd,
     minify: isProd,
-    loader: {
-        ".glsl": "text",
-        ".vert": "text",
-        ".frag": "text",
-    },
     plugins: [
-        glsl({ minify: true }),
+        glsl({ minify: true }), // loads shader sources (.frag, .vert, etc.) as strings
         {
             name: "bake-qr-svg",
             setup(build) {

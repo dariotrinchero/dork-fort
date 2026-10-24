@@ -1,8 +1,9 @@
-import type { Dimensions, Pos, RGB, RGBA, Rect } from "types/global";
-import type { HitBox, QRData, QRRendererOptions } from "types/qrRenderer";
+import type { Dimensions, Pos, RGBA, Rect } from "types/global";
+import type { QRData, QRRendererOptions } from "types/qrRenderer";
 import type { RenderPass } from "types/renderPipeline";
 
 import { createProgram, createQuadBuffer, createTexture, createVertexArray } from "webglHelpers";
+import { parseHex } from "palette";
 
 // shader source code
 import qrFrag from "shaders/qr.frag";
@@ -12,17 +13,12 @@ const QR_FILL = 0.8; // maximum fraction of shorter side of output covered by QR
 const MAX_REGIONS = 8; // must match qr.frag
 const HIT_PADDING = 1; // padding (in modules) around hit boxes
 
-/**
- * Parse hex colour string (without leading '#') into RGB components.
- *
- * @param hex hex colour string, eg. "1f9a94"
- * @returns red, green, & blue components, each in [0, 255]
- */
-export const parseHex = (hex: string): RGB => [
-    parseInt(hex.slice(0, 2), 16),
-    parseInt(hex.slice(2, 4), 16),
-    parseInt(hex.slice(4, 6), 16),
-];
+type Bounds = Rect; // left, top, right, & bottom (exclusive), in modules
+
+interface HitBox {
+    region: number; // index of region
+    bounds: Bounds;
+}
 
 /**
  * Get bounding box of given modules.
@@ -30,7 +26,7 @@ export const parseHex = (hex: string): RGB => [
  * @param cells module coordinates
  * @returns left, top, right, & bottom (exclusive) of bounding box, in modules
  */
-const boundingBox = (cells: Pos[]): HitBox["bounds"] => [
+const boundingBox = (cells: Pos[]): Bounds => [
     Math.min(...cells.map(([x]) => x)),
     Math.min(...cells.map(([, y]) => y)),
     Math.max(...cells.map(([x]) => x)) + 1,
@@ -51,10 +47,14 @@ export default class QRRenderer {
     private hover = new Float32Array(MAX_REGIONS);
     private focus = 0;
 
-    // bounding box of all coloured modules (ie. QR code without quiet zone), in modules
-    private contentBounds: HitBox["bounds"];
+    // selected region (-1 if none), fade of other modules, & vertical offset (in pixels) of selected region
+    private selected = -1;
+    private dismiss = 0;
+    private slide = 0;
 
-    private regionColors: RGB[]; // average colour of each region's modules, with components in [0, 1]
+    // bounding box of all coloured modules (ie. QR code without quiet zone), & of each region's modules, in modules
+    private contentBounds: Bounds;
+    private regionBounds: (Bounds | undefined)[];
 
     constructor(
         private gl: WebGL2RenderingContext,
@@ -72,7 +72,10 @@ export default class QRRenderer {
 
         this.cellRegions = QRRenderer.resolveCellRegions(data, groupRegions);
         this.contentBounds = boundingBox(data.modules.map(([x, y]): Pos => [x, y]));
-        this.regionColors = QRRenderer.averageRegionColors(data, groupRegions, regions.length);
+        this.regionBounds = regions.map((_, region) => {
+            const cells = data.modules.filter(m => groupRegions[m[3]] === region).map(([x, y]): Pos => [x, y]);
+            return cells.length > 0 ? boundingBox(cells) : undefined;
+        });
 
         this.texture = QRRenderer.createModuleTexture(gl, data, groupRegions, bgBrightness);
         this.program = createProgram(gl, screenVert, qrFrag);
@@ -96,7 +99,10 @@ export default class QRRenderer {
         modules.forEach(([x, y, , group]) => {
             const region = groupRegions[group] ?? -1;
             cellRegions[y * size + x] = region;
-            if (region !== -1) regionModules.set(region, [...regionModules.get(region) ?? [], [x, y]]);
+            if (region === -1) return;
+            const cells = regionModules.get(region);
+            if (cells) cells.push([x, y]);
+            else regionModules.set(region, [[x, y]]);
         });
 
         const hitBoxes: HitBox[] = [];
@@ -118,25 +124,6 @@ export default class QRRenderer {
             }
         }
         return cellRegions;
-    }
-
-    /**
-     * Average colour of modules in each region.
-     *
-     * @param data module data of QR code
-     * @param groupRegions index of region containing each group (-1 if none)
-     * @param regionCount number of regions
-     * @returns average colour of each region's modules, with components in [0, 1] (black if region is empty)
-     */
-    private static averageRegionColors({ modules }: QRData, groupRegions: number[], regionCount: number): RGB[] {
-        const sums = Array.from({ length: regionCount }, () => [0, 0, 0, 0]); // red, green, blue, & count
-        modules.forEach(([, , color, group]) => {
-            const sum = sums[groupRegions[group] ?? -1];
-            if (!sum) return;
-            parseHex(color).forEach((c, i) => { sum[i] = (sum[i] ?? 0) + c; });
-            sum[3] = (sum[3] ?? 0) + 1;
-        });
-        return sums.map(([r = 0, g = 0, b = 0, n = 0]) => [r, g, b].map(c => n && c / (255 * n)) as RGB);
     }
 
     /**
@@ -190,18 +177,39 @@ export default class QRRenderer {
     }
 
     /**
-     * Get bounds of QR code (excluding quiet zone) on output.
+     * Convert bounds in modules to bounds on output.
      *
-     * @returns left, top, right, & bottom of QR code, in pixels from top-left of output
+     * @param bounds left, top, right, & bottom, in modules
+     * @returns left, top, right, & bottom, in pixels from top-left of output
      */
-    public contentRect(): Rect {
-        const [left, top, right, bottom] = this.contentBounds;
+    private toPixels([left, top, right, bottom]: Bounds): Rect {
         const toPixels = (cells: number, axis: 0 | 1): number => this.origin[axis] + cells * this.moduleSize;
         return [toPixels(left, 0), toPixels(top, 1), toPixels(right, 0), toPixels(bottom, 1)];
     }
 
     /**
-     * Find region at given position (see resolveCellRegions()).
+     * Get bounds of QR code (excluding quiet zone) on output.
+     *
+     * @returns left, top, right, & bottom of QR code, in pixels from top-left of output
+     */
+    public contentRect(): Rect {
+        return this.toPixels(this.contentBounds);
+    }
+
+    /**
+     * Get bounds of given region's modules on output, ignoring any slide of selected region.
+     *
+     * @param region index of region
+     * @returns left, top, right, & bottom of region, in pixels from top-left of output (or undefined if empty)
+     */
+    public regionRect(region: number): Rect | undefined {
+        const bounds = this.regionBounds[region];
+        return bounds && this.toPixels(bounds);
+    }
+
+    /**
+     * Find region at given position (see resolveCellRegions()). While a region is selected, only it can be found,
+     * at its slid position.
      *
      * @param uv UV coordinates on output (with v = 0 at the bottom)
      * @returns index of region at given position (or undefined if none)
@@ -209,21 +217,11 @@ export default class QRRenderer {
     public regionAt([u, v]: Pos): number | undefined {
         const { size } = this.data;
         const x = (u * this.resolution[0] - this.origin[0]) / this.moduleSize;
-        const y = ((1 - v) * this.resolution[1] - this.origin[1]) / this.moduleSize;
+        const y = ((1 - v) * this.resolution[1] - this.origin[1] - this.slide) / this.moduleSize;
         if (x < 0 || y < 0 || x >= size || y >= size) return undefined;
 
         const region = this.cellRegions[Math.floor(y) * size + Math.floor(x)] ?? -1;
-        return region === -1 ? undefined : region;
-    }
-
-    /**
-     * Get average colour of given region's modules.
-     *
-     * @param region index of region
-     * @returns average colour, with components in [0, 1]
-     */
-    public regionColor(region: number): RGB {
-        return this.regionColors[region] ?? [0, 0, 0];
+        return region === -1 || (this.selected !== -1 && region !== this.selected) ? undefined : region;
     }
 
     /**
@@ -238,6 +236,20 @@ export default class QRRenderer {
     }
 
     /**
+     * Set selected region, which slides up until its top lines up with that of the QR code, while all other modules
+     * fade into the background.
+     *
+     * @param region index of region (or undefined if none)
+     * @param progress progress of selection animation, in [0, 1]
+     */
+    public setSelection(region: number | undefined, progress: number): void {
+        const rect = region === undefined ? undefined : this.regionRect(region);
+        [this.selected, this.dismiss, this.slide] = region !== undefined && rect
+            ? [region, progress, Math.round(progress * (this.contentRect()[1] - rect[1]))]
+            : [-1, 0, 0];
+    }
+
+    /**
      * Get render pass drawing QR code over whole output (with background colour beyond quiet zone).
      *
      * @returns render pass drawing QR code
@@ -247,12 +259,15 @@ export default class QRRenderer {
             composition: { ignoreInput: true, mode: "parallel" },
             program: this.program,
             uniforms: {
+                uDismiss: { type: "1f", value: this.dismiss },
                 uFocus: { type: "1f", value: this.focus },
                 uHover: { type: "1fv", value: this.hover },
                 uModuleSize: { type: "1f", value: this.moduleSize },
                 uOrigin: { type: "2f", value: this.origin },
                 uQR: { type: "tex", value: this.texture },
                 uResolution: { type: "2f", value: this.resolution },
+                uSelected: { type: "1f", value: this.selected },
+                uSlide: { type: "1f", value: this.slide },
             },
             vao: this.vao,
         };

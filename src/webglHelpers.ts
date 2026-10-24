@@ -13,7 +13,7 @@ import type { VertexAttribs } from "types/renderPipeline";
  * @param src source code of shader
  * @returns the compiled WebGL shader
  */
-const compileShader = (gl: WebGLRenderingContext, type: ShaderType, src: string): WebGLShader => {
+const compileShader = (gl: WebGL2RenderingContext, type: ShaderType, src: string): WebGLShader => {
     const shader = gl.createShader(type);
     if (!shader) throw new Error("Error in creating shader of given type");
 
@@ -34,11 +34,12 @@ const compileShader = (gl: WebGLRenderingContext, type: ShaderType, src: string)
  * @param fsSrc fragment shader source code
  * @returns compiled and linked WebGL program
  */
-export const createProgram = (gl: WebGLRenderingContext, vsSrc: string, fsSrc: string): WebGLProgram => {
+export const createProgram = (gl: WebGL2RenderingContext, vsSrc: string, fsSrc: string): WebGLProgram => {
     const program = gl.createProgram();
-    gl.attachShader(program, compileShader(gl, gl.VERTEX_SHADER, vsSrc));
-    gl.attachShader(program, compileShader(gl, gl.FRAGMENT_SHADER, fsSrc));
+    const shaders = [compileShader(gl, gl.VERTEX_SHADER, vsSrc), compileShader(gl, gl.FRAGMENT_SHADER, fsSrc)];
+    shaders.forEach(shader => { gl.attachShader(program, shader); });
     gl.linkProgram(program);
+    shaders.forEach(shader => { gl.deleteShader(shader); }); // freed along with program, once linked
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS))
         throw new Error(gl.getProgramInfoLog(program) ?? "Program link error");
@@ -52,19 +53,15 @@ export const createProgram = (gl: WebGLRenderingContext, vsSrc: string, fsSrc: s
  * @param gl WebGL rendering context
  * @param data initial data with which to create texture
  * @param minMagFilters minification & magnification filters for resizing texture
- * @param flipY flip data vertically on upload, so that its first row lies at v = 1 (eg. for images drawn on
- *              screen quads, which have v = 0 at the bottom)
  * @returns created texture
  */
 export const createTexture = (
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     data: TextureData,
     minMagFilters: MinMagFilterType = gl.LINEAR,
-    flipY = false
 ): WebGLTexture => {
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
 
     if ("dims" in data) {
         let dataArr = null;
@@ -88,7 +85,6 @@ export const createTexture = (
         // initialize from image source (<img>, <canvas>, etc)
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
     }
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -104,26 +100,11 @@ export const createTexture = (
  * @param texture texture to use for frame buffer
  * @returns the created frame buffer
  */
-export const createFramebuffer = (gl: WebGLRenderingContext, texture: WebGLTexture): WebGLFramebuffer => {
+export const createFramebuffer = (gl: WebGL2RenderingContext, texture: WebGLTexture): WebGLFramebuffer => {
     const fb = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
     return fb;
-};
-
-/**
- * Create array buffer (typically to be used as a vertex attribute buffer), with given float data.
- * 
- * @param gl WebGL rendering context
- * @param data array of 32-bit floats to assign to buffer
- * @param usage usage hint; use DYNAMIC_DRAW for buffers that are updated often
- * @returns newly-created buffer
- */
-export const arrayBufFromData = (gl: WebGLRenderingContext, data: Float32Array, usage: GLenum = gl.STATIC_DRAW): WebGLBuffer => {
-    const buf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.bufferData(gl.ARRAY_BUFFER, data, usage);
-    return buf;
 };
 
 /**
@@ -132,8 +113,12 @@ export const arrayBufFromData = (gl: WebGLRenderingContext, data: Float32Array, 
  * @param gl WebGL rendering context
  * @returns newly-created buffer of 6 2D vertices
  */
-export const createQuadBuffer = (gl: WebGLRenderingContext): WebGLBuffer =>
-    arrayBufFromData(gl, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
+export const createQuadBuffer = (gl: WebGL2RenderingContext): WebGLBuffer => {
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+    return buf;
+};
 
 /**
  * Create vertex array object binding given vertex attributes to given WebGL program. Attributes not used by
@@ -152,13 +137,13 @@ export const createVertexArray = (
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
-    Object.entries(attribs).forEach(([name, { buffer, itemSize, type, instanced }]) => {
+    Object.entries(attribs).forEach(([name, { buffer, itemSize, instanced }]) => {
         const location = gl.getAttribLocation(program, name);
         if (location === -1) return;
 
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.enableVertexAttribArray(location);
-        gl.vertexAttribPointer(location, itemSize, type ?? gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(location, itemSize, gl.FLOAT, false, 0, 0);
         gl.vertexAttribDivisor(location, instanced ? 1 : 0);
     });
 

@@ -28,9 +28,10 @@ webpage in the browser. Changes to the build scripts themselves require restarti
 - `src/renderPipeline.ts` runs sequences of render passes (WebGL programs), allocating the frame buffers
   passed between them.
 - `src/qrRenderer.ts` draws the QR code, & finds which interactive region lies under a given point.
-- `src/menu.ts` handles pointer input, hover animations, & the `>> GOTO …` labels, drawn by
-  `src/textRenderer.ts`.
-- `src/destinations.ts` maps groups in the QR code SVG to the destinations they link to.
+- `src/menu.ts` handles pointer input, hover & selection animations, & the labels typed after the `>>` prompt
+  (eg. `ls garden`), drawn by `src/textRenderer.ts`.
+- `src/destinations.ts` maps groups in the QR code SVG to the destinations they link to, & their accent colours.
+- `src/palette.ts` holds colour helpers.
 - `src/shaders/` contains the GLSL shaders, including the CRT (`crt.frag`) & curved monitor (`warp.frag`)
   effects.
 

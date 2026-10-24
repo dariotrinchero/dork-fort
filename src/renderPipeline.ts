@@ -1,10 +1,22 @@
-import type { FrameBuffer, PassTarget, RenderPass, RenderPassSequence, Uniforms } from "types/renderPipeline";
+import type { RenderPass, Uniforms } from "types/renderPipeline";
 import type { Dimensions } from "types/global";
 
 import { createFramebuffer, createTexture } from "webglHelpers";
 
 const INPUT_UNIFORM_NAME = "uPrevRender";
 const SCREEN = -1;
+
+interface FrameBuffer {
+    texture: WebGLTexture;
+    dims: Dimensions;
+    buffer: WebGLFramebuffer;
+}
+
+interface PassTarget {
+    input?: number; // index of input frame buffer (none if omitted)
+    output: number; // index of output frame buffer, or SCREEN
+    clear: boolean; // whether to clear output buffer before drawing
+}
 
 export default class RenderPipeline {
     // frame buffers & per-pass assignments of input & output buffers, reused until pass structure changes
@@ -18,7 +30,6 @@ export default class RenderPipeline {
     constructor(
         private gl: WebGL2RenderingContext,
         private dims: Dimensions,
-        private drawToScreen = true
     ) {
         // blend colors, but leave destination alpha opaque
         gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -69,8 +80,8 @@ export default class RenderPipeline {
      *
      * @param sequence sequence of render passes to plan
      */
-    private plan(sequence: RenderPassSequence): void {
-        const key = [this.dims, this.drawToScreen, ...sequence.map(({ composition }) =>
+    private plan(sequence: RenderPass[]): void {
+        const key = [this.dims, ...sequence.map(({ composition }) =>
             composition.mode === "series" ? `s${composition.outputDims?.join("x") ?? ""}` : "p"
         )].join("|");
         if (key === this.planKey) return;
@@ -83,7 +94,7 @@ export default class RenderPipeline {
         });
         this.buffers = [];
 
-        // last pass to start a new output may draw to screen (along with any parallel passes after it)
+        // last pass to start a new output draws to screen (along with any parallel passes after it)
         const lastSeries = Math.max(0, sequence.findLastIndex(({ composition }) => composition.mode === "series"));
 
         let input: number | undefined;
@@ -94,7 +105,7 @@ export default class RenderPipeline {
                 if (i > 0) input = output;
                 const inDims = input === undefined ? this.dims : this.buffers[input]?.dims ?? this.dims;
                 const outDims = composition.mode === "series" ? composition.outputDims ?? inDims : inDims;
-                output = this.drawToScreen && i === lastSeries ? SCREEN : this.acquireBuffer(outDims, input);
+                output = i === lastSeries ? SCREEN : this.acquireBuffer(outDims, input);
             }
 
             const readsInput = composition.mode === "series" || !composition.ignoreInput;
@@ -107,7 +118,7 @@ export default class RenderPipeline {
      *
      * @param sequence sequence of render passes to run
      */
-    public runPasses(sequence: RenderPassSequence): void {
+    public runPasses(sequence: RenderPass[]): void {
         this.plan(sequence);
         sequence.forEach((pass, i) => {
             const target = this.targets[i];
@@ -185,4 +196,4 @@ export default class RenderPipeline {
             }
         });
     }
-};
+}
