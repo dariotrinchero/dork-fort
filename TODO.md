@@ -7,75 +7,171 @@
 - `renderPipeline.ts`: `SeriesPass.outputDims` is unused. Keep it only if a lower-resolution pass (eg. half-res
   bloom/glow) is planned; otherwise remove it, along with its part of the plan key.
 
-## Destinations
+---
 
-### Principle: the canvas is the *shell*, HTML pages are the *documents*
+## Concept: the canvas is the *shell*, windows are the *documents*
 
-Long-form reading (notes, travel posts, galleries) inside a WebGL text grid would mean rebuilding scrolling,
-links, images, text selection, & accessibility. So split by content type:
+Long-form reading (recipes, notes, travel posts, galleries) inside a WebGL text grid would mean rebuilding
+scrolling, links, images, text selection, & accessibility. So split by content type:
 
 - **In-canvas (the shell):** navigation, short outputs, listings, bios, easter eggs. Each destination's command
-  prints a *preview/index* in the space freed when its icon slides to the top.
-- **Real HTML pages (the documents):** generated at build time from Markdown, `content/<dest>/*.md` →
-  `build/<dest>/<slug>.html`, plus a generated `contentIndex.json` bundled into `index.js` so `ls garden` can
-  list real entries. Real URLs work with deep links, without WebGL, with Neocities & search engines, & with
-  screen readers.
+  prints a description & menu in the space freed when its icon slides to the top.
+- **Text-mode windows (the documents):** DOM windows over the same screen, in the style of Turbo Vision /
+  Midnight Commander, with the faded QR code & terminal still visible around them. The proof of concept is done
+  (`window.ts`, `route.ts`, & the campfire placeholders in `campfire.ts`): box-drawn frame, `[■]` close box, a
+  status bar, Esc to close, focus trapping, CSS scanlines whose pitch matches the canvas, & routing through the
+  URL hash (`#campfire/cookbook`), so the back button works.
 
-### Per-destination concepts
+**Every window is also a static page.** The build generates eg. `/campfire/pasteis-de-nata.html`, containing the
+window's markup.
+- With JS, `index.js` boots the CRT behind it: the QR code is faded, the shell shows `>> cat pasteis-de-nata`, &
+  closing the window reveals the campfire output.
+- Without JS (crawlers, screen readers, Neocities' search), it is a plain readable page.
+- Opening a document from the shell fetches that page, swaps its window in, & `pushState`s the URL, so links,
+  reloads & sharing all work.
+
+### Window contents
+
+- Links render as `[bracketed text]` in the section's accent colour; `## headings` keep their hash marks in dim
+  (as in the placeholder recipe); code blocks are framed in box-drawing characters.
+- **Images:** `image-rendering: pixelated`, optionally dithered at build time to match the pixel art.
+- **Fonts:** windows need more glyphs than the canvas subset (Latin-1, `’ “ ” — é …`). Build a second, wider
+  subset for windows rather than bloating the canvas atlas.
+
+### Transitions
+
+- **CRT power-off:** the picture squashes to a bright horizontal line, then to a dot, then fades. This is one
+  `uPower` uniform in `warp.frag`/`crt.frag`, taking ~400 ms. Use it for leaving the site (eg. `open work`) & for
+  `exit` (see the easter eggs).
+- **CRT power-on** when booting, including from a deep link to a window's static page.
+- **404 page as a joke that works:** `not_found.html` boots the same app, & the shell "runs" the bad path:
+  `>> cd /gardn/tomatos` → `dsh: no such destination: gardn` → `did you mean garden?` (clickable).
+
+---
+
+## Destinations
 
 These follow your stated use cases. The ideas for companion, and for splitting up the garden, are mine.
 
-| Command | Content | In-canvas output | Leads to |
+| Command | Content | In-canvas output | Windows |
 |---|---|---|---|
-| `ssh {realm-of-forms}` | technical blog + link to the professional site | fake host-key prompt: `The authenticity of host 'realm-of-forms (∞)' can't be established… (yes/no)?` → type/tap `yes` → **sub-shell** with prompt `plato@realm-of-forms:~$` in its purple accent. Its `ls` lists posts (newest first, with tags); `open work` / `ssh work` gives a `you are leaving the fort…` confirmation, then follows the professional-site link. `exit` → `Connection closed. You return to the cave.` The ssh metaphor ("connecting to another machine") neatly marks the personal/professional boundary. | blog post pages; external professional site |
+| `ssh {realm-of-forms}` | technical blog + link to the professional site | fake host-key prompt: `The authenticity of host 'realm-of-forms (∞)' can't be established… (yes/no)?` → type/tap `yes` → **sub-shell** with prompt `plato@realm-of-forms:~$` in its purple accent. Its `ls` lists posts (newest first, with tags); `open work` / `ssh work` gives a `you are leaving the fort…` confirmation, then follows the professional-site link. `exit` → `Connection closed. You return to the cave.` The ssh metaphor ("connecting to another machine") neatly marks the personal/professional boundary. | blog posts; external professional site |
 | `cat {traveller}` | adventures: photos, climbing / running / camping logs | a **logbook**, one line per outing: `2026-09-12 ▲ climb  Table Mtn  6b+ ×4`, `2026-09-20 ↝ run  21.1 km 1:48 ▁▂▄▆█▆▄▂▁`, with **elevation sparklines** in `▁▂▃▄▅▆▇█`, which `glyphs.json` already contains. Flags filter it (`cat traveller --climb`), & the flags highlight as flags. | trip reports with photo galleries & route/elevation details |
-| `{whoami}` | general about | **neofetch**: `dario@dork-fort`, `OS: DorkFort 1.0`, `Uptime: N years`, `Shell: dsh`, `Hobbies: climbing, cooking, fungi…`, then a swatch row of the 7 accent colours in `█` blocks | stays in canvas (maybe one about page for the long version) |
-| `ls {garden}` | mushrooms & frogs: a **field guide** | `tree` listing (`├──`, `└──`) of beds: `fungi/`, `frogs/`, `other-critters/`, each specimen with the date found | specimen pages styled as field-guide cards: dithered photo + a `genus · found · where · notes` block |
-| `sort {moon-and-stars}` | the curated lists (books, music, films, tools, places) | `sort` *is* ranking, so the items print **jumbled, then visibly sort themselves** (swaps flash) into your ranking. This splits the garden's "abstract" half off into a destination whose verb already fits. | one page per list |
-| `touch {campfire}` | cooking & recipes | `touch: campfire: too hot to touch. sit down instead?`, the campfire modules flicker (noise on its hover intensity), then the recipes. A `make` easter egg: `make pancakes` "builds" the recipe like a Makefile target (`cc flour.o eggs.o milk.o -o pancakes`). | recipe pages: ingredients as clickable `[ ]` checkboxes (saved locally, so they're useful while cooking), a `--serves 4` scaler, & `sleep 10m` steps that start a countdown timer when clicked |
+| `{whoami}` | general about | **neofetch**: `dario@dork-fort`, `OS: DorkFort 1.0`, `Uptime: N years`, `Shell: dsh`, `Hobbies: climbing, cooking, fungi…`, then a swatch row of the 7 accent colours in `█` blocks | stays in canvas (maybe one about window for the long version) |
+| `ls {garden}` | mushrooms & frogs: a **field guide** | `tree` listing (`├──`, `└──`) of beds: `fungi/`, `frogs/`, `other-critters/`, each specimen with the date found | specimens styled as field-guide cards: dithered photo + a `genus · found · where · notes` block |
+| `sort {moon-and-stars}` | the curated lists (books, music, films, tools, places) | `sort` *is* ranking, so the items print **jumbled, then visibly sort themselves** (swaps flash) into your ranking. This splits the garden's "abstract" half off into a destination whose verb already fits. | one per list |
+| `touch {campfire}` | cooking & recipes | see [Campfire](#campfire-recipes-favourites--cooking-journal) below. Also a `make` easter egg: `make pancakes` "builds" the recipe like a Makefile target (`cc flour.o eggs.o milk.o -o pancakes`). | recipes, cookbook, journal |
 | `ping {companion}` | **proposal: people & company**: friends' sites (blogroll / webring), a guestbook, & contact | real-looking ping lines, one per ~400 ms, *each one a friend's site*: `64 bytes from wren.neocities.org: icmp_seq=3 time=48 ms`, ending in stats (`0% packet loss — all friends alive`), then `leave a note? (y/n)` for the guestbook. **Bonus:** the chicken itself is a tiny tamagotchi (`feed chicken`, `pet chicken`, its mood saved in `localStorage`). | external links; guestbook |
 
-### Page look & feel
+Content for destinations other than campfire lives in `content/<dest>/*.md`, built the same way as the recipes
+(see below) into `build/<dest>/<slug>.html`, plus an index bundled into `index.js` so eg. `ls garden` can list
+real entries.
 
-The pages read like a terminal pager that grew some typography:
+---
 
-```
->> cat garden/on-dithering.md                              ~ / garden /
-──────────────────────────────────────────────────────────────────────
-## On dithering
-2026-09-14 · 6 min · #shaders #pixel-art
+## Campfire: recipes, favourites & cooking journal
 
-Body text in Departure Mono, measure capped at ~72ch (an 80-column
-terminal, less margins). Links render as [bracketed text] in the
-section's accent colour; `## headings` keep their hash marks in dim.
+The campfire surfaces the recipe vault (`~/git-repos/recipes`, public on GitHub) through a searchable cookbook,
+a list of favourites, & a cooking journal.
 
-┌─ shader.frag ───────────────────────────┐
-│ code blocks framed in box-drawing chars │
-└─────────────────────────────────────────┘
+The vault is an Obsidian vault:
+- 146 recipes in course folders, each with the same frontmatter (Source, Cook Time, Course, Meal type,
+  Servings, Unusual Ingredients, Vegan, tags) & the same body (`# Ingredients` / `# Method` / `# Notes`);
+- Obsidian syntax: `[[Recipe]]`, `[[Recipe#Heading|alias]]` & `![[photo.png]]` (6 photos of 1–3 MB);
+- 3 Zotero citations (`[@key]`), whose library is git-ignored;
+- 30 recipes tagged `untried`/`todo`.
 
-[cd ..]  [cd ~]
-──────────────────────────────────────────────────────────────────────
-```
+### Remaining user flow
 
-- **Palette:** the same off-white `FG` (see `palette.ts`) on the QR background colour, & `--accent` per section, taken from
-  `destinations.ts`. The build emits the CSS variables from that same source, so colours never drift.
-- **CRT in CSS, not WebGL:** a fixed overlay with a scanline `repeating-linear-gradient` & a vignette
-  `radial-gradient`, a soft `text-shadow` glow, & a ±0.5px red/blue shadow pair for chromatic aberration. No
-  warp. It matches the canvas closely enough and stays readable. Respect `prefers-reduced-motion`.
-- **Images:** `image-rendering: pixelated`, optionally dithered at build time to match the pixel art.
-- **Fonts:** pages need more glyphs than the canvas subset (`’ “ ” — é …`). Build a second, wider subset
-  for pages rather than bloating the canvas atlas.
+The menu (flavour line, `★` favourites beside the icon, `cookbook` & `journal`, with clickable rows, digit
+hotkeys, & names as commands) & the cookbook's fuzzy search are done, over placeholder recipes. Still to come:
 
-### Transitions & routing
+1. In the campfire output: real favourites (tag `favourite`), maybe `recently cooked` rows (the newest journal
+   entries), & hints for `grep <words>` & `cat <recipe>`.
+2. `grep miso --vegan --quick` lists matching recipes in the output pane, as clickable rows.
+   - It searches titles, tags, ingredients & notes.
+   - Flags: `--vegan`, `--main`/`--side`/`--dessert`/…, `--quick` (≤ 45 min) & `--fav`.
+3. `cat <recipe>` (Tab completes recipe names) opens the **recipe window**:
+   - a meta line (time · servings · vegan · tags);
+   - Ingredients as tickable `[ ]` rows, Method, & Notes;
+   - "cooked 3×" with its journal entries, & the source attribution & link.
+4. The cookbook gets filter toggles (see the cookbook views below), & closing a recipe opened from it goes back
+   to the cookbook.
 
-- **Leaving home:** a CRT power-off animation on the canvas: the picture squashes to a bright horizontal line,
-  then to a dot, then fades. This is one `uPower` uniform in `warp.frag`/`crt.frag`, taking ~400 ms, after
-  which `location.assign()` runs.
-- **Arriving on a page:** a CSS power-on (`scaleY` 0.005 → 1, with a brightness flash).
-- **In-canvas state in the URL:** selecting pushes `#garden` & deselecting pops it, so the browser back button
-  deselects. `cd ..` from a note lands on `/#garden`, with the garden already selected & its listing shown.
-- **404 page as a joke that works:** `not_found.html` boots the same app, & the shell "runs" the bad path:
-  `>> cd /gardn/tomatos` → `dsh: no such destination: gardn` → `did you mean garden?` (clickable).
+### Cookbook views (ideas)
+
+Ways to show more than names & cook times (eg. course, meal type, servings, vegan) without much room:
+
+1. **Course tabs** under the title, drawn with box-drawing characters: `all │ mains │ sides │ desserts │ starters
+   │ components`, mirroring the views in the vault's `Overview.base`. ←/→ switch tabs, & the tab could go in the
+   URL (`#campfire/cookbook/mains`).
+2. **Details in the status line:** rows stay one line (`title ··········· 1h ✓v`, with dot leaders & a vegan
+   mark), & the window's bottom border shows the selected row's details (`main · curry, hearty · serves 3–4 ·
+   cashews`). ↑/↓ move an inverse-video selection through the rows, & Enter opens it.
+3. **Filters typed into the search**, eg. `grep miso vegan course:main time:<45`: recognised filters highlight
+   like flags, & the rest is fuzzy-matched. Powerful & needs no room, but less discoverable, so it would
+   complement the tabs rather than replace them.
+4. **Two panes on wide screens:** the list at left, & a preview of the selected recipe at right (as in Midnight
+   Commander); a single list on phones.
+
+Start with 1 & 2, which show the details without adding columns to rows already tight on phones; 3 can follow.
+
+### Content pipeline (build time)
+
+`scripts/bakeRecipes.js` reads the vault from `RECIPES_DIR`, which defaults to `../recipes`.
+- **Parsing:** frontmatter via `yaml`; the body via `markdown-it` with small Obsidian rules:
+  - wikilinks → links to recipe windows (anchor & alias kept), dimmed if the target is unpublished;
+  - embeds → photos resized to ~800 px WebP via `sharp`;
+  - citations → plain text (or simply rewrite the 3 in the vault).
+- **Publishing policy:** a `Publish: full | card | hidden` field, defaulting by Source:
+  - a URL, a quoted book title, Instagram or meal-kit sources → `card`: name, meta, tags, ingredients, your
+    Notes, & a link to the original;
+  - everything else (Original, Adapted, friends) → `full`;
+  - `todo` → `hidden`; `untried` stays published, marked "untried".
+  The build prints how many recipes got each policy, so overrides are easy to spot.
+- **Journal:** a `Journal/` folder in the vault, one note per cook (eg.
+  `Journal/2026-10-02 Pasteis de Nata.md`). Frontmatter holds `date`, `recipes: ["[[Pasteis de Nata]]"]` &
+  optionally `rating` & `photo`; the body holds notes. Each recipe's entries are **derived from these links**,
+  so there's no upkeep in the recipes themselves.
+- **Outputs:**
+  - a compact `recipes` index (slug, title, folder, meta, tags, favourite, ingredient words, latest cook) for
+    the canvas & the cookbook, imported as a virtual esbuild module in the same way as `assets/qr.svg`. It
+    returns `watchDirs` so edits in Obsidian hot-reload the dev server.
+  - `build/campfire/<slug>.html` per recipe, `index.html` & `journal.html`, from one template.
+- **Fetching:** clone at build. Locally, the vault is read in place. `deploy.yml` adds an `actions/checkout`
+  step for `dariotrinchero/recipes` into `./recipes` (public, so no token), plus `schedule` (nightly) &
+  `workflow_dispatch` triggers, so recipe pushes reach the site without touching dork-fort.
+
+### Changes, by file
+
+- **Vault** (`~/git-repos/recipes`):
+  - a `Journal/` folder & `Templates/Journal Entry.md`;
+  - the `favourite` tag on favourites, & optional `Publish:` overrides;
+  - the 3 `[@citations]` rewritten in plain text.
+- **New:** `scripts/bakeRecipes.js` & `scripts/templates/window.html`.
+- **`src/campfire.ts`:** real recipes in place of the placeholders; `grep`, `cat`, & recipe completions.
+- **`src/window.ts`:** fetching pages into windows, & booting from deep links.
+- **`src/shell.ts`:** flags on commands (they already highlight dim); completion candidates supplied by modules
+  (recipe names).
+- **`scripts/build.js`:** the virtual module plugin & the call to `bakeRecipes.js` in `onEnd`, next to font
+  subsetting.
+- **`package.json`:** dev dependencies `yaml`, `markdown-it` & `sharp` (build time only; nothing added to the
+  bundle).
+- **`.github/workflows/deploy.yml`:** the recipes checkout & the extra triggers.
+
+### Verification
+
+- `RECIPES_DIR=~/git-repos/recipes npm run dev`:
+  - the build log reports 146 recipes with the policy counts;
+  - editing a recipe in Obsidian hot-reloads;
+  - spot-check a `full` page, a `card` page, a page with a photo, & a wikilink with an anchor (`Soft Taco Shells
+    #Blueprint…`).
+- In the canvas: `touch campfire` shows favourites & recent cooks; `grep chickpea --vegan` lists sensible rows;
+  `cat ba` + Tab completes; clicking a row opens the window; browser back/forward behave.
+- Load `/campfire/<slug>.html` directly, & with JS disabled (a plain page).
+- On a phone (or emulator): window scrolling, tickable ingredients, the screen staying awake, & that the
+  scanline overlay pitch matches the canvas.
+- `npm run build` (tsc + ESLint pass), then `npm run publish -- --dry-run` to see the new `campfire/` files.
 
 ---
 
@@ -97,7 +193,7 @@ like `chicken`; `notes`, `friends`, `gallery`, `projects`).
 
 **Easter eggs** (left out of `help`, but `help --all` hints that there are more):
 
-- `sudo` (done) could also flash red; `sudo make me a sandwich` → `Okay.` (xkcd 149)
+- `sudo` could also flash red; `sudo make me a sandwich` → `Okay.` (xkcd 149)
 - `rm -rf /` → the QR modules **crumble & fall** column by column (per-column offsets in `qr.frag`), then
   `restoring from backup…` & they reassemble
 - `touch grass` → `you went outside. +10 HP` → navigates to the garden
@@ -110,6 +206,7 @@ like `chicken`; `notes`, `friends`, `gallery`, `projects`).
 - `xyzzy` → `Nothing happens.`; `fortune` → a rotating aphorism (Plato-flavoured?); `cmatrix` → glyph rain for
   5 s in the accent colours; the Konami code → the QR goes rainbow
 - `uname -a` → `DorkFort 1.0 campfire-kernel #1 SMP PREEMPT_DYNAMIC dsh x86_64`
+- campfire: the modules flicker (noise on its hover intensity) when it is touched; `make <recipe>` (above)
 
 ### Syntax highlighting
 
@@ -132,8 +229,8 @@ The large, grid-aligned font leaves few columns across the QR code, so:
   width rather than just the QR code's.
 - On phones in portrait, output could run into the free space below the QR code (with the prompt at the bottom).
 - `columns()` could move the right column onto its own (indented) line when it would be too narrow.
-- Tighter wording, eg. "places (tap the picture, or type):" → "places:", & "go back (or press esc)" → "go back
-  (esc)"; likewise for the hint & placeholder messages.
+- Tighter wording, eg. "places (tap QR code or type):" → "places:", & likewise for the hint & placeholder
+  messages.
 
 ### CRT corner effects
 
@@ -147,25 +244,25 @@ The large, grid-aligned font leaves few columns across the QR code, so:
 
 ---
 
-## Architecture & phasing
-
-### Modules
-
-- `scripts/buildPages.js` + `src/pages.css` + `content/`: the Markdown → HTML pages & `contentIndex.json`.
-- Session state in `shell.ts` for the `ssh` sub-shell (its prompt string & commands).
-
-### Phases (each one shippable)
+## Phases (each one shippable)
 
 1. **Shell, continued:** the input, command, highlighting, & output items above (except the eggs).
-2. **Content:** the Markdown build, the page template + CSS theme, the per-destination in-canvas previews,
-   the power-off/on transitions, hash routing, & the 404-as-shell.
-3. **Delight:** the easter eggs & shader effects (degauss & CRT corner effects, crumble, cmatrix, the ssh
+2. **Campfire:**
+   1. *Pipeline & static pages:* the bake script, policy, templates, recipe & index pages (with client-side
+      search), & the CI checkout. Useful on its own, as plain pages.
+   2. *Windows:* loading real pages into windows, & booting from a deep link.
+   3. *Canvas campfire:* real favourites, `grep`/`cat`, & Tab-completed recipes.
+   4. *Journal:* the vault conventions, derived backlinks, & journal rows & pages.
+   5. *Kitchen extras:* tickable ingredients (saved per recipe in `localStorage`), a `--serves 4` scaler,
+      tappable durations in the method starting countdown timers, & keeping the screen awake.
+3. **Other destinations:** generalise the bake script to `content/<dest>/`, the in-canvas outputs, the
+   power-off/on transitions, & the 404-as-shell.
+4. **Delight:** the easter eggs & shader effects (degauss & CRT corner effects, crumble, cmatrix, the ssh
    sub-shell, the campfire flicker).
 
 ### Glyphs to add to `glyphs.json`
 
-Box drawing `U+2500–257F` (trees, frames, rules). Arrows `U+2190–2193`. `·`, `…`, `♥` if wanted. Departure Mono
-has all of these.
+Box drawing `U+2500–257F` (trees, frames, rules, tabs). `♥` if wanted. Departure Mono has these.
 
 ---
 
@@ -173,9 +270,7 @@ has all of these.
 
 - Does companion as people/guestbook (+ the pet chicken) suit you?
 - A guestbook (under companion) needs somewhere to store notes, which Neocities' static hosting can't provide.
-  The options are a tiny external endpoint (e.g. a Cloudflare Worker + KV) or an embedded third-party
-  guestbook on the companion *page*. It can come last.
-- Photos (traveller, garden): how many, & how large? Thumbnails should be resized/dithered at build time, &
-  keeping full-size originals out of the repo may matter for Neocities' storage limits.
-- Should pages carry a mini prompt at the bottom (sharing `shell.ts` with a DOM renderer), or stay plain HTML
-  with `cd ..` links? I'd start plain, since the shell's output being `Segment[]` keeps the option open.
+  The options are a tiny external endpoint (eg. a Cloudflare Worker + KV) or an embedded third-party guestbook
+  in the companion window. It can come last.
+- Photos (traveller, garden, campfire): how many, & how large? Thumbnails should be resized/dithered at build
+  time, & keeping full-size originals out of the repo may matter for Neocities' storage limits.

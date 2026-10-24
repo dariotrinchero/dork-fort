@@ -1,8 +1,10 @@
-import type { Dimensions } from "types/global";
+import type { Dimensions, RGB } from "types/global";
 import type { TextRendererSizeSpec } from "types/textRenderer";
 
 import { createProgram, createQuadBuffer, createVertexArray } from "webglHelpers";
+import { openWindowKey, setWindowColors, setWindowMetrics } from "window";
 import { crtUniforms } from "crt";
+import { parseHex } from "palette";
 import { warpUniforms } from "warp";
 
 import DESTINATIONS from "destinations";
@@ -27,7 +29,9 @@ const FONT_NAME = "DepartureMono";
 const FONT_SIZE = 33; // largest font size, in CSS pixels
 const FONT_CELL = 33; // font size (in CRT pixels) at which each pixel of font, drawn on an 11px grid, covers 3 × 3
                       // CRT pixels, ie. one triad of subpixel mask & one scanline
+const BG_BRIGHTNESS = 0.8; // multiplier for background colour of QR code (slightly darkening it)
 const MAX_FRAME_TIME = 0.1; // cap (in seconds) on animation time step, eg. after tab was in background
+const PAUSE_DELAY = 0.5; // time (in seconds) after window opens, letting animations behind it settle, before pausing
 
 window.onload = () => {
     // canvas & rendering context
@@ -81,9 +85,11 @@ window.onload = () => {
     // render pipeline, QR code, interactive menu, & terminal
     const pipeline = new RenderPipeline(gl, texDims);
     const qrRenderer = new QRRenderer(gl, qrData, texDims, {
-        bgBrightness: 0.8, // slightly darken background
+        bgBrightness: BG_BRIGHTNESS,
         regions: DESTINATIONS,
     });
+    setWindowColors(parseHex(qrData.background).map(c => c * BG_BRIGHTNESS / 255) as RGB);
+    setWindowMetrics();
     const menu = new QRMenu(canvas, qrRenderer, DESTINATIONS.length);
     const terminal = new Terminal(canvas, input, menu);
 
@@ -109,15 +115,23 @@ window.onload = () => {
 
     // animation loop
     let lastTime: number | undefined;
+    let windowTime = 0; // time (in seconds) for which a window has been open
     const render = (time: number): void => {
         const dt = Math.min(MAX_FRAME_TIME, (time - (lastTime ?? time)) / 1000);
         lastTime = time;
+        requestAnimationFrame(render);
 
-        if (syncSize()) {
+        // while a window is open, pause rendering (canvas keeps its last frame) once text has loaded & animations
+        // behind window have settled, except to redraw at new size
+        const resized = syncSize();
+        if (resized) {
             pipeline.resize(texDims);
             qrRenderer.resize(texDims);
             textRenderer?.resize(textSize());
+            setWindowMetrics();
         }
+        windowTime = openWindowKey() === undefined ? 0 : windowTime + dt;
+        if (windowTime > PAUSE_DELAY && textRenderer && !resized) return;
         menu.update(dt);
         terminal.update(dt, time / 1000);
 
@@ -142,7 +156,6 @@ window.onload = () => {
                 vao: warpVAO,
             },
         ]);
-        requestAnimationFrame(render);
     };
     requestAnimationFrame(render);
 };

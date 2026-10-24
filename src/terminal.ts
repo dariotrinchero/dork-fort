@@ -1,20 +1,24 @@
-import type { Line, RGB, Segment } from "types/global";
+import type { Line, RGB, Rect, Segment } from "types/global";
 import type { Shell } from "shell";
 import type { TextLayout } from "types/menu";
 
 import type QRMenu from "menu";
 import type TextRenderer from "textRenderer";
 
-import { DIM, FG, GHOST } from "palette";
-import { PLACES, execute, highlight, resolve, suggest } from "shell";
+import { DIM, FG, GHOST, INVERSE } from "palette";
+import { PLACES, execute, highlight, menuOf, resolve, suggest, windowOf } from "shell";
+import { closeWindow, openWindow, openWindowKey } from "window";
+import { currentRoute, goBack, goTo, onRouteChange } from "route";
 
 const PROMPT = ">> "; // prompt always shown before command
-const HINT = " type 'help', or tap the picture"; // shown after prompt until first interaction (cursor covers space)
+const HINT = " type 'help' or tap QR code"; // shown after prompt until first interaction (cursor covers space)
 const TYPE_RATE = 40; // characters of suggestion typed per second
 const ERASE_RATE = 80; // characters of suggestion erased per second
 const CURSOR_BLINK = 0.5; // time (in seconds) for which cursor is alternately shown & hidden
 const WHEEL_ROWS = 3; // rows of output scrolled per mouse wheel step
 const MIN_HANG_COLS = 12; // minimum width of text beside hanging indent, below which wrapped text is not indented
+const MIN_ASIDE_COLS = 12; // narrowest space beside icon in which lines are shown (rather than among other lines)
+const LINK_ROWS = 2; // most rows taken by clickable line, beyond which it is truncated
 
 // character of text, in its colour
 interface Cell {
@@ -22,12 +26,37 @@ interface Cell {
     color: RGB;
 }
 
+// line of output, before wrapping, with hanging indent, command run on clicking it (if any), & whether it is meant
+// for space beside icon of place shown
+interface OutputLine {
+    indent: number;
+    line: Line;
+    command?: string;
+    aside: boolean;
+}
+
+// row of output, after wrapping
+interface Row {
+    cells: Cell[];
+    command?: string;
+}
+
 // output of command
 interface View {
-    echo: Line;                              // command, as typed
-    lines: { indent: number; line: Line }[]; // lines of output, before wrapping, with hanging indents
-    scroll: number;                          // rows of (wrapped) output scrolled past
-    closing: boolean;                        // whether output is being hidden
+    place?: number;       // index of place shown (if any)
+    echo: Line;           // command, as typed
+    lines: OutputLine[];  // lines of output
+    scroll: number;       // rows of (wrapped) output scrolled past
+    closing: boolean;     // whether output is being hidden
+}
+
+// clickable row of output, as last drawn
+interface LinkRow {
+    command: string;
+    top: number;    // in pixels from top of output
+    bottom: number;
+    left: number;   // in pixels from left of output
+    right: number;
 }
 
 /**
@@ -72,6 +101,24 @@ const wrap = (cells: Cell[], cols: number, indent = 0): Cell[][] => {
     return [...rows, rest].map((row, i) => i === 0 ? row : [...padding, ...row]);
 };
 
+/**
+ * Wrap lines of output into rows, keeping clickable lines to LINK_ROWS rows each (ending them with an ellipsis if
+ * cut short).
+ *
+ * @param lines lines of output
+ * @param cols width of each row, in characters
+ * @returns rows of output
+ */
+const toRows = (lines: OutputLine[], cols: number): Row[] => lines.flatMap(({ command, indent, line }) => {
+    const rows = wrap(toCells(line), cols, indent);
+    if (command === undefined) return rows.map(cells => ({ cells }));
+    if (rows.length > LINK_ROWS) { // end last row kept with ellipsis, in place of its last character if it is full
+        const last = rows[LINK_ROWS - 1] ?? [];
+        rows.splice(LINK_ROWS - 1, Infinity, [...last.slice(0, cols - 1), { ch: "…", color: DIM }]);
+    }
+    return rows.map(cells => ({ cells, command }));
+});
+
 export default class Terminal implements Shell {
     private text?: TextRenderer;
     private view?: View; // output shown, kept until menu has finished hiding it
@@ -81,6 +128,10 @@ export default class Terminal implements Shell {
     private interacted = false; // whether user has interacted yet (hiding hint)
     private pageRows = 0; // rows of output visible at once, when last drawn
     private shownKey = ""; // key identifying text currently written to text renderer
+    private links: LinkRow[] = []; // clickable rows of output
+    private hoveredLink?: string; // command of clickable row under pointer
+    private routing = false; // whether following route (so that views shown & hidden don't navigate in turn)
+    private printingAside = false; // whether lines printed are meant for space beside icon (see aside())
 
     // previous commands, index of command recalled (history.length if none), & command typed before recalling
     private history: string[] = [];
@@ -94,12 +145,74 @@ export default class Terminal implements Shell {
     ) {
         menu.onChoose = index => { this.run(PLACES[index]?.phrase ?? ""); };
         menu.onDismiss = () => { this.back(); };
+        menu.claimPress = e => { // clicking link runs its command
+            const command = this.linkAt(e);
+            if (command !== undefined) this.run(command);
+            return command !== undefined;
+        };
 
         // focus input on click, or on tapping below QR code (where prompt is), raising keyboard on touch screens
         canvas.addEventListener("pointerup", e => { if (e.pointerType === "mouse" || menu.isBelowQR(e)) input.focus(); });
+        canvas.addEventListener("pointermove", e => { // menu sets cursor first (see QRMenu.pointAt())
+            this.hoveredLink = this.linkAt(e);
+            if (this.hoveredLink !== undefined) canvas.style.cursor = "pointer";
+        });
+        canvas.addEventListener("pointerleave", () => { this.hoveredLink = undefined; });
         canvas.addEventListener("wheel", e => { this.scroll(Math.sign(e.deltaY) * WHEEL_ROWS); }, { passive: true });
         window.addEventListener("keydown", e => { this.keyDown(e); });
         input.focus();
+
+        // show what URL points at, & follow it as it changes
+        onRouteChange(route => { this.follow(route); });
+        this.follow(currentRoute());
+    }
+
+    /**
+     * Find clickable row of output under pointer.
+     *
+     * @param event pointer event
+     * @returns command of clickable row (or undefined if none)
+     */
+    private linkAt(event: PointerEvent): string | undefined {
+        if (!this.view || this.view.closing) return undefined;
+        const [x, y] = this.menu.pointerPixel(event);
+        return this.links.find(({ bottom, left, right, top }) => x >= left && x < right && y >= top && y < bottom)
+            ?.command;
+    }
+
+    /**
+     * Show what given route points at (place shown, & window open over it), without navigating in turn.
+     *
+     * @param route route, eg. ["campfire", "cookbook"]
+     */
+    private follow([name, item]: string[]): void {
+        this.routing = true;
+        const place = PLACES.findIndex(({ words: [word] }) => word === name);
+        if (place === -1) {
+            closeWindow();
+            if (this.view?.place !== undefined) this.back();
+        } else {
+            if (this.view?.place !== place || this.view.closing) this.run(PLACES[place]?.phrase ?? "", false);
+            const content = item === undefined ? undefined : windowOf(place, item);
+            const key = `${name ?? ""}/${item ?? ""}`;
+            if (!content) closeWindow();
+            else if (openWindowKey() !== key) {
+                openWindow(key, content, PLACES[place]?.accent ?? FG, {
+                    close: () => { this.leaveWindow(); },
+                    link: hash => { goTo(hash.split("/")); },
+                });
+            }
+        }
+        this.routing = false;
+    }
+
+    /**
+     * Close open window, going back to whatever it was opened from within the same place (eg. another window), or
+     * else to the place itself.
+     */
+    private leaveWindow(): void {
+        const [name = ""] = currentRoute();
+        goBack([name], ([from]) => from === name);
     }
 
     /**
@@ -121,16 +234,18 @@ export default class Terminal implements Shell {
     }
 
     public show(place?: number): void {
-        this.view = { closing: false, echo: this.echo, lines: [], scroll: 0 };
+        this.view = { closing: false, echo: this.echo, lines: [], place, scroll: 0 };
         this.version++;
         this.suggestion = { chars: 0, text: "" };
         this.menu.open(place);
+        if (!this.routing) goTo(place === undefined ? [] : [PLACES[place]?.words[0] ?? ""]);
     }
 
     public back(): void {
         if (!this.view) return;
         this.menu.close();
         this.view.closing = true;
+        if (!this.routing) goBack([], from => from.length === 0); // back to menu
 
         // command slides back down onto prompt, which takes over showing it (as if suggested) once it lands
         const text = this.view.echo.map(({ text }) => text).join("");
@@ -138,14 +253,36 @@ export default class Terminal implements Shell {
     }
 
     public print(...segments: (Segment | string)[]): void {
-        this.view?.lines.push({ indent: 0, line: toLine(segments) });
+        this.view?.lines.push({ aside: this.printingAside, indent: 0, line: toLine(segments) });
         this.version++;
+    }
+
+    public link(command: string, indent: number, ...segments: (Segment | string)[]): void {
+        this.view?.lines.push({ aside: this.printingAside, command, indent, line: toLine(segments) });
+        this.version++;
+    }
+
+    public aside(print: () => void): void {
+        this.printingAside = true;
+        try {
+            print();
+        } finally {
+            this.printingAside = false;
+        }
+    }
+
+    public go(route: string[]): void {
+        goTo(route);
+    }
+
+    public shown(): number | undefined {
+        return this.view?.closing ? undefined : this.view?.place;
     }
 
     public columns(width: number, left: (Segment | string)[], right: (Segment | string)[]): void {
         const length = left.reduce((sum, s) => sum + (typeof s === "string" ? s : s.text).length, 0);
         const gap = " ".repeat(Math.max(1, width - length));
-        this.view?.lines.push({ indent: width, line: toLine([...left, gap, ...right]) });
+        this.view?.lines.push({ aside: this.printingAside, indent: width, line: toLine([...left, gap, ...right]) });
         this.version++;
     }
 
@@ -153,11 +290,13 @@ export default class Terminal implements Shell {
      * Run command, adding it to history.
      *
      * @param line command
+     * @param remember whether to add command to history
      */
-    private run(line: string): void {
-        if (line.trim() !== "") this.history.push(line);
+    private run(line: string, remember = true): void {
+        const entry = line.trim();
+        if (remember && entry !== "") this.history = [...this.history.filter(previous => previous !== entry), entry];
         this.historyIndex = this.history.length;
-        this.echo = highlight(line);
+        this.echo = highlight(line, this.shown());
         execute(this, line);
     }
 
@@ -202,6 +341,8 @@ export default class Terminal implements Shell {
         this.interacted = true;
         if (event.isComposing) return;
 
+        // while window is open, keys are left to it (see window.ts)
+        if (openWindowKey() !== undefined) return;
         const { key } = event;
         if (key === "Escape") {
             if (this.view) this.back();
@@ -215,8 +356,16 @@ export default class Terminal implements Shell {
         }
         if (document.activeElement !== this.input) this.input.focus();
 
+        // digits pick entries of menu of place shown, while prompt is empty
         const { value } = this.input;
-        const ghost = suggest(value);
+        const hotkey = value === "" ? menuOf(this.shown()).find(entry => entry.key === key) : undefined;
+        if (hotkey) {
+            this.run(hotkey.name);
+            event.preventDefault();
+            return;
+        }
+
+        const ghost = suggest(value, this.shown());
         if (key === "Enter") {
             this.setInput("");
             this.run(value);
@@ -237,8 +386,9 @@ export default class Terminal implements Shell {
      */
     public update(dt: number, time: number): void {
         if (!this.menu.isOpen()) this.view = undefined;
+        if (!this.view) this.links = [];
         const { value } = this.input;
-        const ghost = suggest(value);
+        const ghost = suggest(value, this.shown());
         if (value !== "" || this.menu.hovered() !== undefined) this.interacted = true;
 
         // while typing, highlight destination named by command (with its suggested completion)
@@ -265,7 +415,7 @@ export default class Terminal implements Shell {
         const { echoTop, left, paneBottom, promptTop, right } = layout;
         const key = [
             echoTop, left, paneBottom, promptTop, right, ...this.text.getCharDims(), value, caret, cursor, this.interacted,
-            this.suggestion.text, Math.floor(this.suggestion.chars), this.view && this.version, this.view?.scroll, this.view?.closing,
+            this.suggestion.text, Math.floor(this.suggestion.chars), this.view && this.version, this.view?.scroll, this.view?.closing, this.hoveredLink,
         ].join("|");
         if (key === this.shownKey) return;
         this.shownKey = key;
@@ -291,34 +441,72 @@ export default class Terminal implements Shell {
 
     /**
      * Draw command whose output is shown, & its output below it, clipped to bottom of QR code & scrollable if it
-     * overflows.
+     * overflows. Lines meant for beside icon of place shown are drawn there if they fit, & otherwise among the rest.
      *
      * @param text text renderer
      * @param layout layout of text
      * @returns bottom of command (in pixels from top of output)
      */
-    private drawView(text: TextRenderer, { echoTop, left, paneBottom, right }: TextLayout): number {
+    private drawView(text: TextRenderer, { aside, echoTop, left, paneBottom, right }: TextLayout): number {
         if (!this.view) return echoTop;
         const [cols] = text.fit([left, echoTop, right, Infinity]);
         const echo = wrap(toCells([{ color: FG, text: PROMPT }, ...this.view.echo]), cols);
         text.setBox([left, echoTop, right, Infinity]);
         Terminal.printRows(text, echo);
+        this.links = [];
 
-        const outTop = echoTop + echo.length * text.getCharDims()[1];
-        const [, rows] = text.fit([left, outTop, right, paneBottom]);
-        const lines = this.view.lines.flatMap(({ indent, line }) => wrap(toCells(line), cols, indent));
-        const overflow = lines.length > rows;
-        this.pageRows = Math.max(0, overflow ? rows - 1 : rows); // when overflowing, last row shows scroll status
-        const maxScroll = Math.max(0, lines.length - this.pageRows);
+        const asideLines = this.view.lines.filter(line => line.aside);
+        const [asideCols, asideRows] = aside ? text.fit(aside) : [0, 0];
+        const asideFits = asideLines.length > 0 && asideCols >= MIN_ASIDE_COLS
+            && toRows(asideLines, asideCols).length <= asideRows;
+        if (aside && asideFits) this.drawRows(text, toRows(asideLines, asideCols), aside, asideCols);
+
+        const charHeight = text.getCharDims()[1];
+        const outTop = echoTop + echo.length * charHeight;
+        const [, visibleRows] = text.fit([left, outTop, right, paneBottom]);
+        // lines meant for beside icon, printed among others instead, are followed by a blank line
+        const inline = this.view.lines.flatMap((line, i, lines) =>
+            line.aside && !lines[i + 1]?.aside ? [line, { aside: false, indent: 0, line: [] }] : [line]);
+        const rows = toRows(asideFits ? this.view.lines.filter(line => !line.aside) : inline, cols);
+        const overflow = rows.length > visibleRows;
+        this.pageRows = Math.max(0, overflow ? visibleRows - 1 : visibleRows); // when overflowing, last row shows status
+        const maxScroll = Math.max(0, rows.length - this.pageRows);
         const scroll = this.view.scroll = Math.max(0, Math.min(maxScroll, this.view.scroll));
+        this.drawRows(text, rows.slice(scroll, scroll + this.pageRows), [left, outTop, right, paneBottom], cols);
 
-        text.setBox([left, outTop, right, paneBottom]);
-        Terminal.printRows(text, lines.slice(scroll, scroll + this.pageRows));
+        text.setBox([left, outTop + this.pageRows * charHeight, right, paneBottom]);
         if (overflow) {
-            const percent = Math.round(100 * (scroll + this.pageRows) / lines.length);
+            const percent = Math.round(100 * (scroll + this.pageRows) / rows.length);
             text.print(scroll < maxScroll ? `-- more (${percent.toFixed()}%) --` : "-- end --", DIM);
         }
         return outTop;
+    }
+
+    /**
+     * Draw rows of output from top of given box, each in its own box (so that clickable rows can be drawn in inverse
+     * video when hovered), recording where clickable rows are.
+     *
+     * @param text text renderer
+     * @param rows rows of output
+     * @param box left, top, right, & bottom of box (in pixels from top-left of output)
+     * @param cols width of box, in characters
+     */
+    private drawRows(text: TextRenderer, rows: Row[], [left, top, right, bottom]: Rect, cols: number): void {
+        const [charWidth, charHeight] = text.getCharDims();
+        const bar = PLACES[this.view?.place ?? -1]?.accent ?? FG;
+        rows.forEach(({ cells, command }, i) => {
+            const rowTop = top + i * charHeight;
+            const hovered = command !== undefined && command === this.hoveredLink && !this.view?.closing;
+            if (hovered) {
+                text.setBox([left, rowTop, right, bottom]);
+                text.print("█".repeat(cols), bar);
+            }
+            text.setBox([left, rowTop, right, bottom]);
+            cells.forEach(({ ch, color }) => { text.print(ch, hovered ? INVERSE : color); });
+            if (command !== undefined) {
+                this.links.push({ bottom: rowTop + charHeight, command, left, right: left + cols * charWidth, top: rowTop });
+            }
+        });
     }
 
     /**
@@ -333,9 +521,9 @@ export default class Terminal implements Shell {
     private drawPrompt(text: TextRenderer, { left, promptTop, right }: TextLayout, caret: number, cursor: boolean): void {
         const { value } = this.input;
         const typed = value === ""
-            ? toCells(highlight(this.suggestion.text)).slice(0, Math.floor(this.suggestion.chars))
-            : toCells(highlight(value));
-        const ghost = value !== "" ? suggest(value) : this.interacted || typed.length > 0 ? "" : HINT;
+            ? toCells(highlight(this.suggestion.text, this.shown())).slice(0, Math.floor(this.suggestion.chars))
+            : toCells(highlight(value, this.shown()));
+        const ghost = value !== "" ? suggest(value, this.shown()) : this.interacted || typed.length > 0 ? "" : HINT;
         const cells = toCells([{ color: FG, text: PROMPT }]).concat(typed, toCells([{ color: GHOST, text: ghost }]));
 
         // block cursor covers character after caret (or a space at end)

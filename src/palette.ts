@@ -32,7 +32,8 @@ const scale = (color: RGB, factor: number): RGB => color.map(c => Math.min(1, c 
 export const accent = (hex: string): RGB => scale(parseHex(hex).map(c => c / 255) as RGB, ACCENT_BOOST);
 
 // text colours, with components in [0, 1]; accent colours are reserved for text naming destinations
-export const FG: RGB = [0.92, 0.9, 0.85];     // default, eg. known commands
+export const FG: RGB = [0.85, 0.81, 0.71];    // default, eg. known commands
 export const DIM = scale(FG, 0.6);            // secondary, eg. arguments
 export const GHOST = scale(FG, 0.35);         // suggested but not typed, eg. completions & hints
 export const ERROR: RGB = [0.91, 0.31, 0.36]; // unknown commands & error messages
+export const INVERSE: RGB = [0.05, 0.05, 0.05]; // text in inverse video, on accent colour (eg. hovered links)

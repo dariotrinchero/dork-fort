@@ -22,6 +22,7 @@ export default class QRMenu {
     // elsewhere while output is shown
     public onChoose?: (index: number) => void;
     public onDismiss?: () => void;
+    public claimPress?: (event: PointerEvent) => boolean; // given first refusal of presses (eg. on clickable text)
 
     private pointed?: number; // index of destination under pointer
     private typed?: number | null = null; // index of destination named by command being typed (null if not typing)
@@ -77,7 +78,17 @@ export default class QRMenu {
      * @returns whether pointer is below QR code
      */
     public isBelowQR(event: PointerEvent): boolean {
-        return this.qr.pixelAt(this.pointerUV(event))[1] >= this.qr.contentRect()[3];
+        return this.pointerPixel(event)[1] >= this.qr.contentRect()[3];
+    }
+
+    /**
+     * Get position of pointer on output, mapped through the curved-monitor warp.
+     *
+     * @param event pointer event
+     * @returns position, in pixels from top-left of output
+     */
+    public pointerPixel(event: PointerEvent): Pos {
+        return this.qr.pixelAt(this.pointerUV(event));
     }
 
     /**
@@ -98,7 +109,7 @@ export default class QRMenu {
      * @param event pointer event
      */
     private press(event: PointerEvent): void {
-        if (this.isBelowQR(event)) return;
+        if (this.isBelowQR(event) || this.claimPress?.(event)) return;
         const [previous, index] = [this.hovered(), this.regionAt(event)];
         this.pointAt(index);
         if (typeof this.shown === "number") {
@@ -163,11 +174,20 @@ export default class QRMenu {
     public textLayout(): TextLayout {
         const [left, top, right, bottom] = this.qr.contentRect();
         const gap = TEXT_GAP * this.qr.getModuleSize();
-        const rect = typeof this.shown === "number" ? this.qr.iconRect(this.shown) : undefined;
+        const shown = typeof this.shown === "number" ? this.shown : undefined;
+        const rect = shown === undefined ? undefined : this.qr.iconRect(shown);
         const promptTop = bottom + gap;
         const end = rect ? Math.min(top + rect[3] - rect[1] + gap, (top + bottom) / 2) : top; // not below middle of QR
-        const echoTop = Math.round(promptTop + (end - promptTop) * smoothstep(this.showProgress));
-        return { echoTop, left, paneBottom: bottom, promptTop, right };
+        const progress = smoothstep(this.showProgress);
+        const echoTop = Math.round(promptTop + (end - promptTop) * progress);
+
+        // space beside icon slides with it (see QRRenderer.setSelection())
+        const aside = shown === undefined ? undefined : this.qr.asideRect(shown);
+        const slide = rect ? Math.round(progress * (top - rect[1])) : 0;
+        return {
+            aside: aside && [aside[0], aside[1] + slide, aside[2], aside[3] + slide],
+            echoTop, left, paneBottom: bottom, promptTop, right,
+        };
     }
 
     /**

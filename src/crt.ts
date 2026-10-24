@@ -30,6 +30,7 @@ export const setScreenMode = (name: string): boolean => {
     if (!newMode) return false;
     mode = newMode;
     setWarp(mode.crt);
+    document.documentElement.dataset.crt = name; // for windows, which are styled to match (see style.css)
     return true;
 };
 

@@ -14,6 +14,7 @@ const MAX_REGIONS = 8; // must match qr.frag
 const HIT_PADDING = 1; // padding (in modules) around hit boxes
 const UNSELECTED_DISMISS = 0.90; // fade of QR code into background when 'selected' without any region
 
+const ASIDE_GAP = 1; // gap (in modules) between icon & space beside it (see asideSpan())
 const OUTSIDE_ICON = 128; // added to tag of modules outside their region's icon; must match qr.frag
 
 type Bounds = Rect; // left, top, right, & bottom (exclusive), in modules
@@ -64,9 +65,11 @@ export default class QRRenderer {
     private dismiss = 0;
     private slide = 0;
 
-    // bounding box of all coloured modules (ie. QR code without quiet zone), & of each region's icon, in modules
+    // bounding box of all coloured modules (ie. QR code without quiet zone), & of each region's icon, & space beside
+    // each icon (see asideSpan()), in modules
     private contentBounds: Bounds;
     private iconBounds: (Bounds | undefined)[];
+    private asideBounds: (Bounds | undefined)[];
 
     constructor(
         private gl: WebGL2RenderingContext,
@@ -89,17 +92,46 @@ export default class QRRenderer {
 
         this.cellRegions = QRRenderer.resolveCellRegions(data, groupRegions);
         this.contentBounds = boundingBox(data.modules.map(([x, y]): Pos => [x, y]));
-        this.iconBounds = regions.map((_, region) => {
-            const cells = data.modules
-                .filter(([, , , group]) => groupRegions[group] === region && groupIcons[group])
-                .map(([x, y]): Pos => [x, y]);
-            return cells.length > 0 ? boundingBox(cells) : undefined;
-        });
+        const iconCells = regions.map((_, region) => data.modules
+            .filter(([, , , group]) => groupRegions[group] === region && groupIcons[group])
+            .map(([x, y]): Pos => [x, y]));
+        this.iconBounds = iconCells.map(cells => cells.length > 0 ? boundingBox(cells) : undefined);
+        this.asideBounds = iconCells.map(cells => QRRenderer.asideSpan(cells, this.contentBounds));
 
         this.texture = QRRenderer.createModuleTexture(gl, data, groupRegions, groupIcons, bgBrightness);
         this.program = createProgram(gl, screenVert, qrFrag);
         this.vao = createVertexArray(gl, this.program, { aQuadVertPos: { buffer: createQuadBuffer(gl), itemSize: 2 } });
         this.resize(resolution);
+    }
+
+    /**
+     * Find widest space beside icon, within rows spanned by icon: the widest run of columns of QR code (excluding
+     * quiet zone) containing none of icon's modules, less ASIDE_GAP on sides next to icon. Space between parts of
+     * an icon counts (eg. between QR code alignment boxes).
+     *
+     * @param cells module coordinates of icon
+     * @param content bounding box of QR code (excluding quiet zone), in modules
+     * @returns left, top, right, & bottom (exclusive) of space, in modules (or undefined if none)
+     */
+    private static asideSpan(cells: Pos[], [contentLeft, , contentRight]: Bounds): Bounds | undefined {
+        if (cells.length === 0) return undefined;
+        const [, top, , bottom] = boundingBox(cells);
+        const used = new Set(cells.map(([x]) => x));
+
+        let best: [number, number] | undefined;
+        let start: number | undefined;
+        for (let x = contentLeft; x <= contentRight; x++) {
+            if (x < contentRight && !used.has(x)) start ??= x;
+            else if (start !== undefined) {
+                if (!best || x - start > best[1] - best[0]) best = [start, x];
+                start = undefined;
+            }
+        }
+        if (!best) return undefined;
+
+        const left = best[0] + (best[0] > contentLeft ? ASIDE_GAP : 0);
+        const right = best[1] - (best[1] < contentRight ? ASIDE_GAP : 0);
+        return right > left ? [left, top, right, bottom] : undefined;
     }
 
     /**
@@ -229,6 +261,18 @@ export default class QRRenderer {
      */
     public iconRect(region: number): Rect | undefined {
         const bounds = this.iconBounds[region];
+        return bounds && this.toPixels(bounds);
+    }
+
+    /**
+     * Get bounds of widest space beside given region's icon (see asideSpan()) on output, ignoring any slide of
+     * selected region.
+     *
+     * @param region index of region
+     * @returns left, top, right, & bottom of space, in pixels from top-left of output (or undefined if none)
+     */
+    public asideRect(region: number): Rect | undefined {
+        const bounds = this.asideBounds[region];
         return bounds && this.toPixels(bounds);
     }
 

@@ -21,3 +21,346 @@ canvas {
     font-size: 16px; /* stops iOS zooming in on focus */
     pointer-events: none;
 }
+
+/* text-mode windows over screen (see src/window.ts), styled after CRT drawn on canvas; --font-size, scanlines,
+   & colours are set from src/window.ts, & font "DepartureMono" is loaded by text renderer (src/textRenderer.ts) */
+:root {
+    --fpx: calc(var(--font-size, 22px) / 11); /* pixel of font, drawn on an 11px grid */
+    --line: calc(16 * var(--fpx));            /* height of character cell: 14px glyphs, with 2px of leading */
+}
+
+.window-backdrop {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgb(0 0 0 / 0.3);
+    opacity: 0;
+    transition: opacity 150ms;
+}
+
+.window-backdrop.open {
+    opacity: 1;
+}
+
+.window {
+    /* fraction by which gaps between scanlines are darkened (milder than 1 on canvas; see crt.frag), & gain
+       compensating for it */
+    --scan-dim: 0.4;
+    --scan-gain: calc(1 / (1 - var(--scan-dim) * var(--scan-fraction, 0.33)));
+
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    container: window / inline-size; /* for margins of body to suit its width */
+    width: min(96ch, 100vw - 4ch);
+    height: min(40 * var(--line), 100dvh - 2 * var(--line));
+    width: round(down, min(96ch, 100vw - 4ch), 1ch); /* in whole character cells, where supported */
+    height: round(down, min(40 * var(--line), 100dvh - 2 * var(--line)), var(--line));
+    background: var(--bg);
+    box-shadow: 2ch var(--line) rgb(0 0 0 / 0.6); /* shadow cast on screen, as in Turbo Vision */
+    color: var(--fg);
+    font: var(--font-size, 22px) / var(--line) "DepartureMono", monospace;
+    -webkit-font-smoothing: none;
+    filter: brightness(var(--scan-gain));
+    --crt-shadow: /* colour separation & glow (see crt.frag) */
+        calc(0.4 * var(--fpx)) 0 rgb(0 128 255 / 0.5),
+        calc(-0.4 * var(--fpx)) 0 rgb(255 128 0 / 0.5),
+        0 0 calc(2 * var(--fpx)) color-mix(in srgb, currentColor 35%, transparent);
+    text-shadow: var(--crt-shadow);
+    transform: scale(0.96, 0.04); /* opens like a CRT powering on: a line, expanding vertically */
+    transition: transform 150ms ease-out;
+    will-change: transform; /* kept on its own layer, so that highlights repaint only themselves, not whole window */
+}
+
+.window-backdrop.open .window {
+    transform: none;
+}
+
+/* scanlines, one per pixel of font (without the subpixel mask of crt.frag, whose triads would not fit) */
+.window::after {
+    --dark: calc(255 * (1 - var(--scan-dim)));
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: repeating-linear-gradient(to bottom,
+            rgb(var(--dark) var(--dark) var(--dark)) 0 var(--scan-height, 1px),
+            white var(--scan-height, 1px) var(--fpx));
+    mix-blend-mode: multiply;
+    pointer-events: none;
+}
+
+/* frame drawn through middle of outermost character cells, as in text-mode interfaces, so that window consists
+   of whole cells */
+.window-frame {
+    position: absolute;
+    inset: calc(6 * var(--fpx)) calc(2 * var(--fpx)) calc(7 * var(--fpx)); /* lines at rows 6 & 8 of cell */
+    border: calc(3 * var(--fpx)) double var(--accent); /* draws like '═': two 1px lines with a 1px gap */
+    pointer-events: none;
+}
+
+/* title & close box (in top row), & status (in bottom row), cutting frame */
+.window-border {
+    position: absolute;
+    left: 2ch;
+    right: 2ch;
+    display: flex;
+    justify-content: center;
+}
+
+.window-border.top {
+    top: 0;
+}
+
+.window-border.bottom {
+    bottom: 0;
+    justify-content: flex-end;
+    color: var(--dim);
+}
+
+.window-border > * {
+    margin: 0;
+    padding: 0 1ch;
+    background: var(--bg);
+    font: inherit;
+}
+
+.window-border h1 {
+    color: var(--accent);
+}
+
+.window-close {
+    position: absolute;
+    left: 0;
+    padding: 0;
+    border: 0;
+    color: var(--accent);
+    cursor: pointer;
+}
+
+/* focus is shown in inverse video instead (see below) */
+.window :focus {
+    outline: none;
+}
+
+.window-body {
+    flex: 1;
+    overflow: auto;
+    margin: var(--line) 1ch; /* clear of frame, in outermost character cells */
+    padding: var(--line) 2ch;
+    outline: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) transparent;
+}
+
+/* wider margins (in whole character cells) in wider windows */
+@container window (min-width: 50ch) {
+    .window-body {
+        padding-inline: 4ch;
+    }
+}
+
+@container window (min-width: 64ch) {
+    .window-body {
+        padding-inline: 6ch;
+    }
+}
+
+.window-body :is(li, a, input) {
+    scroll-margin-block: calc(2 * var(--line)); /* items focused by arrow keys stay clear of edges of body */
+}
+
+.window-body :is(h2, h3, p, ul, ol) {
+    margin: 0 0 var(--line);
+    font: inherit;
+}
+
+/* title in double-width, double-height text (as on VT100 terminals), keeping to grid of font pixels */
+.window-body h2 {
+    font-size: calc(2 * var(--font-size, 22px));
+    line-height: calc(2 * var(--line));
+}
+
+.window-body :is(h2, h3),
+.window-body .accent,
+.window-body a {
+    color: var(--accent);
+}
+
+.window-body .dim,
+.window-body ::marker {
+    color: var(--dim);
+}
+
+.window-body a {
+    text-decoration: none;
+}
+
+.window-body :is(ul, ol) {
+    padding-left: 3ch;
+}
+
+.window-body ul {
+    list-style: "- ";
+}
+
+/* tickable list, drawn as '[ ]' & '[x]', with wrapped lines hanging past them */
+.window-body .checklist {
+    padding-left: 0;
+    list-style: none;
+}
+
+.checklist label {
+    display: block;
+    padding-left: 4ch;
+    text-indent: -4ch;
+    cursor: pointer;
+}
+
+.checklist input {
+    position: absolute;
+    opacity: 0;
+}
+
+.checklist span::before {
+    content: "[ ] ";
+    color: var(--dim);
+}
+
+.checklist input:checked + span {
+    color: var(--dim);
+    text-decoration: line-through;
+}
+
+.checklist input:checked + span::before {
+    content: "[x] ";
+    color: var(--accent);
+}
+
+/* filter box, styled as part of a command, in a single-line box drawn through middle of outermost character cells
+   (like window frame), & index of entries (eg. recipes), with details at right & characters matching filter in
+   accent colour */
+.window-body .filter {
+    position: relative;
+    display: flex;
+    gap: 1ch;
+    margin-bottom: var(--line);
+    padding: var(--line) 2ch;
+}
+
+.filter::before {
+    content: "";
+    position: absolute;
+    inset: calc(7 * var(--fpx)) calc(3 * var(--fpx)) calc(8 * var(--fpx));
+    border: var(--fpx) solid var(--dim);
+    pointer-events: none;
+}
+
+.filter:focus-within::before {
+    border-color: var(--accent);
+}
+
+.filter input {
+    flex: 1;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--fg);
+    font: inherit;
+    text-shadow: inherit;
+    caret-color: var(--accent);
+    appearance: none;
+}
+
+.filter input::placeholder {
+    color: var(--dim);
+}
+
+.filter input::-webkit-search-cancel-button {
+    display: none;
+}
+
+.window-body .index {
+    padding-left: 0;
+    list-style: none;
+}
+
+.index li:not([hidden]) {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    gap: 2ch;
+}
+
+.window-body .index a {
+    color: var(--fg);
+}
+
+/* whole row of entry follows its link */
+.index a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.index .match {
+    color: var(--accent);
+}
+
+/* shown only once no entries of index match filter */
+.no-matches {
+    display: none;
+}
+
+.index:not(:has(li:not([hidden]))) + .no-matches {
+    display: block;
+}
+
+/* item hovered, or else item focused by keyboard (or entry of index selected), shown in inverse video, as in
+   text-mode interfaces (& as on hovered rows of canvas output); window is "hovering" while pointer is on an item, &
+   "keyboard" while focus was given by keyboard (see src/window.ts), so that only one is shown */
+.window.keyboard:not(.hovering) :is(.window-close:focus, .window-body a:focus, .checklist input:focus + span,
+    .index li.selected),
+.window.hovering :is(.window-close:hover, .window-body a:hover, .checklist label:hover span, .index li:hover) {
+    background: var(--accent);
+    color: var(--inverse);
+}
+
+/* text within highlighted items, which otherwise keeps its own colours (eg. details of entries, or '[x]') */
+.window.keyboard:not(.hovering) .index li.selected :is(a, .dim, .match),
+.window.keyboard:not(.hovering) .checklist input:focus + span::before,
+.window.hovering .index li:hover :is(a, .dim, .match),
+.window.hovering .checklist label:hover span::before {
+    color: inherit;
+}
+
+/* screen modes (see src/crt.ts): no effects when off */
+:root[data-crt="off"] .window {
+    --crt-shadow: 0 0 transparent;
+    filter: none;
+}
+
+:root[data-crt="off"] .window::after {
+    display: none;
+}
+
+:root[data-crt="amber"] .window {
+    filter: grayscale(1) sepia(1) saturate(4) brightness(var(--scan-gain));
+}
+
+:root[data-crt="green"] .window {
+    filter: grayscale(1) sepia(1) saturate(5) hue-rotate(65deg) brightness(var(--scan-gain));
+}
+
+:root[data-crt="white"] .window {
+    filter: grayscale(1) brightness(var(--scan-gain));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .window-backdrop,
+    .window {
+        transition: none;
+    }
+}

@@ -1,3 +1,5 @@
+import type { Rect } from "types/global";
+
 // layout of text around QR code, in pixels from top-left of output
 export interface TextLayout {
     left: number;       // left edge of QR code, where text starts
@@ -6,4 +8,5 @@ export interface TextLayout {
     echoTop: number;    // top of command whose output is shown, which rises from prompt to below the destination
                         // shown (or for commands other than destinations, to top of QR code)
     paneBottom: number; // bottom of output (ie. bottom of QR code)
+    aside?: Rect;       // space beside icon of destination shown, following its slide (if any; see QRRenderer)
 }

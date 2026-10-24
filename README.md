@@ -31,6 +31,10 @@ webpage in the browser. Changes to the build scripts themselves require restarti
 - `src/menu.ts` handles pointer input, & the hover & selection animations of the QR code.
 - `src/terminal.ts` handles the `>>` prompt (typed into through a hidden `<input>`), the commands suggested by
   hovering, & command output, all drawn by `src/textRenderer.ts`.
+- `src/window.ts` opens text-mode windows (DOM, styled in `src/style.css` to match the CRT) over the screen, whose
+  behaviour follows from classes in their markup (eg. `.index` & `.filter` for a list filtered by
+  `src/fuzzy.ts`), & `src/route.ts` keeps what is shown (eg. `#campfire/cookbook`) in the URL.
+- `src/campfire.ts` holds the contents of the campfire: its menu & windows (placeholders, for now).
 - `src/shell.ts` defines the commands: their syntax highlighting, completion, & what they do.
 - `src/destinations.ts` maps groups in the QR code SVG to the destinations they link to, with their icons, commands,
   aliases, & accent colours.
