@@ -28,12 +28,15 @@ webpage in the browser. Changes to the build scripts themselves require restarti
 - `src/renderPipeline.ts` runs sequences of render passes (WebGL programs), allocating the frame buffers
   passed between them.
 - `src/qrRenderer.ts` draws the QR code, & finds which interactive region lies under a given point.
-- `src/menu.ts` handles pointer input, hover & selection animations, & the labels typed after the `>>` prompt
-  (eg. `ls garden`), drawn by `src/textRenderer.ts`.
-- `src/destinations.ts` maps groups in the QR code SVG to the destinations they link to, & their accent colours.
-- `src/palette.ts` holds colour helpers.
+- `src/menu.ts` handles pointer input, & the hover & selection animations of the QR code.
+- `src/terminal.ts` handles the `>>` prompt (typed into through a hidden `<input>`), the commands suggested by
+  hovering, & command output, all drawn by `src/textRenderer.ts`.
+- `src/shell.ts` defines the commands: their syntax highlighting, completion, & what they do.
+- `src/destinations.ts` maps groups in the QR code SVG to the destinations they link to, with their icons, commands,
+  aliases, & accent colours.
+- `src/palette.ts` holds text colours & colour helpers.
 - `src/shaders/` contains the GLSL shaders, including the CRT (`crt.frag`) & curved monitor (`warp.frag`)
-  effects.
+  effects, whose parameters are set by `src/crt.ts` (screen modes) & `src/warp.ts`.
 
 ### Assets
 
@@ -42,8 +45,9 @@ Assets in `src/assets/` are processed at compile time, & never deployed as-is:
 - `qr.svg` (drawn in Inkscape) is parsed by `scripts/bakeQR.js` into compact module data, which is bundled
   into `index.js`. Coloured modules must be 1×1 rectangles in the "Main" layer, grouped by element; the
   background colour comes from the rectangle in the "Background" layer.
-- `DejaVuSansMono.ttf` is subsetted by `scripts/subsetFont.js` to only the glyphs listed in `glyphs.json`, &
-  output as `fonts/DejaVuSansMono.woff2`. Add glyphs to `glyphs.json` before using them in text.
+- `DepartureMono-Regular.otf` is subsetted by `scripts/subsetFont.js` to only the glyphs listed in `glyphs.json`,
+  & output as `fonts/DepartureMono.woff2`. Add glyphs to `glyphs.json` before using them in text. Its licence is
+  deployed alongside it, from `public/fonts/DepartureMono-OFL.txt`.
 
 Static files that should be deployed as-is (eg. `robots.txt`, & the 404 page `not_found.html`) go in `public/`,
 & are served from the root of the site.
@@ -76,6 +80,8 @@ npm run publish -- --dry-run
 
 ## Credits
 
+- Text set in Helena Zhang's [Departure Mono](https://departuremono.com/), under the SIL Open Font License (see
+  `public/fonts/DepartureMono-OFL.txt`)
 - QR code generated with Noel Friedrich's awesome [human-readable QR
   code](https://www.noel-friedrich.de/hqr/) tool; see also his [QR
   studio](https://www.noel-friedrich.de/qr/drawing/)

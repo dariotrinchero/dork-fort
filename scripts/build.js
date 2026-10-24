@@ -58,8 +58,8 @@ const buildOptions = {
                     if (existsSync("public")) cpSync("public", "build", { recursive: true }); // served from site root
                     mkdirSync("build/fonts", { recursive: true });
                     await writeFile(
-                        "build/fonts/DejaVuSansMono.woff2",
-                        await subsetToGlyphSet("src/assets/DejaVuSansMono.ttf", "src/assets/glyphs.json")
+                        "build/fonts/DepartureMono.woff2",
+                        await subsetToGlyphSet("src/assets/DepartureMono-Regular.otf", "src/assets/glyphs.json")
                     );
                     console.log(" ✔ Build complete");
                 });
