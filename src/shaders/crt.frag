@@ -5,6 +5,9 @@ uniform float uFlicker;        // pseudorandom value in [0,1), varying per frame
 uniform vec2 uResolution;      // render output size in pixels
 uniform float uPixelScale;     // render output pixels per 'CRT pixel' (whole number)
 uniform sampler2D uPrevRender; // result of previous render pass (to apply CRT effect to)
+uniform float uCRT;            // 1 to apply CRT effect, or 0 to pass previous render pass through unchanged
+uniform float uMono;           // 1 for monochrome screen, or 0 for colour screen
+uniform vec3 uPhosphor;        // phosphor colour of monochrome screen
 
 in vec2 vUV;
 out vec4 fragColor;
@@ -15,6 +18,8 @@ const float SCANLINE_HEIGHT = 2.0;
 const float SCANLINE_GAP = 1.0;
 
 const float BRIGHTNESS = 0.6;          // brightness of masked subpixels
+const float MASK_MEAN = (1.0 + 2.0 * BRIGHTNESS) / 3.0; // mean brightness through subpixel mask
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);         // weights of colour channels in luminance
 const float GAIN = 1.4;                // overall brightness boost, applied after masking to preserve its contrast
 const float SEPARATION_PIXELS = 2.5;
 const float FLICKER_MAGNITUDE = 0.08;
@@ -38,14 +43,20 @@ vec4 flicker(vec4 color) {
     return color;
 }
 
-// scanlines effect via RGB subpixel masking
+// colour of light emitted by phosphor (for monochrome screen) when struck as brightly as given colour
+vec3 phosphor(vec3 color) {
+    return uMono > 0.5 ? dot(color, LUMA) * uPhosphor : color;
+}
+
+// scanlines effect via RGB subpixel masking (except on monochrome screen, which has no mask)
 vec4 screenDoor(vec4 color) {
     vec2 pixelPos = floor(vUV * uResolution / uPixelScale) + 0.5; // center of 'CRT pixel' containing fragment
     float x = mod(pixelPos.x, SCANLINE_WIDTH) / SCANLINE_WIDTH;
     float y = mod(pixelPos.y, SCANLINE_HEIGHT + SCANLINE_GAP);
 
     vec2 bvector = vec2(BRIGHTNESS);
-    if (x < 0.33) color.gb *= bvector;
+    if (uMono > 0.5) color.rgb *= MASK_MEAN;
+    else if (x < 0.33) color.gb *= bvector;
     else if (x < 0.66) color.rb *= bvector;
     else color.rg *= bvector;
 
@@ -77,7 +88,15 @@ vec4 vignette(vec4 color) {
 }
 
 void main() {
-    vec4 color = screenDoor(separate());
-    color.rgb = color.rgb * GAIN + glow() * GLOW_STRENGTH;
+    if (uCRT < 0.5) {
+        fragColor = texture(uPrevRender, vUV);
+        return;
+    }
+
+    // monochrome screen has a single electron beam, so no colour separation
+    vec4 color = uMono > 0.5 ? texture(uPrevRender, vUV) : separate();
+    color.rgb = phosphor(color.rgb);
+    color = screenDoor(color);
+    color.rgb = color.rgb * GAIN + phosphor(glow()) * GLOW_STRENGTH;
     fragColor = vignette(flicker(color));
 }

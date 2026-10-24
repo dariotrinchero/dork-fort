@@ -14,7 +14,12 @@ export interface QRData {
     modules: Module[];  // coloured modules; all others are background
 }
 
+export interface Region {
+    group: string;   // label path prefix of SVG groups forming region, eg. "garden"
+    icon?: string[]; // label path prefixes of groups within region still shown while it is selected; all if omitted
+}
+
 export interface QRRendererOptions {
     bgBrightness?: number; // multiplier for background colour from SVG (0 for black); 1 if omitted
-    regions?: string[];    // label path prefixes of SVG groups forming each interactive region, eg. "garden"
+    regions?: Region[];    // interactive regions
 }

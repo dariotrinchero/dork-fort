@@ -2,12 +2,14 @@ import type { Dimensions } from "types/global";
 import type { TextRendererSizeSpec } from "types/textRenderer";
 
 import { createProgram, createQuadBuffer, createVertexArray } from "webglHelpers";
+import { crtUniforms } from "crt";
 import { warpUniforms } from "warp";
 
 import DESTINATIONS from "destinations";
 import QRMenu from "menu";
 import QRRenderer from "qrRenderer";
 import RenderPipeline from "renderPipeline";
+import Terminal from "terminal";
 import TextRenderer from "textRenderer";
 
 // QR code module data (baked from SVG at compile time)
@@ -21,15 +23,18 @@ import warpFrag from "shaders/warp.frag";
 // global constants
 const TEX_SCALE = 1.0; // global scale factor for intermediate render passes
 const MAX_TEX_DPR = 2; // cap on intermediate render pass pixels per CSS pixel, to limit cost on high-DPI phones
-const FONT_NAME = "DejaVuSansMono";
-const FONT_SIZE = 28; // in CSS pixels
-const MIN_FONT_SIZE = 14; // in CSS pixels; on screens too narrow for labels at this size, labels wrap instead
+const FONT_NAME = "DepartureMono";
+const FONT_SIZE = 33; // largest font size, in CSS pixels
+const FONT_CELL = 33; // font size (in CRT pixels) at which each pixel of font, drawn on an 11px grid, covers 3 × 3
+                      // CRT pixels, ie. one triad of subpixel mask & one scanline
 const MAX_FRAME_TIME = 0.1; // cap (in seconds) on animation time step, eg. after tab was in background
 
 window.onload = () => {
     // canvas & rendering context
     const canvas = document.querySelector("canvas");
     if (!canvas) throw new Error("Unable to locate canvas for CRT screen");
+    const input = document.querySelector<HTMLInputElement>("#prompt");
+    if (!input) throw new Error("Unable to locate input for prompt");
     const gl = canvas.getContext("webgl2", { alpha: false, antialias: false });
     if (!gl) throw new Error("WebGL2 is not supported");
 
@@ -73,28 +78,32 @@ window.onload = () => {
     const warpProgram = createProgram(gl, screenVert, warpFrag);
     const warpVAO = createVertexArray(gl, warpProgram, { aQuadVertPos: { buffer: fsQuad, itemSize: 2 } });
 
-    // render pipeline, QR code, & interactive menu
+    // render pipeline, QR code, interactive menu, & terminal
     const pipeline = new RenderPipeline(gl, texDims);
     const qrRenderer = new QRRenderer(gl, qrData, texDims, {
         bgBrightness: 0.8, // slightly darken background
-        regions: DESTINATIONS.map(({ group }) => group),
+        regions: DESTINATIONS,
     });
-    const menu = new QRMenu(canvas, qrRenderer, DESTINATIONS);
+    const menu = new QRMenu(canvas, qrRenderer, DESTINATIONS.length);
+    const terminal = new Terminal(canvas, input, menu);
 
-    // text renderer for menu labels becomes available once font loads (QR code renders in the meantime)
+    // text renderer for terminal becomes available once font loads (QR code renders in the meantime)
     let textRenderer: TextRenderer | undefined;
+    let crtScale = 1; // intermediate render pass pixels per CRT pixel, chosen along with font size (see textSize())
     const textSize = (): TextRendererSizeSpec => {
-        // shrink font on narrow screens (down to a minimum), so that labels fit on one line below QR code
+        // largest font size that is a whole multiple of FONT_CELL (in CRT pixels, which are scaled to suit), at most
+        // FONT_SIZE, & where possible small enough for suggested commands to fit on one line below QR code
         const [left, , right] = qrRenderer.contentRect();
-        const fitSize = TextRenderer.fitFontSize(FONT_NAME, right - left, menu.maxLineLength());
-        const [minSize, maxSize] = [MIN_FONT_SIZE, FONT_SIZE].map(size => Math.round(size * texScale)) as Dimensions;
-        return { fontSize: Math.max(minSize, Math.min(maxSize, fitSize)), resolution: texDims };
+        const fitSize = TextRenderer.fitFontSize(FONT_NAME, right - left, terminal.maxLineLength());
+        const maxScale = Math.max(1, Math.floor(FONT_SIZE * texScale / FONT_CELL));
+        crtScale = Math.max(1, Math.min(maxScale, Math.floor(fitSize / FONT_CELL)));
+        return { fontSize: FONT_CELL * crtScale, resolution: texDims };
     };
     TextRenderer.new(gl, FONT_NAME, textSize())
         .then(text => {
             text.resize(textSize()); // in case of resize while font was loading
             textRenderer = text;
-            menu.setTextRenderer(text);
+            terminal.setTextRenderer(text);
         })
         .catch((e: unknown) => { console.error("Unable to create text renderer:", e); });
 
@@ -109,7 +118,8 @@ window.onload = () => {
             qrRenderer.resize(texDims);
             textRenderer?.resize(textSize());
         }
-        menu.update(dt, time / 1000);
+        menu.update(dt);
+        terminal.update(dt, time / 1000);
 
         pipeline.runPasses([
             qrRenderer.renderPass(),
@@ -118,8 +128,9 @@ window.onload = () => {
                 composition: { mode: "series" },
                 program: crtProgram,
                 uniforms: {
+                    ...crtUniforms(),
                     uFlicker: { type: "1f", value: Math.random() },
-                    uPixelScale: { type: "1f", value: Math.max(1, Math.round(texScale)) },
+                    uPixelScale: { type: "1f", value: crtScale },
                     uResolution: { type: "2f", value: texDims },
                 },
                 vao: crtVAO,

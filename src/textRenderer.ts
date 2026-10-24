@@ -15,7 +15,7 @@ import glyphs from "assets/glyphs.json";
 type GlyphSet = (string | [number, number])[];
 const GLYPHS = glyphs as GlyphSet;
 
-const SCREEN_PADDING = 10; // minimum padding (in pixels) around text grid
+const SCREEN_PADDING = 10; // minimum padding (in pixels) between text & edges of output
 
 interface FontAtlas {
     atlas: WebGLTexture;       // texture with grid of pre-rendered characters
@@ -23,29 +23,32 @@ interface FontAtlas {
     atlasDims: Dimensions;     // dimensions of atlas
 }
 
-interface CharTile {
+// printed character, positioned in pixels
+interface Glyph {
     ch: string;
     color: RGB;
+    pos: Pos; // top-left corner, in pixels from top-left of output
 }
 
 export default class TextRenderer {
-    private textGrid: Map<string, CharTile> = new Map<string, CharTile>();
-    private cursorPos: Pos = [0, 0];
+    private glyphs: Glyph[] = []; // printed characters, at most enough to fill output (see allocateBuffers())
     private staleBuffers = true;
-    private instanceCount = 0; // number of character tiles within text grid
-    private bounds?: Rect; // region (in pixels) to which text grid is fitted, if not centred on whole output
+    private instanceCount = 0; // number of characters uploaded to GPU buffers
 
-    // portion of text grid in use, fitted to bounds (see fitBounds()), & position (in pixels) of its top-left corner
-    private gridDims: Dimensions = [0, 0];
-    private origin: Pos = [0, 0];
+    // region in which text is printed (see setBox()), columns & rows of characters fitting within it, & cursor
+    // position, in columns & rows from its top-left corner
+    private box: Rect = [0, 0, 0, 0];
+    private boxDims: Dimensions = [0, 0];
+    private cursorPos: Pos = [0, 0];
 
     private program: WebGLProgram;
     private vao: WebGLVertexArrayObject;
     private fontAtlas: FontAtlas;
 
     private static measureCtx: CanvasRenderingContext2D | null = null; // shared context for measuring text
+    private static segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
 
-    // buffers & their data arrays (data arrays are sized to fit full text grid; see allocateBuffers())
+    // buffers & their data arrays (data arrays are sized to fill output with text; see allocateBuffers())
     private screenPosData!: Float32Array;
     private atlasPosData!: Float32Array;
     private colorData!: Float32Array;
@@ -59,7 +62,6 @@ export default class TextRenderer {
         private size: TextRendererSize,
     ) {
         this.fontAtlas = TextRenderer.generateFontAtlas(gl, fontName, size);
-        this.fitBounds();
 
         // create buffers & allocate space for character data
         this.screenPosBuf = gl.createBuffer();
@@ -87,8 +89,8 @@ export default class TextRenderer {
     }
 
     /**
-     * Resize text renderer, regenerating font atlas if font size changed. Characters falling outside the new
-     * text grid are hidden (but kept, reappearing if the grid grows again).
+     * Resize text renderer, regenerating font atlas if font size changed. Clears all text, which must be printed
+     * again (as positions of characters depend on font size).
      * 
      * @param sizeSpec font size & output resolution
      */
@@ -104,13 +106,11 @@ export default class TextRenderer {
         if (this.size.gridDims[0] !== oldSize.gridDims[0] || this.size.gridDims[1] !== oldSize.gridDims[1]) {
             this.allocateBuffers();
         }
-
-        this.fitBounds();
-        this.staleBuffers = true;
+        this.clear();
     }
 
     /**
-     * (Re)allocate data arrays & GPU buffers large enough to hold every tile in text grid.
+     * (Re)allocate data arrays & GPU buffers large enough to fill output with text.
      */
     private allocateBuffers(): void {
         const maxCharCount = this.size.gridDims[0] * this.size.gridDims[1];
@@ -150,18 +150,7 @@ export default class TextRenderer {
      * @returns list of graphemes in given string
      */
     private static splitGraphemes(str: string): string[] {
-        const itr = new Intl.Segmenter("en", { granularity: 'grapheme' }).segment(str);
-        return Array.from(itr, ({ segment }) => segment);
-    }
-
-    /**
-     * Convert text grid key into grid coordinates.
-     * 
-     * @param key key of tile in text grid
-     * @returns grid coordinates of tile
-     */
-    private static parseKey(key: string): Pos {
-        return key.split(",").map(Number) as Pos;
+        return Array.from(this.segmenter.segment(str), ({ segment }) => segment);
     }
 
     /**
@@ -285,96 +274,80 @@ export default class TextRenderer {
     }
 
     /**
-     * Fit text grid to given region, with its top-left corner at the region's top-left corner, & text wrapping at
-     * the region's right edge (by default, the full grid is centred on the output).
-     * 
-     * @param bounds left, top, right, & bottom (in pixels from top-left of output) of region, or undefined to centre
+     * Get width & height of each character cell.
+     *
+     * @returns dimensions (in pixels) of character cell
      */
-    public setBounds(bounds?: Rect): void {
-        if (bounds?.every((b, i) => b === this.bounds?.[i]) ?? this.bounds === undefined) return;
-        this.bounds = bounds;
-        this.fitBounds();
-        this.staleBuffers = true;
+    public getCharDims(): Dimensions {
+        return this.size.charDims;
     }
 
     /**
-     * Compute portion of text grid in use & its position, from bounds (clipped to output, less SCREEN_PADDING) if
-     * set, or else the full grid centred on output, aligned to whole pixels. Characters falling outside the portion
-     * in use are hidden.
+     * Get number of columns & rows of characters fitting within given region (clipped to output, less
+     * SCREEN_PADDING).
+     *
+     * @param box left, top, right, & bottom (in pixels from top-left of output) of region
+     * @returns columns & rows fitting within region
      */
-    private fitBounds(): void {
-        const { charDims, gridDims, resolution } = this.size;
-        if (!this.bounds) {
-            this.gridDims = gridDims;
-            this.origin = [
-                Math.floor((resolution[0] - gridDims[0] * charDims[0]) / 2),
-                Math.floor((resolution[1] - gridDims[1] * charDims[1]) / 2),
-            ];
-            return;
-        }
-
-        const [left, top, right, bottom] = this.bounds;
-        const fit = (i: 0 | 1, start: number, end: number): number => Math.max(0, Math.min(gridDims[i],
-            Math.floor((Math.min(end, resolution[i] - SCREEN_PADDING) - start) / charDims[i])));
-        this.gridDims = [fit(0, left, right), fit(1, top, bottom)];
-        this.origin = [left, top];
+    public fit([left, top, right, bottom]: Rect): Dimensions {
+        const { charDims, resolution } = this.size;
+        const fit = (i: 0 | 1, start: number, end: number): number =>
+            Math.max(0, Math.floor((Math.min(end, resolution[i] - SCREEN_PADDING) - start) / charDims[i]));
+        return [fit(0, left, right), fit(1, top, bottom)];
     }
 
     /**
-     * Delete all character tiles, & reset cursor.
+     * Set region in which subsequent text is printed, moving cursor to its top-left corner. Text wraps at the
+     * region's right edge, & text beyond its bottom edge is discarded (see fit()).
+     *
+     * @param box left, top, right, & bottom (in pixels from top-left of output) of region
+     */
+    public setBox(box: Rect): void {
+        this.box = box;
+        this.boxDims = this.fit(box);
+        this.cursorPos = [0, 0];
+    }
+
+    /**
+     * Delete all printed text.
      */
     public clear(): void {
-        this.textGrid.clear();
+        this.glyphs = [];
         this.cursorPos = [0, 0];
         this.staleBuffers = true;
     }
 
     /**
-     * Check whether given grid coordinates lie within portion of text grid in use.
-     * 
-     * @param coords grid coordinates of character tile
-     * @returns whether tile lies within text grid
-     */
-    private inGrid([x, y]: Pos): boolean {
-        return x >= 0 && x < this.gridDims[0] && y >= 0 && y < this.gridDims[1];
-    }
-
-    /**
-     * Assign given character of given color to the tile with given coordinates, unless tile lies outside text grid
-     * or character is missing from font atlas.
-     * 
-     * @param coords grid coordinates of character tile
-     * @param ch character to assign
-     * @param color RGB color of character
-     */
-    private setChar(coords: Pos, ch: string, color: RGB): void {
-        if (!this.inGrid(coords) || !this.fontAtlas.charMap.has(ch)) return;
-        this.textGrid.set(`${coords[0].toFixed()},${coords[1].toFixed()}`, { ch, color });
-        this.staleBuffers = true;
-    }
-
-    /**
      * Print given text at cursor position, advancing cursor, & wrapping text at end of each row. Text beyond the
-     * last row is discarded.
+     * last row is discarded, as are characters missing from font atlas.
      * 
      * @param text text to print
      * @param color RGB color of text
      */
     public print(text: string, color: RGB = [1, 1, 1]): void {
+        const [charWidth, charHeight] = this.size.charDims;
+        const maxGlyphs = this.size.gridDims[0] * this.size.gridDims[1];
         for (const ch of TextRenderer.splitGraphemes(text)) {
-            if (ch === "\n" || this.cursorPos[0] >= this.gridDims[0]) { // wrap text
+            if (ch === "\n" || this.cursorPos[0] >= this.boxDims[0]) { // wrap text
                 this.cursorPos[0] = 0;
                 this.cursorPos[1]++;
             }
-            if (this.cursorPos[1] >= this.gridDims[1]) return; // out of lines
-            if (ch !== "\n") this.setChar([this.cursorPos[0]++, this.cursorPos[1]], ch, color);
+            if (this.cursorPos[1] >= this.boxDims[1]) return; // out of lines
+            if (ch === "\n") continue;
+
+            const [col, row] = this.cursorPos;
+            if (this.fontAtlas.charMap.has(ch) && this.glyphs.length < maxGlyphs) {
+                this.glyphs.push({ ch, color, pos: [this.box[0] + col * charWidth, this.box[1] + row * charHeight] });
+                this.staleBuffers = true;
+            }
+            this.cursorPos[0]++;
         }
     }
 
     /**
-     * Get render pass drawing text grid (as one instanced quad per character), refreshing GPU buffers if needed.
+     * Get render pass drawing text (as one instanced quad per character), refreshing GPU buffers if needed.
      * 
-     * @returns render pass drawing text grid
+     * @returns render pass drawing text
      */
     public renderPass(): RenderPass {
         if (this.staleBuffers) this.refreshBuffers();
@@ -395,33 +368,26 @@ export default class TextRenderer {
     }
 
     /**
-     * Write position, atlas location, & color of each character tile to GPU buffers.
+     * Write position, atlas location, & color of each character to GPU buffers.
      */
     private refreshBuffers(): void {
-        const { charDims } = this.size;
-        const [originX, originY] = this.origin;
-
-        // write character details to data arrays to send to GPU, skipping tiles hidden by resizing
-        let i = 0;
-        for (const [key, tile] of this.textGrid) {
-            const [gridX, gridY] = TextRenderer.parseKey(key);
-            if (!this.inGrid([gridX, gridY])) continue;
-            this.screenPosData.set([originX + gridX * charDims[0], originY + gridY * charDims[1]], i * 2);
-            this.atlasPosData.set(this.fontAtlas.charMap.get(tile.ch) ?? [0, 0], i * 2);
-            this.colorData.set(tile.color, i * 3);
-            i++;
-        }
+        this.glyphs.forEach(({ ch, color, pos }, i) => {
+            this.screenPosData.set(pos, i * 2);
+            this.atlasPosData.set(this.fontAtlas.charMap.get(ch) ?? [0, 0], i * 2);
+            this.colorData.set(color, i * 3);
+        });
 
         // upload only the portion of each array in use
+        const count = this.glyphs.length;
         ([
             [this.screenPosBuf, this.screenPosData, 2],
             [this.atlasPosBuf, this.atlasPosData, 2],
             [this.colorBuf, this.colorData, 3],
         ] as const).forEach(([buf, data, itemSize]) => {
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buf);
-            this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, data, 0, i * itemSize);
+            this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, data, 0, count * itemSize);
         });
-        this.instanceCount = i;
+        this.instanceCount = count;
         this.staleBuffers = false;
     }
 }

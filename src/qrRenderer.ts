@@ -12,6 +12,9 @@ import screenVert from "shaders/screen.vert";
 const QR_FILL = 0.8; // maximum fraction of shorter side of output covered by QR code
 const MAX_REGIONS = 8; // must match qr.frag
 const HIT_PADDING = 1; // padding (in modules) around hit boxes
+const UNSELECTED_DISMISS = 0.90; // fade of QR code into background when 'selected' without any region
+
+const OUTSIDE_ICON = 128; // added to tag of modules outside their region's icon; must match qr.frag
 
 type Bounds = Rect; // left, top, right, & bottom (exclusive), in modules
 
@@ -19,6 +22,15 @@ interface HitBox {
     region: number; // index of region
     bounds: Bounds;
 }
+
+/**
+ * Check whether label path of group matches given prefix.
+ *
+ * @param label label path of group, eg. "garden/tulip"
+ * @param prefix label path prefix, eg. "garden"
+ * @returns whether group lies within prefix
+ */
+const matches = (label: string, prefix: string): boolean => label === prefix || label.startsWith(`${prefix}/`);
 
 /**
  * Get bounding box of given modules.
@@ -52,9 +64,9 @@ export default class QRRenderer {
     private dismiss = 0;
     private slide = 0;
 
-    // bounding box of all coloured modules (ie. QR code without quiet zone), & of each region's modules, in modules
+    // bounding box of all coloured modules (ie. QR code without quiet zone), & of each region's icon, in modules
     private contentBounds: Bounds;
-    private regionBounds: (Bounds | undefined)[];
+    private iconBounds: (Bounds | undefined)[];
 
     constructor(
         private gl: WebGL2RenderingContext,
@@ -64,20 +76,27 @@ export default class QRRenderer {
     ) {
         if (regions.length > MAX_REGIONS) throw new Error(`QR code supports at most ${MAX_REGIONS.toFixed()} regions`);
 
-        // assign each group of modules to the first region whose label path prefix matches
-        const groupRegions = data.groups.map(path => {
-            const label = path.join("/");
-            return regions.findIndex(prefix => label === prefix || label.startsWith(`${prefix}/`));
+        // assign each group of modules to the first region whose label path prefix matches, & note whether it lies in
+        // that region's icon
+        const labels = data.groups.map(path => path.join("/"));
+        const groupRegions = labels.map(label => regions.findIndex(({ group }) => matches(label, group)));
+        const groupIcons = labels.map((label, i) =>
+            regions[groupRegions[i] ?? -1]?.icon?.some(prefix => matches(label, prefix)) ?? true);
+        regions.forEach(({ icon = [] }) => {
+            const missing = icon.find(prefix => !labels.some(label => matches(label, prefix)));
+            if (missing !== undefined) throw new Error(`No group in QR code matches icon "${missing}"`);
         });
 
         this.cellRegions = QRRenderer.resolveCellRegions(data, groupRegions);
         this.contentBounds = boundingBox(data.modules.map(([x, y]): Pos => [x, y]));
-        this.regionBounds = regions.map((_, region) => {
-            const cells = data.modules.filter(m => groupRegions[m[3]] === region).map(([x, y]): Pos => [x, y]);
+        this.iconBounds = regions.map((_, region) => {
+            const cells = data.modules
+                .filter(([, , , group]) => groupRegions[group] === region && groupIcons[group])
+                .map(([x, y]): Pos => [x, y]);
             return cells.length > 0 ? boundingBox(cells) : undefined;
         });
 
-        this.texture = QRRenderer.createModuleTexture(gl, data, groupRegions, bgBrightness);
+        this.texture = QRRenderer.createModuleTexture(gl, data, groupRegions, groupIcons, bgBrightness);
         this.program = createProgram(gl, screenVert, qrFrag);
         this.vao = createVertexArray(gl, this.program, { aQuadVertPos: { buffer: createQuadBuffer(gl), itemSize: 2 } });
         this.resize(resolution);
@@ -128,11 +147,13 @@ export default class QRRenderer {
 
     /**
      * Create texture with one texel per module (including quiet zone) giving its colour, with a tag in the alpha
-     * channel: 0 for background, 1 for modules in no region, & k + 2 for modules in region k.
+     * channel: 0 for background, 1 for modules in no region, & k + 2 for modules in region k, plus OUTSIDE_ICON
+     * for those outside its icon.
      *
      * @param gl WebGL rendering context
      * @param data module data of QR code
      * @param groupRegions index of region containing each group (-1 if none)
+     * @param groupIcons whether each group lies in its region's icon
      * @param bgBrightness multiplier for background colour from QR code data (0 for black)
      * @returns texture of QR code modules
      */
@@ -140,11 +161,14 @@ export default class QRRenderer {
         gl: WebGL2RenderingContext,
         { background, modules, size }: QRData,
         groupRegions: number[],
+        groupIcons: boolean[],
         bgBrightness: number
     ): WebGLTexture {
-        const texels = new Map(modules.map(([x, y, color, group]) =>
-            [y * size + x, [...parseHex(color), (groupRegions[group] ?? -1) + 2] as const]
-        ));
+        const tag = (group: number): number => {
+            const region = groupRegions[group] ?? -1;
+            return region + 2 + (region !== -1 && !groupIcons[group] ? OUTSIDE_ICON : 0);
+        };
+        const texels = new Map(modules.map(([x, y, color, group]) => [y * size + x, [...parseHex(color), tag(group)] as const]));
         const bgTexel = [...parseHex(background).map(c => Math.round(c * bgBrightness)), 0] as RGBA;
         return createTexture(gl, {
             colorFn: ([x, y]) => [...texels.get(y * size + x) ?? bgTexel],
@@ -197,31 +221,49 @@ export default class QRRenderer {
     }
 
     /**
-     * Get bounds of given region's modules on output, ignoring any slide of selected region.
+     * Get bounds of given region's icon (ie. modules still shown while it is selected) on output, ignoring any slide
+     * of selected region.
      *
      * @param region index of region
-     * @returns left, top, right, & bottom of region, in pixels from top-left of output (or undefined if empty)
+     * @returns left, top, right, & bottom of icon, in pixels from top-left of output (or undefined if empty)
      */
-    public regionRect(region: number): Rect | undefined {
-        const bounds = this.regionBounds[region];
+    public iconRect(region: number): Rect | undefined {
+        const bounds = this.iconBounds[region];
         return bounds && this.toPixels(bounds);
     }
 
     /**
+     * Convert UV coordinates to position on output.
+     *
+     * @param uv UV coordinates on output (with v = 0 at the bottom)
+     * @returns position, in pixels from top-left of output
+     */
+    public pixelAt([u, v]: Pos): Pos {
+        return [u * this.resolution[0], (1 - v) * this.resolution[1]];
+    }
+
+    /**
      * Find region at given position (see resolveCellRegions()). While a region is selected, only it can be found,
-     * at its slid position.
+     * near its slid icon.
      *
      * @param uv UV coordinates on output (with v = 0 at the bottom)
      * @returns index of region at given position (or undefined if none)
      */
-    public regionAt([u, v]: Pos): number | undefined {
+    public regionAt(uv: Pos): number | undefined {
         const { size } = this.data;
-        const x = (u * this.resolution[0] - this.origin[0]) / this.moduleSize;
-        const y = ((1 - v) * this.resolution[1] - this.origin[1] - this.slide) / this.moduleSize;
+        const [px, py] = this.pixelAt(uv);
+        const x = (px - this.origin[0]) / this.moduleSize;
+        const y = (py - this.origin[1] - this.slide) / this.moduleSize;
         if (x < 0 || y < 0 || x >= size || y >= size) return undefined;
 
         const region = this.cellRegions[Math.floor(y) * size + Math.floor(x)] ?? -1;
-        return region === -1 || (this.selected !== -1 && region !== this.selected) ? undefined : region;
+        if (region === -1) return undefined;
+        if (this.selected === -1) return region;
+
+        const [left, top, right, bottom] = this.iconBounds[this.selected] ?? [0, 0, 0, 0];
+        const nearIcon = x >= left - HIT_PADDING && x < right + HIT_PADDING && y >= top - HIT_PADDING
+            && y < bottom + HIT_PADDING;
+        return region === this.selected && nearIcon ? region : undefined;
     }
 
     /**
@@ -236,17 +278,17 @@ export default class QRRenderer {
     }
 
     /**
-     * Set selected region, which slides up until its top lines up with that of the QR code, while all other modules
-     * fade into the background.
+     * Set selected region, whose icon slides up until its top lines up with that of the QR code, while all other
+     * modules fade into the background. Without a region, the whole QR code fades partially.
      *
      * @param region index of region (or undefined if none)
      * @param progress progress of selection animation, in [0, 1]
      */
     public setSelection(region: number | undefined, progress: number): void {
-        const rect = region === undefined ? undefined : this.regionRect(region);
+        const rect = region === undefined ? undefined : this.iconRect(region);
         [this.selected, this.dismiss, this.slide] = region !== undefined && rect
             ? [region, progress, Math.round(progress * (this.contentRect()[1] - rect[1]))]
-            : [-1, 0, 0];
+            : [-1, progress * UNSELECTED_DISMISS, 0];
     }
 
     /**

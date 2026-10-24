@@ -6,6 +6,17 @@ const RADIUS = 0.5;
 const MAGNITUDE = 0.05;
 const CUTOFF = 0.3;
 
+let magnitude = MAGNITUDE; // 0 when warp is disabled, making it the identity
+
+/**
+ * Enable or disable warp.
+ *
+ * @param enabled whether to warp
+ */
+export const setWarp = (enabled: boolean): void => {
+    magnitude = enabled ? MAGNITUDE : 0;
+};
+
 /**
  * Map UV coordinates on screen to UV coordinates of the content displayed there, mirroring curvedMonitor() in
  * warp.frag.
@@ -16,7 +27,7 @@ const CUTOFF = 0.3;
 export const warpUV = ([u, v]: Pos): Pos => {
     const [x, y] = [u - 0.5, v - 0.5];
     const t = Math.hypot(x, y) / RADIUS;
-    const scale = (1 / CUTOFF - MAGNITUDE + MAGNITUDE * t ** 4) * CUTOFF;
+    const scale = (1 / CUTOFF - magnitude + magnitude * t ** 4) * CUTOFF;
     return [x * scale + 0.5, y * scale + 0.5];
 };
 
@@ -27,6 +38,6 @@ export const warpUV = ([u, v]: Pos): Pos => {
  */
 export const warpUniforms = (): Uniforms => ({
     uCutoff: { type: "1f", value: CUTOFF },
-    uMagnitude: { type: "1f", value: MAGNITUDE },
+    uMagnitude: { type: "1f", value: magnitude },
     uRadius: { type: "1f", value: RADIUS },
 });
