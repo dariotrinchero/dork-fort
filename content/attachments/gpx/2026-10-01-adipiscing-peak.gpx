@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="placeholder" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk><name>Adipiscing Peak (placeholder)</name><trkseg>
+    <trkpt lat="-33.9600" lon="18.4000"><ele>120</ele><time>2026-10-01T07:00:00Z</time></trkpt>
+    <trkpt lat="-33.9560" lon="18.4030"><ele>260</ele><time>2026-10-01T07:22:00Z</time></trkpt>
+    <trkpt lat="-33.9520" lon="18.4060"><ele>480</ele><time>2026-10-01T07:44:00Z</time></trkpt>
+    <trkpt lat="-33.9480" lon="18.4090"><ele>700</ele><time>2026-10-01T08:06:00Z</time></trkpt>
+    <trkpt lat="-33.9440" lon="18.4120"><ele>900</ele><time>2026-10-01T08:28:00Z</time></trkpt>
+    <trkpt lat="-33.9400" lon="18.4150"><ele>970</ele><time>2026-10-01T08:50:00Z</time></trkpt>
+    <trkpt lat="-33.9360" lon="18.4180"><ele>820</ele><time>2026-10-01T09:12:00Z</time></trkpt>
+    <trkpt lat="-33.9320" lon="18.4210"><ele>560</ele><time>2026-10-01T09:34:00Z</time></trkpt>
+    <trkpt lat="-33.9280" lon="18.4240"><ele>300</ele><time>2026-10-01T09:56:00Z</time></trkpt>
+    <trkpt lat="-33.9240" lon="18.4270"><ele>130</ele><time>2026-10-01T10:18:00Z</time></trkpt>
+  </trkseg></trk>
+</gpx>

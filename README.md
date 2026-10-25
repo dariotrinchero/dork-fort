@@ -35,6 +35,7 @@ webpage in the browser. Changes to the build scripts themselves require restarti
   behaviour follows from classes in their markup (eg. `.index` & `.filter` for a list filtered by
   `src/fuzzy.ts`), & `src/route.ts` keeps what is shown (eg. `#campfire/cookbook`) in the URL.
 - `src/campfire.ts` holds the contents of the campfire: its menu & windows (placeholders, for now).
+- `src/whoami.ts` holds the contents of whoami: a neofetch-style card beside the nametag.
 - `src/shell.ts` defines the commands: their syntax highlighting, completion, & what they do.
 - `src/destinations.ts` maps groups in the QR code SVG to the destinations they link to, with their icons, commands,
   aliases, & accent colours.

@@ -14,6 +14,7 @@ const PROMPT = ">> "; // prompt always shown before command
 const HINT = " type 'help' or tap QR code"; // shown after prompt until first interaction (cursor covers space)
 const TYPE_RATE = 40; // characters of suggestion typed per second
 const ERASE_RATE = 80; // characters of suggestion erased per second
+const OUTPUT_RATE = 160; // characters of output typed per second, when typed out (see typeOut())
 const CURSOR_BLINK = 0.5; // time (in seconds) for which cursor is alternately shown & hidden
 const WHEEL_ROWS = 3; // rows of output scrolled per mouse wheel step
 const MIN_HANG_COLS = 12; // minimum width of text beside hanging indent, below which wrapped text is not indented
@@ -35,10 +36,11 @@ interface OutputLine {
     aside: boolean;
 }
 
-// row of output, after wrapping
+// row of output, after wrapping, & line it was wrapped from
 interface Row {
     cells: Cell[];
     command?: string;
+    source: OutputLine;
 }
 
 // output of command
@@ -48,6 +50,7 @@ interface View {
     lines: OutputLine[];  // lines of output
     scroll: number;       // rows of (wrapped) output scrolled past
     closing: boolean;     // whether output is being hidden
+    typed?: number;       // characters of output typed so far, while typing it out (see typeOut())
 }
 
 // clickable row of output, as last drawn
@@ -109,14 +112,15 @@ const wrap = (cells: Cell[], cols: number, indent = 0): Cell[][] => {
  * @param cols width of each row, in characters
  * @returns rows of output
  */
-const toRows = (lines: OutputLine[], cols: number): Row[] => lines.flatMap(({ command, indent, line }) => {
+const toRows = (lines: OutputLine[], cols: number): Row[] => lines.flatMap(source => {
+    const { command, indent, line } = source;
     const rows = wrap(toCells(line), cols, indent);
-    if (command === undefined) return rows.map(cells => ({ cells }));
+    if (command === undefined) return rows.map(cells => ({ cells, source }));
     if (rows.length > LINK_ROWS) { // end last row kept with ellipsis, in place of its last character if it is full
         const last = rows[LINK_ROWS - 1] ?? [];
         rows.splice(LINK_ROWS - 1, Infinity, [...last.slice(0, cols - 1), { ch: "…", color: DIM }]);
     }
-    return rows.map(cells => ({ cells, command }));
+    return rows.map(cells => ({ cells, command, source }));
 });
 
 export default class Terminal implements Shell {
@@ -199,7 +203,11 @@ export default class Terminal implements Shell {
             else if (openWindowKey() !== key) {
                 openWindow(key, content, PLACES[place]?.accent ?? FG, {
                     close: () => { this.leaveWindow(); },
-                    link: hash => { goTo(hash.split("/")); },
+                    link: hash => { // links to items without windows yet do nothing
+                        const route = hash.split("/");
+                        const [target, entry] = [PLACES.findIndex(({ words: [word] }) => word === route[0]), route[1]];
+                        if (entry === undefined || (target !== -1 && windowOf(target, entry))) goTo(route);
+                    },
                 });
             }
         }
@@ -250,6 +258,10 @@ export default class Terminal implements Shell {
         // command slides back down onto prompt, which takes over showing it (as if suggested) once it lands
         const text = this.view.echo.map(({ text }) => text).join("");
         this.suggestion = { chars: text.length, text };
+    }
+
+    public typeOut(): void {
+        if (this.view) this.view.typed = 0;
     }
 
     public print(...segments: (Segment | string)[]): void {
@@ -390,6 +402,7 @@ export default class Terminal implements Shell {
         const { value } = this.input;
         const ghost = suggest(value, this.shown());
         if (value !== "" || this.menu.hovered() !== undefined) this.interacted = true;
+        if (this.view?.typed !== undefined) this.view.typed += OUTPUT_RATE * dt;
 
         // while typing, highlight destination named by command (with its suggested completion)
         this.menu.highlight(value === "" ? null : resolve(value + ghost));
@@ -416,6 +429,7 @@ export default class Terminal implements Shell {
         const key = [
             echoTop, left, paneBottom, promptTop, right, ...this.text.getCharDims(), value, caret, cursor, this.interacted,
             this.suggestion.text, Math.floor(this.suggestion.chars), this.view && this.version, this.view?.scroll, this.view?.closing, this.hoveredLink,
+            this.view?.typed === undefined ? "" : Math.floor(this.view.typed),
         ].join("|");
         if (key === this.shownKey) return;
         this.shownKey = key;
@@ -456,10 +470,9 @@ export default class Terminal implements Shell {
         this.links = [];
 
         const asideLines = this.view.lines.filter(line => line.aside);
-        const [asideCols, asideRows] = aside ? text.fit(aside) : [0, 0];
-        const asideFits = asideLines.length > 0 && asideCols >= MIN_ASIDE_COLS
-            && toRows(asideLines, asideCols).length <= asideRows;
-        if (aside && asideFits) this.drawRows(text, toRows(asideLines, asideCols), aside, asideCols);
+        const [asideCols, asideHeight] = aside ? text.fit(aside) : [0, 0];
+        const asideRows = toRows(asideLines, asideCols);
+        const asideFits = asideLines.length > 0 && asideCols >= MIN_ASIDE_COLS && asideRows.length <= asideHeight;
 
         const charHeight = text.getCharDims()[1];
         const outTop = echoTop + echo.length * charHeight;
@@ -468,6 +481,9 @@ export default class Terminal implements Shell {
         const inline = this.view.lines.flatMap((line, i, lines) =>
             line.aside && !lines[i + 1]?.aside ? [line, { aside: false, indent: 0, line: [] }] : [line]);
         const rows = toRows(asideFits ? this.view.lines.filter(line => !line.aside) : inline, cols);
+        if (this.typeRows(asideFits ? [...asideRows, ...rows] : rows)) this.view.typed = undefined;
+        if (aside && asideFits) this.drawRows(text, asideRows, aside, asideCols);
+
         const overflow = rows.length > visibleRows;
         this.pageRows = Math.max(0, overflow ? visibleRows - 1 : visibleRows); // when overflowing, last row shows status
         const maxScroll = Math.max(0, rows.length - this.pageRows);
@@ -480,6 +496,28 @@ export default class Terminal implements Shell {
             text.print(scroll < maxScroll ? `-- more (${percent.toFixed()}%) --` : "-- end --", DIM);
         }
         return outTop;
+    }
+
+    /**
+     * While typing out output, cut rows short to the characters typed so far, typing lines in the order printed
+     * (wherever they are drawn). Rows not yet fully typed aren't clickable.
+     *
+     * @param rows rows of output (modified in place)
+     * @returns whether all rows are fully typed
+     */
+    private typeRows(rows: Row[]): boolean {
+        if (this.view?.typed === undefined) return true;
+        let [chars, done] = [Math.floor(this.view.typed), true];
+        this.view.lines.forEach(line => {
+            rows.filter(({ source }) => source === line).forEach(row => {
+                const shown = Math.min(chars, row.cells.length);
+                if (shown < row.cells.length) {
+                    [row.cells, row.command, done] = [row.cells.slice(0, shown), undefined, false];
+                }
+                chars -= shown;
+            });
+        });
+        return done;
     }
 
     /**

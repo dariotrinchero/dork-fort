@@ -1,8 +1,10 @@
 import { execSync } from "child_process";
 import { copyFileSync, cpSync, existsSync, rmSync, mkdirSync } from "fs";
 import { readFile, writeFile } from "fs/promises";
+import { resolve } from "path";
 import { context, build } from "esbuild";
 import { glsl } from "esbuild-plugin-glsl";
+import { bakeContent } from "./bakeContent.js";
 import { bakeQR } from "./bakeQR.js";
 import { subsetToGlyphSet } from "./subsetFont.js";
 
@@ -28,6 +30,19 @@ const buildOptions = {
                     contents: JSON.stringify(bakeQR(await readFile(path, "utf8"))),
                     loader: "json",
                 }));
+            }
+        },
+        {
+            name: "bake-content",
+            setup(build) {
+                // imports of "content/<folder>" give frontmatter of notes in that folder of content vault, bundled
+                // as JSON (& rebuilt when notes are edited, added, or removed)
+                build.onResolve({ filter: /^content\/[\w-]+$/ }, ({ path }) => ({ namespace: "content", path }));
+                build.onLoad({ filter: /.*/, namespace: "content" }, async ({ path }) => {
+                    const dir = resolve(path);
+                    const { entries, files } = await bakeContent(dir);
+                    return { contents: JSON.stringify(entries), loader: "json", watchDirs: [ dir ], watchFiles: files };
+                });
             }
         },
         {

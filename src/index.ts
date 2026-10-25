@@ -31,7 +31,6 @@ const FONT_CELL = 33; // font size (in CRT pixels) at which each pixel of font, 
                       // CRT pixels, ie. one triad of subpixel mask & one scanline
 const BG_BRIGHTNESS = 0.8; // multiplier for background colour of QR code (slightly darkening it)
 const MAX_FRAME_TIME = 0.1; // cap (in seconds) on animation time step, eg. after tab was in background
-const PAUSE_DELAY = 0.5; // time (in seconds) after window opens, letting animations behind it settle, before pausing
 
 window.onload = () => {
     // canvas & rendering context
@@ -115,14 +114,14 @@ window.onload = () => {
 
     // animation loop
     let lastTime: number | undefined;
-    let windowTime = 0; // time (in seconds) for which a window has been open
+    let textDrawn = false; // whether last frame drawn included text, so that it can be kept while paused
     const render = (time: number): void => {
         const dt = Math.min(MAX_FRAME_TIME, (time - (lastTime ?? time)) / 1000);
         lastTime = time;
         requestAnimationFrame(render);
 
-        // while a window is open, pause rendering (canvas keeps its last frame) once text has loaded & animations
-        // behind window have settled, except to redraw at new size
+        // while a window is open, pause rendering at once (canvas keeps its last frame, & animations behind window
+        // resume once it closes), provided text has been drawn, except to redraw at new size
         const resized = syncSize();
         if (resized) {
             pipeline.resize(texDims);
@@ -130,8 +129,8 @@ window.onload = () => {
             textRenderer?.resize(textSize());
             setWindowMetrics();
         }
-        windowTime = openWindowKey() === undefined ? 0 : windowTime + dt;
-        if (windowTime > PAUSE_DELAY && textRenderer && !resized) return;
+        if (openWindowKey() !== undefined && textDrawn && !resized) return;
+        textDrawn = textRenderer !== undefined;
         menu.update(dt);
         terminal.update(dt, time / 1000);
 

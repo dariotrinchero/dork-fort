@@ -1,0 +1,93 @@
+filters:
+  and:
+    - file.inFolder("novels")
+formulas:
+  stars: 'if(rating.isEmpty(), "", "★".repeat(rating.floor()) + if(rating - rating.floor() == 0.25, "¼", if(rating - rating.floor() == 0.5, "½", if(rating - rating.floor() == 0.75, "¾", ""))))'
+properties:
+  formula.stars:
+    displayName: Rating
+views:
+  - type: table
+    name: Reading
+    filters:
+      and:
+        - status == "reading"
+    order:
+      - title
+      - author
+      - started
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: started
+        direction: DESC
+  - type: table
+    name: To read
+    filters:
+      and:
+        - status == "to-read"
+    order:
+      - title
+      - author
+      - started
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: shortlist
+        direction: DESC
+      - property: title
+        direction: ASC
+  - type: table
+    name: Read
+    filters:
+      and:
+        - status == "read"
+    order:
+      - title
+      - author
+      - started
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: finished
+        direction: DESC
+      - property: title
+        direction: ASC
+  - type: table
+    name: Paused
+    filters:
+      and:
+        - status == "paused"
+    order:
+      - title
+      - author
+      - started
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: title
+        direction: ASC
+  - type: table
+    name: DNF
+    filters:
+      and:
+        - status == "dnf"
+    order:
+      - title
+      - author
+      - started
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: title
+        direction: ASC

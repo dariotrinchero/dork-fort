@@ -1,0 +1,98 @@
+filters:
+  and:
+    - file.inFolder("films")
+formulas:
+  stars: 'if(rating.isEmpty(), "", "★".repeat(rating.floor()) + if(rating - rating.floor() == 0.25, "¼", if(rating - rating.floor() == 0.5, "½", if(rating - rating.floor() == 0.75, "¾", ""))))'
+properties:
+  formula.stars:
+    displayName: Rating
+views:
+  - type: table
+    name: Watching
+    filters:
+      and:
+        - status == "watching"
+    order:
+      - title
+      - kind
+      - year
+      - director
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: started
+        direction: DESC
+  - type: table
+    name: To watch
+    filters:
+      and:
+        - status == "to-watch"
+    order:
+      - title
+      - kind
+      - year
+      - director
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: shortlist
+        direction: DESC
+      - property: title
+        direction: ASC
+  - type: table
+    name: Watched
+    filters:
+      and:
+        - status == "watched"
+    order:
+      - title
+      - kind
+      - year
+      - director
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: finished
+        direction: DESC
+      - property: title
+        direction: ASC
+  - type: table
+    name: Paused
+    filters:
+      and:
+        - status == "paused"
+    order:
+      - title
+      - kind
+      - year
+      - director
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: title
+        direction: ASC
+  - type: table
+    name: DNF
+    filters:
+      and:
+        - status == "dnf"
+    order:
+      - title
+      - kind
+      - year
+      - director
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: title
+        direction: ASC

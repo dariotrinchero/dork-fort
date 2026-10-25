@@ -318,12 +318,53 @@ canvas {
     display: block;
 }
 
+/* tabs (see setupTabs() in src/window.ts), drawn as text: the selected one in brackets & accent colour, & the rest
+   dim; each panel's own heading is only for when tabs aren't shown (eg. without scripts) */
+.window-body .tabs:not([hidden]) {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: var(--line);
+}
+
+.tabs [role="tab"] {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--dim);
+    font: inherit;
+    text-shadow: inherit;
+    cursor: pointer;
+}
+
+.tabs [role="tab"]::before,
+.tabs [role="tab"]::after {
+    content: " ";
+    white-space: pre;
+}
+
+.tabs [aria-selected="true"] {
+    color: var(--accent);
+}
+
+.tabs [aria-selected="true"]::before {
+    content: "[";
+}
+
+.tabs [aria-selected="true"]::after {
+    content: "]";
+}
+
+.tabs:not([hidden]) ~ .tab-panel > h3:first-child {
+    display: none;
+}
+
 /* item hovered, or else item focused by keyboard (or entry of index selected), shown in inverse video, as in
    text-mode interfaces (& as on hovered rows of canvas output); window is "hovering" while pointer is on an item, &
    "keyboard" while focus was given by keyboard (see src/window.ts), so that only one is shown */
 .window.keyboard:not(.hovering) :is(.window-close:focus, .window-body a:focus, .checklist input:focus + span,
-    .index li.selected),
-.window.hovering :is(.window-close:hover, .window-body a:hover, .checklist label:hover span, .index li:hover) {
+    .index li.selected, .tabs [role="tab"]:focus),
+.window.hovering :is(.window-close:hover, .window-body a:hover, .checklist label:hover span, .index li:hover,
+    .tabs [role="tab"]:hover) {
     background: var(--accent);
     color: var(--inverse);
 }

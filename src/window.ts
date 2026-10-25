@@ -27,10 +27,19 @@ const NEAR_LINES = 2; // lines out of view within which arrow keys move focus to
 // (in body), & those highlighted on hovering
 const FOCUSABLE = "a[href], button, input, [tabindex]";
 const ITEMS = "a[href], input";
-const HOVERABLE = "a[href], button, .checklist label, .index li";
+const HOVERABLE = "a[href], button, .checklist label, .index li, [role=tab]";
 
 // open window, key identifying its contents, & listener handling keys while it is open
 let current: { backdrop: HTMLElement; key: string; onKey: (event: KeyboardEvent) => void } | undefined;
+
+/**
+ * Escape text for HTML (eg. for bodies of windows).
+ *
+ * @param text text
+ * @returns escaped text
+ */
+export const escapeHtml = (text: string): string =>
+    text.replace(/[&<>"]/g, ch => ({ "\"": "&quot;", "&": "&amp;", "<": "&lt;", ">": "&gt;" })[ch] ?? ch);
 
 /**
  * Format colour for CSS.
@@ -111,42 +120,82 @@ const pointerMoved = (event: PointerEvent): boolean =>
     event.pointerType !== "touch" && (event.movementX !== 0 || event.movementY !== 0);
 
 /**
- * Filter index by fuzzy-matching query (see fuzzyMatch()) against titles of entries, sorting matches best first
- * (& otherwise in original order), & marking matched characters.
+ * Split text into characters, wrapping those matched (see fuzzyMatch()) in spans marking them.
  *
- * @param list index, whose entries each have a data-title & a link
+ * @param text text
+ * @param offset index (in text matched) of start of text
+ * @param indices indices of matched characters, in text matched (if any)
+ * @returns characters & spans
+ */
+const marked = (text: string, offset: number, indices?: Set<number>): (Node | string)[] => {
+    const runs: { matched: boolean; text: string }[] = []; // runs of characters alike matched (or not)
+    Array.from(text).forEach((ch, i) => {
+        const matched = indices?.has(offset + i) ?? false;
+        const last = runs.at(-1);
+        if (last?.matched === matched) last.text += ch;
+        else runs.push({ matched, text: ch });
+    });
+    return runs.map(({ matched, text: run }) => {
+        if (!matched) return run;
+        const span = document.createElement("span");
+        span.className = "match";
+        span.textContent = run;
+        return span;
+    });
+};
+
+// matched characters marked in each entry of index (see filterIndex()), as a key, so that entries whose marks are
+// unchanged are left alone
+const marksOf = new WeakMap<HTMLElement, string>();
+
+/**
+ * Filter index by fuzzy-matching query (see fuzzyMatch()) against entries (their titles, & then bylines, if any),
+ * sorting matches best first (& otherwise in original order), & marking matched characters. Only what changes is
+ * touched (eg. marks of entries shown, & entries out of place), as each change costs layout & paint (& work by
+ * anything observing the page, eg. password managers).
+ *
+ * @param list index, whose entries each have a data-title, data-order, & link (& maybe a data-byline, & a .byline
+ *             showing it)
  * @param query query
  */
 const filterIndex = (list: Element, query: string): void => {
-    const items = [...list.querySelectorAll<HTMLElement>("li")];
-    items.map((item, order) => ({ item, match: fuzzyMatch(query, item.dataset.title ?? ""), order }))
-        .sort((a, b) => (b.match?.score ?? -1) - (a.match?.score ?? -1) || a.order - b.order)
-        .forEach(({ item, match }) => {
-            item.hidden = !match;
-            const title = item.dataset.title ?? "";
-            item.querySelector("a")?.replaceChildren(...Array.from(title, (ch, i) => {
-                if (!match?.indices.has(i)) return ch;
-                const span = document.createElement("span");
-                span.className = "match";
-                span.textContent = ch;
-                return span;
-            }));
-            list.append(item); // in sorted order
-        });
+    const sorted = [...list.querySelectorAll<HTMLElement>("li")].map(item => {
+        const { byline = "", order = "", title = "" } = item.dataset;
+        const match = fuzzyMatch(query, byline ? `${title}\n${byline}` : title);
+        if (item.hidden !== !match) item.hidden = !match;
+        const marks = [...match?.indices ?? []].sort((a, b) => a - b).join(",");
+        if (match && (marksOf.get(item) ?? "") !== marks) { // entries hidden are marked once shown again
+            marksOf.set(item, marks);
+            item.querySelector("a")?.replaceChildren(...marked(title, 0, match.indices));
+            item.querySelector(".byline")?.replaceChildren(...marked(byline, title.length + 1, match.indices));
+        }
+        return { item, order: Number(order), score: match?.score ?? -1 };
+    }).sort((a, b) => b.score - a.score || a.order - b.order);
+
+    // move entries out of place into sorted order (each place before i being settled, entry due at i lies after it)
+    sorted.forEach(({ item }, i) => {
+        const here = list.children[i];
+        if (here !== item) list.insertBefore(item, here ?? null);
+    });
 };
 
 /**
- * Add behaviour to index of entries (eg. of recipes) in body of window, if any: typing in filter box above it (if
- * any) filters it (see filterIndex()), & the entry focused (eg. by tab or arrow keys) is selected, as is the best
- * match while filter box is focused & not empty, which enter then opens. Selected entry is shown in inverse video
- * (while keyboard is in use; see openWindow()).
+ * Add behaviour to indexes of entries (eg. of recipes) in body of window, if any: typing in filter box (if any)
+ * filters them (see filterIndex()), except those marked "pinned", & the entry focused (eg. by tab or arrow keys) is
+ * selected, as is the best match in view while filter box is focused & not empty, which enter then opens. Selected
+ * entry is shown in inverse video (while keyboard is in use; see openWindow()). Filtering happens at most once per
+ * frame, however fast typing is, after which body gets a "filtered" event.
  *
  * @param body body of window
+ * @returns function selecting best match in view anew (eg. once others come into view), while filter box is focused
  */
-const setupIndex = (body: HTMLElement): void => {
-    const list = body.querySelector<HTMLElement>(".index");
-    if (!list) return;
+const setupIndex = (body: HTMLElement): (() => void) => {
+    const lists = [...body.querySelectorAll<HTMLElement>(".index")];
+    const filtered = lists.filter(list => !list.classList.contains("pinned"));
     const filter = body.querySelector<HTMLInputElement>(".filter input");
+    filtered.forEach(list => {
+        list.querySelectorAll<HTMLElement>("li").forEach((item, i) => { item.dataset.order = i.toString(); });
+    });
 
     let selected: HTMLElement | undefined;
     const select = (entry?: HTMLElement | null): void => {
@@ -154,21 +203,89 @@ const setupIndex = (body: HTMLElement): void => {
         selected = entry ?? undefined;
         selected?.classList.add("selected");
     };
+    const reselect = (): void => {
+        if (!filter || document.activeElement !== filter) return;
+        select(filter.value.trim()
+            ? filtered.flatMap(list => [...list.querySelectorAll<HTMLElement>("li")])
+                .find(item => !item.closest("[hidden]"))
+            : undefined);
+    };
 
-    list.addEventListener("focusin", e => {
-        select(e.target instanceof Element ? e.target.closest<HTMLElement>("li") : undefined);
+    lists.forEach(list => {
+        list.addEventListener("focusin", e => {
+            select(e.target instanceof Element ? e.target.closest<HTMLElement>("li") : undefined);
+        });
+        list.addEventListener("focusout", e => {
+            if (!(e.relatedTarget instanceof Node && list.contains(e.relatedTarget))) select(undefined);
+        });
     });
-    list.addEventListener("focusout", e => {
-        if (!(e.relatedTarget instanceof Node && list.contains(e.relatedTarget))) select(undefined);
-    });
-    if (!filter) return;
+    if (!filter) return reselect;
     filter.addEventListener("focus", () => { select(undefined); });
     filter.addEventListener("blur", () => { select(undefined); });
+    let pending = false; // whether filtering awaits next frame
+    const update = (): void => {
+        pending = false;
+        filtered.forEach(list => { filterIndex(list, filter.value); });
+        reselect();
+        body.dispatchEvent(new Event("filtered"));
+    };
     filter.addEventListener("input", () => {
-        filterIndex(list, filter.value);
-        select(filter.value.trim() ? list.querySelector<HTMLElement>("li:not([hidden])") : undefined);
+        if (!pending) requestAnimationFrame(() => { if (pending) update(); });
+        pending = true;
     });
-    filter.addEventListener("keydown", e => { if (e.key === "Enter") selected?.querySelector("a")?.click(); });
+    filter.addEventListener("keydown", e => {
+        if (e.key !== "Enter") return;
+        if (pending) update(); // so that enter opens best match for all that was typed
+        selected?.querySelector("a")?.click();
+    });
+    return reselect;
+};
+
+/**
+ * Add behaviour to tabs in body of window, if any: a tab list (hidden in markup, so that without scripts every
+ * panel shows, under its own heading) whose tabs each show their panel (& hide the others) when clicked, or when
+ * stepped to (eg. by arrow keys; see openWindow()). Tabs' counts (if any) follow how many entries of their panels
+ * match filter box (if any; see setupIndex()).
+ *
+ * @param body body of window
+ * @param reselect function selecting best match in view anew (see setupIndex())
+ * @returns function stepping to next or previous tab, wrapping around (or undefined if there are no tabs)
+ */
+const setupTabs = (body: HTMLElement, reselect: () => void): ((step: -1 | 1) => void) | undefined => {
+    const tablist = body.querySelector<HTMLElement>("[role=tablist]");
+    const tabs = [...body.querySelectorAll<HTMLElement>("[role=tablist] [role=tab]")];
+    if (!tablist || tabs.length === 0) return undefined;
+    const panelOf = (tab?: Element): HTMLElement | null =>
+        body.querySelector(`[id="${tab?.getAttribute("aria-controls") ?? ""}"]`);
+
+    // focus follows tab within tab list, & moves to new panel from panel hidden
+    let current = Math.max(0, tabs.findIndex(tab => tab.getAttribute("aria-selected") === "true"));
+    const show = (index: number): void => {
+        current = index;
+        tabs.forEach((tab, i) => {
+            tab.setAttribute("aria-selected", (i === index).toString());
+            const panel = panelOf(tab);
+            if (panel) panel.hidden = i !== index;
+        });
+        const [tab, focused] = [tabs[index], document.activeElement];
+        if (focused instanceof HTMLElement && tablist.contains(focused)) tab?.focus();
+        else if (focused instanceof HTMLElement && focused.closest("[hidden]")) {
+            (panelOf(tab)?.querySelector<HTMLElement>("a[href]") ?? tab)?.focus();
+        }
+        reselect();
+    };
+
+    tablist.hidden = false;
+    tabs.forEach((tab, i) => { tab.addEventListener("click", () => { show(i); }); });
+    body.addEventListener("filtered", () => {
+        tabs.forEach(tab => {
+            const count = tab.querySelector(".count");
+            const matches = (panelOf(tab)?.querySelectorAll(".index li:not([hidden])").length ?? 0).toString();
+            if (count && count.textContent !== matches) count.textContent = matches;
+        });
+    });
+    show(current);
+    return step => { show((current + step + tabs.length) % tabs.length); };
 };
 
 /**
@@ -240,8 +357,11 @@ export const openWindow = (key: string, { body: html, title }: WindowContent, ac
     const heading = backdrop.querySelector("h1");
     const status = backdrop.querySelector("footer span");
     if (!win || !body || !close || !heading || !status) return;
+    const reselect = setupIndex(body);
+    const step = setupTabs(body, reselect);
     heading.textContent = title;
-    status.textContent = `esc close · ↑↓ ${body.querySelector(ITEMS) ? "select" : "scroll"}`;
+    const arrows = `↑↓ ${body.querySelector(ITEMS) ? "select" : "scroll"}`;
+    status.textContent = ["esc close", ...step ? ["←→ tab"] : [], arrows].join(" · ");
     win.style.setProperty("--accent", cssColor(accent));
 
     backdrop.addEventListener("pointerdown", e => { if (e.target === backdrop) requests.close(); });
@@ -261,15 +381,21 @@ export const openWindow = (key: string, { body: html, title }: WindowContent, ac
     win.addEventListener("pointerleave", () => { setHovering(false); });
     win.addEventListener("pointerdown", () => { win.classList.remove("keyboard"); });
 
-    // handle keys wherever focus is (even if it escapes window, eg. by clicking): escape closes window, tab cycles
-    // through what can be focused, arrow keys move focus (see moveFocus()), & typing goes to filter box, if any
+    // handle keys wherever focus is (even if it escapes window, eg. by clicking): escape clears filter box (if any,
+    // & not empty) or else closes window, tab cycles through what can be focused, up & down arrow keys move focus
+    // (see moveFocus()), left & right arrow keys step through tabs (if any, unless moving caret through text in
+    // filter box), & typing goes to filter box, if any
     const filter = body.querySelector<HTMLInputElement>(".filter input");
     const onKey = (e: KeyboardEvent): void => {
         win.classList.add("keyboard");
         setHovering(false);
         if (e.key === "Escape") {
             e.stopPropagation(); // as window may close at once, before terminal would see key (& go back further)
-            requests.close();
+            e.preventDefault(); // eg. search box clearing itself too
+            if (filter && filter.value !== "") {
+                filter.value = "";
+                filter.dispatchEvent(new Event("input")); // filtering anew (see setupIndex())
+            } else requests.close();
         } else if (e.key === "Tab") {
             e.preventDefault();
             const focusable = [...win.querySelectorAll<HTMLElement>(FOCUSABLE)]
@@ -280,6 +406,10 @@ export const openWindow = (key: string, { body: html, title }: WindowContent, ac
         } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
             if (moveFocus(body, e.key === "ArrowDown")) e.preventDefault();
             else if (!body.contains(document.activeElement)) body.focus(); // so that key scrolls body
+        } else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && step
+            && !(filter && document.activeElement === filter && filter.value !== "")) {
+            e.preventDefault();
+            step(e.key === "ArrowLeft" ? -1 : 1);
         } else if (filter && document.activeElement !== filter && (e.key.length === 1 || e.key === "Backspace")
             && !e.ctrlKey && !e.metaKey && !e.altKey) {
             filter.focus(); // before default action of key, which then types into filter box
@@ -293,7 +423,6 @@ export const openWindow = (key: string, { body: html, title }: WindowContent, ac
     // one to other), which it then does at once
     if (!replacing) backdrop.getBoundingClientRect();
     backdrop.classList.add("open");
-    setupIndex(body);
 
     // focus filter box (if any) or else body, once event opening window (eg. a click) is done, as its default action
     // may otherwise take focus away

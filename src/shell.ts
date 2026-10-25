@@ -4,6 +4,8 @@ import type { WindowContent } from "window";
 import { DIM, ERROR, FG, accent } from "palette";
 import { SCREEN_MODES, setScreenMode } from "crt";
 import { campfireIntro, campfireMenu, campfireWindow } from "campfire";
+import { moonAndStarsIntro, moonAndStarsMenu, moonAndStarsWindow } from "moonAndStars";
+import { whoamiAside } from "whoami";
 
 import DESTINATIONS from "destinations";
 
@@ -17,21 +19,24 @@ export interface MenuEntry {
 // section of menu shown by place
 export interface MenuSection {
     entries: MenuEntry[];
-    heading?: Line;  // printed above entries
+    heading?: Line;  // printed above entries, with a blank line between
     aside?: boolean; // whether section goes beside icon of place, where there is room (see Shell.aside)
 }
 
-// what a place shows: a description, a menu (given its accent colour), & windows opened from it
+// what a place shows (each part given its accent colour, & each optional): lines beside its icon (where there is
+// room; see Shell.aside), a description, a menu, & windows opened from it
 interface PlaceContents {
-    intro: (accent: RGB) => Line[];
-    menu: (accent: RGB) => MenuSection[];
-    window: (name: string) => WindowContent | undefined;
+    aside?: (accent: RGB) => Line[];
+    intro?: (accent: RGB) => Line[];
+    menu?: (accent: RGB) => MenuSection[];
+    window?: (name: string) => WindowContent | undefined;
 }
 
 // terminal running commands
 export interface Shell {
     show: (place?: number) => void; // show output, below given place (or over faded QR code), replacing any shown
     back: () => void;               // hide output, returning to menu
+    typeOut: () => void;            // type out output shown, one character at a time, rather than showing it at once
     print: (...segments: (Segment | string)[]) => void; // print line of output; strings take default colour
     // print line in two columns: the left one padded to given width, & the right one wrapping within its own
     columns: (width: number, left: (Segment | string)[], right: (Segment | string)[]) => void;
@@ -61,9 +66,11 @@ export const PLACES: Place[] = DESTINATIONS.map(({ aliases = [], color, name }) 
     return { accent: accent(color), phrase: name.replace(/[{}]/g, ""), words: [target, ...aliases] };
 });
 
-// contents of places (so far, only campfire), keyed by name of place
+// contents of places (so far, campfire, moon & stars, & whoami), keyed by name of place
 const CONTENTS = new Map<string, PlaceContents>([
     ["campfire", { intro: campfireIntro, menu: campfireMenu, window: campfireWindow }],
+    ["moon-and-stars", { intro: moonAndStarsIntro, menu: moonAndStarsMenu, window: moonAndStarsWindow }],
+    ["whoami", { aside: whoamiAside }],
 ]);
 
 /**
@@ -82,7 +89,7 @@ const contentsOf = (place?: number): PlaceContents | undefined =>
  * @returns entries of menu (empty if none)
  */
 export const menuOf = (place?: number): (MenuEntry & { key: string })[] =>
-    (contentsOf(place)?.menu(PLACES[place ?? -1]?.accent ?? FG) ?? [])
+    (contentsOf(place)?.menu?.(PLACES[place ?? -1]?.accent ?? FG) ?? [])
         .flatMap(({ entries }) => entries)
         .map((entry, i) => ({ ...entry, key: (i + 1).toString() })); // hotkeys in reading order (digits, which never begin a command)
 
@@ -93,7 +100,8 @@ export const menuOf = (place?: number): (MenuEntry & { key: string })[] =>
  * @param name name of item to open, eg. "cookbook"
  * @returns contents of window (or undefined if there is no such item)
  */
-export const windowOf = (place: number, name: string): WindowContent | undefined => contentsOf(place)?.window(name);
+export const windowOf = (place: number, name: string): WindowContent | undefined =>
+    contentsOf(place)?.window?.(name);
 
 // commands listed by help, besides places
 const HELP = [
@@ -229,11 +237,12 @@ export const execute = (sh: Shell, line: string): void => {
     const [name = "", ...args] = line.trim().split(/\s+/);
     if (name === "") return;
 
-    // entries of menu of place shown open windows (taking precedence over names of places)
+    // entries of menu of place shown open windows (taking precedence over names of places); entries without one
+    // yet do nothing
     const shown = sh.shown();
     const entry = args.length === 0 ? menuOf(shown).find(({ name: entryName }) => entryName === name) : undefined;
     if (shown !== undefined && entry) {
-        sh.go([PLACES[shown]?.words[0] ?? "", entry.name]);
+        if (windowOf(shown, entry.name)) sh.go([PLACES[shown]?.words[0] ?? "", entry.name]);
         return;
     }
 
@@ -241,6 +250,7 @@ export const execute = (sh: Shell, line: string): void => {
     const place = index === undefined ? undefined : PLACES[index];
     if (index !== undefined && place) {
         sh.show(index);
+        sh.typeOut();
         const contents = contentsOf(index);
         if (!contents) {
             sh.print({ color: place.accent, text: place.words[0] ?? "" }, ": under construction, coming soon!");
@@ -248,12 +258,17 @@ export const execute = (sh: Shell, line: string): void => {
             return;
         }
 
-        // description & menu, whose entries open windows (by clicking, hotkey, or name)
-        contents.intro(place.accent).forEach(segments => { sh.print(...segments); });
+        // lines beside icon, description, & menu, whose entries open windows (by clicking, hotkey, or name)
+        const lines = contents.aside?.(place.accent) ?? [];
+        if (lines.length > 0) sh.aside(() => { lines.forEach(segments => { sh.print(...segments); }); });
+        contents.intro?.(place.accent).forEach(segments => { sh.print(...segments); });
         let key = 0;
-        contents.menu(place.accent).forEach(({ aside = false, entries, heading }) => {
+        (contents.menu?.(place.accent) ?? []).forEach(({ aside = false, entries, heading }) => {
             const printSection = (): void => {
-                if (heading) sh.print(...heading);
+                if (heading) {
+                    sh.print(...heading);
+                    sh.print();
+                }
                 entries.forEach(({ label, marker, name: entryName }) => {
                     const prefix = [{ color: DIM, text: `[${(++key).toString()}] ` }, ...marker ? [marker] : []];
                     const indent = prefix.reduce((sum, { text }) => sum + text.length, 0);

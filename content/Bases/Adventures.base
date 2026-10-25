@@ -1,0 +1,18 @@
+filters:
+  and:
+    - file.inFolder("adventures")
+views:
+  - type: table
+    name: Logbook
+    order:
+      - date
+      - activity
+      - title
+      - place
+      - grade
+      - distance
+      - time
+      - ascent
+    sort:
+      - property: date
+        direction: DESC

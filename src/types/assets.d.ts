@@ -5,3 +5,23 @@ declare module "*.svg" { // QR code SVGs are baked into module data at compile t
 	const value: QRData;
 	export default value;
 }
+
+// frontmatter of notes in folders of content vault is baked into module data at compile time
+
+declare module "content/novels" {
+	import type { Novel } from "types/content";
+	const value: Novel[];
+	export default value;
+}
+
+declare module "content/films" {
+	import type { Film } from "types/content";
+	const value: Film[];
+	export default value;
+}
+
+declare module "content/pages" {
+	import type { Page } from "types/content";
+	const value: Page[];
+	export default value;
+}

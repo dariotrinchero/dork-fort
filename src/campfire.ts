@@ -3,6 +3,7 @@ import type { MenuSection } from "shell";
 import type { WindowContent } from "window";
 
 import { DIM, FG } from "palette";
+import { escapeHtml } from "window";
 
 // placeholder recipes (for proof of concept), the first few of which are favourites
 const RECIPES = [
@@ -19,15 +20,6 @@ const FAVOURITES = 3;
  * @returns name
  */
 const slug = (title: string): string => title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
-/**
- * Escape text for HTML.
- *
- * @param text text
- * @returns escaped text
- */
-const escape = (text: string): string =>
-    text.replace(/[&<>"]/g, ch => ({ "\"": "&quot;", "&": "&amp;", "<": "&lt;", ">": "&gt;" })[ch] ?? ch);
 
 /**
  * Get menu of campfire: favourite recipes (starred, beside icon where there is room), then cookbook & journal.
@@ -53,12 +45,10 @@ export const campfireMenu = (accent: RGB): MenuSection[] => [
 /**
  * Get lines describing campfire, shown above its menu.
  *
- * @param accent accent colour of campfire
  * @returns lines of description
  */
-export const campfireIntro = (accent: RGB): Line[] => [
-    [{ color: DIM, text: "touch: " }, { color: accent, text: "campfire" }, { color: DIM, text: ": too hot to touch. sit down instead?" }],
-    [{ color: FG, text: "cooking & recipes, collected around the fire." }],
+export const campfireIntro = (): Line[] => [
+    [{ color: DIM, text: "touch: mmmm, flambe!" }],
     [],
 ];
 
@@ -69,7 +59,7 @@ export const campfireIntro = (accent: RGB): Line[] => [
  * @returns HTML of body
  */
 const recipeBody = (title: string): string => `
-    <h2>${escape(title)}</h2>
+    <h2>${escapeHtml(title)}</h2>
     <p class="dim">1h · serves 4 · vegan · <span class="accent">#lorem #ipsum</span></p>
     <h3><span class="dim">## </span>Ingredients</h3>
     <ul class="checklist">
@@ -99,8 +89,9 @@ const COOKBOOK_BODY = `
     <label class="filter"><span class="dim">grep</span><input type="search" placeholder=""
         aria-label="Find recipes" autocomplete="off" spellcheck="false" /></label>
     <ul class="index">
-        ${RECIPES.map((title, i) => `<li data-title="${escape(title)}"><a href="#campfire/${slug(title)}">${
-            escape(title)}</a><span class="dim">${i % 2 ? "45min" : "1h"} · ${i % 3 ? "vegan" : "vegetarian"}</span></li>`)
+        ${RECIPES.map((title, i) => `<li data-title="${escapeHtml(title)}"><a href="#campfire/${slug(title)}">${
+            escapeHtml(title)}</a><span class="dim">${i % 2 ? "45min" : "1h"} · ${
+            i % 3 ? "vegan" : "vegetarian"}</span></li>`)
             .join("")}
     </ul>
     <p class="dim no-matches">no matches</p>`;
@@ -110,7 +101,7 @@ const JOURNAL_BODY = `
     <h2>Journal</h2>
     ${RECIPES.slice(0, 4).map((title, i) => `
         <h3><span class="dim">${(10 - i).toString().padStart(2, "0")}-10-2026 · </span><a
-            href="#campfire/${slug(title)}">${escape(title)}</a></h3>
+            href="#campfire/${slug(title)}">${escapeHtml(title)}</a></h3>
         <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit; sed do eiusmod tempor incididunt ut labore.</p>`)
         .join("")}`;
 

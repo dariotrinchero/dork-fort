@@ -10,7 +10,7 @@ const DESTINATIONS: Destination[] = [
 	},
     { // traveller
 		aliases: ["travel", "adventure"],
-		color: "739326",
+		color: "649536",
 		group: "hooded-rat",
 		name: "cat {traveller}"
 	},
@@ -28,7 +28,7 @@ const DESTINATIONS: Destination[] = [
 	},
     { // moon & stars
 		aliases: ["journal", "lists"],
-		color: "f0cc66",
+		color: "3a6ca2",
 		group: "moon",
 		name: "sort {moon-and-stars}"
 	},
@@ -41,7 +41,7 @@ const DESTINATIONS: Destination[] = [
     },
     { //garden
 		aliases: ["log", "critters"],
-		color: "c0708c",
+		color: "a54e5c",
 		group: "garden",
 		name: "ls {garden}"
 	},
