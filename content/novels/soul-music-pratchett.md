@@ -10,7 +10,7 @@ cover:
 status: read
 started:
 finished:
-rating:
+rating: 3.75
 owned: false
 shortlist: false
 recommended-by:

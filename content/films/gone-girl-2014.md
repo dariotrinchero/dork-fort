@@ -9,7 +9,7 @@ poster:
 status: watched
 started:
 finished:
-rating:
+rating: 3.75
 shortlist: false
 recommended-by:
 tags: [mystery, thriller]

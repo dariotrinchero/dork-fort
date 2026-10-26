@@ -9,7 +9,7 @@ poster:
 status: watched
 started:
 finished:
-rating:
+rating: 4
 shortlist: false
 recommended-by:
 tags: [drama]

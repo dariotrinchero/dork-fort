@@ -1,6 +1,6 @@
 ---
 title: "Steins;Gate"
-aliases: ["Steins;Gate"]
+aliases: [Steins Gate]
 kind: anime
 year: 2011
 director: Hiroshi Hamasaki & Takuya Satō

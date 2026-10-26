@@ -10,7 +10,7 @@ cover:
 status: read
 started:
 finished: "2023"
-rating: 4.75
+rating: 4
 owned: true
 shortlist: false
 recommended-by:

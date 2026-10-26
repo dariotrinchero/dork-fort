@@ -10,7 +10,7 @@ cover:
 status: read
 started: 2025-09-18
 finished: 2025-12-03
-rating:
+rating: 4.5
 owned: false
 shortlist: false
 recommended-by:

@@ -6,7 +6,7 @@ year: 2013
 director: Tetsurō Araki
 tmdb:
 poster:
-status: to-watch
+status: paused
 started:
 finished:
 rating:

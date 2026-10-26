@@ -6,9 +6,9 @@ year: 1985
 director: Martin Scorsese
 tmdb:
 poster:
-status: to-watch
+status: watched
 started:
-finished:
+finished: 2026-10-26
 rating:
 shortlist: true
 recommended-by:

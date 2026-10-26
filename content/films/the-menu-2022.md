@@ -9,7 +9,7 @@ poster:
 status: watched
 started:
 finished:
-rating:
+rating: 4.25
 shortlist: false
 recommended-by:
 tags: [mystery, satire]

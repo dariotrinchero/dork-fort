@@ -13,7 +13,7 @@ url:
 status: read
 started: 2024-10-19
 finished: 2024-11-13
-rating:
+rating: 5
 owned: false
 shortlist: false
 recommended-by:

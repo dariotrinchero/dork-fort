@@ -10,11 +10,11 @@ topics: [logic, philosophy-of-mind]
 doi:
 arxiv:
 url:
-status: to-read
+status: paused
 started:
 finished:
 rating:
-owned: false
+owned: true
 shortlist: false
 recommended-by:
 tags: []
