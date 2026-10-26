@@ -3,6 +3,8 @@ title: Thief of Time
 aliases: [Thief of Time]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 26
 year:
 isbn: "9780552167642"
 pages:

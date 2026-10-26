@@ -3,6 +3,8 @@ title: Men at Arms
 aliases: [Men at Arms]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 15
 year:
 isbn: "9780552140287"
 pages:

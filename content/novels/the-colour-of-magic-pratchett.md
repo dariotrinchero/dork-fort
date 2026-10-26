@@ -3,6 +3,8 @@ title: The Colour of Magic
 aliases: [The Colour of Magic]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 1
 year:
 isbn: "9780552166591"
 pages:

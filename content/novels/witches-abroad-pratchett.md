@@ -3,6 +3,8 @@ title: Witches Abroad
 aliases: [Witches Abroad]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 12
 year:
 isbn: "9780061020612"
 pages:

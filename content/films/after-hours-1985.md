@@ -10,7 +10,7 @@ status: watched
 started:
 finished: 2026-10-26
 rating:
-shortlist: true
+shortlist: false
 recommended-by:
 tags: [comedy, thriller]
 ---

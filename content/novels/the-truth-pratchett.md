@@ -3,6 +3,8 @@ title: The Truth
 aliases: [The Truth]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 25
 year:
 isbn: "9780552167635"
 pages:

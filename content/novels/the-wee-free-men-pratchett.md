@@ -3,6 +3,8 @@ title: The Wee Free Men
 aliases: [The Wee Free Men]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 30
 year:
 isbn: "9780552551861"
 pages:

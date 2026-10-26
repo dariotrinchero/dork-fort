@@ -3,6 +3,8 @@ title: Unseen Academicals
 aliases: [Unseen Academicals]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 37
 year:
 isbn: "9780552167710"
 pages:

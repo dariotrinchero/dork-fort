@@ -3,6 +3,8 @@ title: Equal Rites
 aliases: [Equal Rites]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 3
 year:
 isbn: "9780060855901"
 pages:

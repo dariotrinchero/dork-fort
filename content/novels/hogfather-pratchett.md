@@ -3,6 +3,8 @@ title: Hogfather
 aliases: [Hogfather]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 20
 year:
 isbn: "9780552154284"
 pages:

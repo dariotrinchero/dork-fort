@@ -3,6 +3,8 @@ title: Interesting Times
 aliases: [Interesting Times]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 17
 year:
 isbn: "9780552167543"
 pages:

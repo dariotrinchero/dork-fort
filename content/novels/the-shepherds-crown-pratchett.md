@@ -3,6 +3,8 @@ title: "The Shepherd's Crown"
 aliases: ["The Shepherd's Crown"]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 41
 year:
 isbn: "9780857534811"
 pages:

@@ -3,6 +3,8 @@ title: Moving Pictures
 aliases: [Moving Pictures]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 10
 year:
 isbn: "9780552152945"
 pages:

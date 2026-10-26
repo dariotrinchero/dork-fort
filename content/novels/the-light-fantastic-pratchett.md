@@ -3,6 +3,8 @@ title: The Light Fantastic
 aliases: [The Light Fantastic]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 2
 year:
 isbn: "9780061020704"
 pages:

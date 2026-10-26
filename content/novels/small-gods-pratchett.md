@@ -3,6 +3,8 @@ title: Small Gods
 aliases: [Small Gods]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 13
 year:
 isbn: "9780552152976"
 pages:

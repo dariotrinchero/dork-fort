@@ -3,6 +3,8 @@ title: The Last Continent
 aliases: [The Last Continent]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 22
 year:
 isbn: "9780552154185"
 pages:

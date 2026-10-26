@@ -3,6 +3,8 @@ title: The Fifth Elephant
 aliases: [The Fifth Elephant]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 24
 year:
 isbn: "9780552154222"
 pages:

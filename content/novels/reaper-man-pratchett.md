@@ -3,6 +3,8 @@ title: Reaper Man
 aliases: [Reaper Man]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 11
 year:
 isbn: "9780552152952"
 pages:

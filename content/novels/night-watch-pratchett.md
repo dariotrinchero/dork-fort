@@ -3,6 +3,8 @@ title: Night Watch
 aliases: [Night Watch]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 29
 year:
 isbn: "9780552167666"
 pages:

@@ -3,6 +3,8 @@ title: Making Money
 aliases: [Making Money]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 36
 year:
 isbn: "9780552167703"
 pages:

@@ -3,6 +3,8 @@ title: Feet of Clay
 aliases: [Feet of Clay]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 19
 year:
 isbn: "9780552153256"
 pages:

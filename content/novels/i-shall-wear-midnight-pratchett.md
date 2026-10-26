@@ -3,6 +3,8 @@ title: I Shall Wear Midnight
 aliases: [I Shall Wear Midnight]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 38
 year:
 isbn: "9780385611077"
 pages:

@@ -72,9 +72,11 @@ class Parity(unittest.TestCase):
             _edit(novel, (r"^status: .*", "status: watched"), (r"^tags: .*", 'tags: [Fantasy, "magical realism"]'))
             _edit(novel, (r"^translator:.*", "translator:\nseries-number: 3"))  # a number without a series
             twins = sorted((vault / "novels").glob("*pratchett.md"))[:2]                # two Discworld 8s
-            for twin in twins: _edit(twin, (r"^translator:.*", "translator:\nseries: Discworld\nseries-number: 8"))
+            for twin in twins:
+                _edit(twin, (r"^series:.*", "series: Discworld"), (r"^series-number:.*", "series-number: 8"))
             _edit(film, (r"^rating:.*", "rating: 4.6"), (r"^recommended-by:.*", "recommended-by: John"),
-                  (r"^year: .*", "year: 1985.5"), (r"^finished:.*", "finished: 2023"))
+                  (r"^year: .*", "year: 1985.5"), (r"^finished:.*", "finished: 2023"),
+                  (r"^shortlist:.*", "shortlist: true"))  # shortlisted, though watched
             _edit(paper, (r"^isbn: .*", 'isbn: "9780670022411"'), (r"^title:", "foo: bar\ntitle:"),
                   (r"^kind: .*", "kind: essay"), (r"^doi:.*", "doi: doi:10.1000/x"))
             _edit(vault / "Templates/Film.md", (r"^tags:", "extra:\ntags:"))

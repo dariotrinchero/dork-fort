@@ -3,6 +3,8 @@ title: "Guards! Guards!"
 aliases: ["Guards! Guards!"]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 8
 year:
 isbn: "9780061020643"
 pages:

@@ -3,6 +3,8 @@ title: The Amazing Maurice and his Educated Rodents
 aliases: [The Amazing Maurice and his Educated Rodents]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 28
 year:
 isbn: "9780552576802"
 pages:

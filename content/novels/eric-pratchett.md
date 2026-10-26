@@ -3,6 +3,8 @@ title: Eric
 aliases: [Eric]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 9
 year:
 isbn: "9780380821211"
 pages:

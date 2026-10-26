@@ -3,6 +3,8 @@ title: Maskerade
 aliases: [Maskerade]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 18
 year:
 isbn: "9780552142366"
 pages:

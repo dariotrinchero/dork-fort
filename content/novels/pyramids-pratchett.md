@@ -3,6 +3,8 @@ title: Pyramids
 aliases: [Pyramids]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 7
 year:
 isbn: "9780061020650"
 pages:

@@ -3,6 +3,8 @@ title: Lords and Ladies
 aliases: [Lords and Ladies]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 14
 year:
 isbn: "9780552153157"
 pages:

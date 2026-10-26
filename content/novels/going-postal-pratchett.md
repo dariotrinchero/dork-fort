@@ -3,6 +3,8 @@ title: Going Postal
 aliases: [Going Postal]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 33
 year:
 isbn: "9780552149433"
 pages:

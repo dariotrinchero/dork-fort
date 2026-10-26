@@ -3,6 +3,8 @@ title: Raising Steam
 aliases: [Raising Steam]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 40
 year:
 isbn: "9780857522276"
 pages:

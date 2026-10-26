@@ -3,13 +3,15 @@ title: Sourcery
 aliases: [Sourcery]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 5
 year:
 isbn: "9780061020674"
 pages:
 cover:
 status: read
 started:
-finished:
+finished: "2022"
 rating: 3
 owned: true
 shortlist: false

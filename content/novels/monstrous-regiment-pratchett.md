@@ -3,6 +3,8 @@ title: Monstrous Regiment
 aliases: [Monstrous Regiment]
 author: Terry Pratchett
 translator:
+series: Discworld
+series-number: 31
 year:
 isbn: "9780552149419"
 pages:
