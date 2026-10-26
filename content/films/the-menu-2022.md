@@ -1,0 +1,16 @@
+---
+title: The Menu
+aliases: [The Menu]
+kind: film
+year: 2022
+director: Mark Mylod
+tmdb:
+poster:
+status: watched
+started:
+finished:
+rating:
+shortlist: false
+recommended-by:
+tags: [mystery, satire]
+---

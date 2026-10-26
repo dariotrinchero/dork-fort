@@ -5,17 +5,15 @@
 For each topic: move it over, delete the placeholder in its folder, check it in Obsidian (its Base), & then
 delete the original. See [Content](#content-organisation--workflow) for where everything goes.
 
-1. **Packlist:** move `~/Documents/Notes/Checklists/Backpacking Packlist.md` to `content/pages/packlist.md`, &
-   add `title`, `aliases` & `destination: traveller` (as in the Page template).
 2. **Wishlist:** likewise to `content/pages/wishlist.md`, with `destination: companion`; prune what you'd rather
    not publish.
 3. **Music backlog:** process it into your new system, then delete it (not published).
 4. **Books:** imported from StoryGraph (96 in `novels/`, 21 in `nonfiction/`). Check the split, `kind`s, tags &
    topics in the Novels & Nonfiction Bases, then close the StoryGraph account.
-5. **Build `dork`** (`add`, `start`/`finish`/`pause`/`dnf`, `rate`, `import`, `fill`); `dork fill` then gives the
-   imported novels their `year`, `pages` & `cover` from Open Library.
-6. **Films & series:** `dork import backlog ".../Movies & Series Backlog.md"`: names become initials, & the
-   Re-watch section becomes ratings or a ranked list in `content/pages/`.
+5. **Build `dork`** (`add`, `start`/`finish`/`pause`/`dnf`, `rate`, `fill`); `dork fill` then gives the imported
+   novels their `year`, `pages` & `cover` from Open Library.
+6. **Letterboxd:** either close the account, or keep logging there & pull its RSS feed
+   (`letterboxd.com/<user>/rss/`) into `films/` at build, as with iNaturalist.
 7. **Papers:** `dork add nonfiction` (from Zotero) as you go.
 8. **Recipes** (in their own vault): `rating:`, the `favourite` tag, & `Journal/` (see Campfire).
 9. **Garden:** log on iNaturalist from now on, & upload past sightings' photos (it reads dates & places from
@@ -193,8 +191,6 @@ A Python script in `~/git-repos/cli-tools/`, on PATH, outside this repo.
   Zotero (better: add them to Zotero first).
 - `dork start|finish|pause|dnf <query>` sets the status of the best fuzzy match (stamping today's date); `dork
   rate <query> 4.5`.
-- `dork import backlog <note.md>`, for the migration: parses `- [ ] Title (year) (note)` lines, turns headings
-  into `shortlist`, tags, & `recommended-by` initials, & asks when a title matches several entries.
 - `dork fill [--folder novels]` adds missing `year`, `pages` & `cover` to entries with an ISBN.
 - Metadata is fetched when adding, never at build time, so builds don't depend on the APIs.
 - Maybe later: a `workflow_dispatch` action running `dork add` (taking the top match) from the GitHub app on
