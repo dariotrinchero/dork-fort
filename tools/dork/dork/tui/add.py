@@ -1,6 +1,8 @@
 """The add screen: a tab per tracked collection, each searching its source; picking a hit opens the editor on a
 new entry, filled in from it. Hits already in the vault are marked, & open the entry there instead.
 
+^N opens a blank entry instead, titled by the query, for what no source knows.
+
 Nothing is fetched until asked for: Enter searches the current tab, & arriving with a query (from the command line,
 or ^A from the finder) counts as asked, searching every tab at once (a request each) if no collection was given.
 Results are kept for the session, so switching tabs or going back from the editor costs nothing. Zotero is read
@@ -13,7 +15,7 @@ from dataclasses import dataclass, field
 
 from ..actions import creator, fold
 from ..net import NetError
-from ..slugs import make_slug, surname
+from ..slugs import make_slug, short, surname
 from ..sources import Candidate, Source, sources
 from ..vault import Entry, new_entry
 from .base import ENTER, ESC, TAB, Help, LineEdit, attr, ctrl, dwidth, fit, put, runs, who_width
@@ -22,6 +24,7 @@ HELP = [
     ("typing", "the query"),
     ("⏎", "search (or, once searched, open the top hit)"),
     ("⇥  ⇧⇥", "switch collection (or ←→, with no query)"),
+    ("^N", "a blank entry, titled by the query (for what no source knows)"),
     ("^U ^T", "to the finder (taking the query)"),
     ("↓", "into the list"),
     ("^Z", "undo the last change (eg. an entry added)"),
@@ -30,6 +33,7 @@ HELP = [
     ("in the list:", ""),
     ("↑↓ j k", "move (↑ from the top: back to typing)"),
     ("⏎ e", "open the hit in the editor (filled in; one more request, for some)"),
+    ("n", "a blank entry, titled by the query"),
     ("←→ h l", "switch collection"),
     ("u", "undo the last change"),
     ("space /", "back to typing"),
@@ -155,6 +159,12 @@ class Add:
         from .editor import Editor
         self.app.push(Editor(new_entry(self.app.schema, tab.collection, self.app.content), new=True, candidate=hit))
 
+    def blank(self):
+        """Open the editor on a new entry of the current tab's collection, filled in with nothing but the query, as
+        its title (for what no source knows)."""
+        title = " ".join(self.query.text.split())
+        self.edit(self.tab, Candidate("", "", title, fields={"title": title, "aliases": [short(title)]} if title else {}))
+
     #---- keys --------------------------------------------------------------------------------
 
     def switch(self, delta: int):
@@ -184,6 +194,7 @@ class Add:
         if key == TAB: self.switch(1)
         elif key == curses.KEY_BTAB: self.switch(-1)
         elif key in (ctrl("u"), ctrl("t")): self.app.switch(self)
+        elif key == ctrl("n"): self.blank()
         elif self.typing: self.handle_typing(key, ch)
         else: self.handle_list(key, ch)
 
@@ -219,6 +230,7 @@ class Add:
         elif key in (curses.KEY_RIGHT, ord("l")): self.switch(1)
         elif key in (curses.KEY_LEFT, ord("h")): self.switch(-1)
         elif key in (ord("u"), ctrl("z")): self.app.undo()
+        elif key == ord("n"): self.blank()
         elif key in (ord(" "), ord("/"), ord("i"), ESC): self.typing = True
         elif key == ord("q"): self.back()
         elif key == ord("?"): self.app.push(Help("Add keys", HELP))
@@ -291,7 +303,7 @@ class Add:
 
     def hints(self) -> list[str]:
         if self.typing:
-            return ["⏎ search / open top hit · ↓ list · ⇥ collection · ^U finder · esc back",
+            return ["⏎ search / open top hit · ↓ list · ⇥ collection · ^N blank · ^U finder · esc back",
                     "⏎ search · ↓ list · esc"]
-        return ["⏎ open in the editor · ←→ collection · space search · ^U finder · ? help · q back",
+        return ["⏎ open in the editor · ←→ collection · n blank · space search · ^U finder · ? help · q back",
                 "⏎ open · ? help"]

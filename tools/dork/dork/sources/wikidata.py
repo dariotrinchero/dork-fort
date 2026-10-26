@@ -1,10 +1,12 @@
-"""Films, series & anime, & games, from Wikidata (no key; its data is public domain, CC0): one SPARQL query per
-search, which searches Wikidata as its own search box does, keeps the hits that are films or series (or games), &
-gives everything about each (year, director or creators, or developers, & TMDB's or IGDB's id, to link out) in
-one go. Also the series a novel is in, & its number there, for Open Library's novels (by their Open Library id).
+"""Films, series & anime, games, & board games, from Wikidata (no key; its data is public domain, CC0): one SPARQL
+query per search, which searches Wikidata as its own search box does, keeps the hits that are films or series (or
+games, or board games), & gives everything about each (year, director or creators, developers or designers, how
+many can play, & TMDB's, IGDB's or BoardGameGeek's id, to link out) in one go. Also the series a novel is in, &
+its number there, for Open Library's novels (by their Open Library id).
 
 Wikidata has no posters or covers (they're copyrighted), so these entries come without."""
 
+import re
 from urllib.parse import urlencode
 
 from ..net import fetch_json
@@ -14,6 +16,8 @@ from . import Candidate, Source, keep, split_year, year_of
 ENDPOINT = "https://query.wikidata.org/sparql"
 FILM_KINDS = {"title": "text", "aliases": "list", "kind": "text", "year": "year", "director": "text", "tmdb": "tmdb"}
 GAME_KINDS = {"title": "text", "aliases": "list", "year": "year", "developer": "text", "igdb": "igdb"}
+BOARD_KINDS = {"title": "text", "aliases": "list", "year": "year", "designer": "text", "players": "text",
+               "bgg": "digits"}
 
 # the search, as Wikidata's search box does it, in English; its hits ranked as there
 SEARCH = """
@@ -53,6 +57,39 @@ WHERE {%s
   OPTIONAL { ?item wdt:P178 ?maker }
   OPTIONAL { ?item wdt:P5794 ?slug }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul" .
+                           ?item rdfs:label ?label; schema:description ?about . ?maker rdfs:label ?makerName . }
+}
+GROUP BY ?item ORDER BY ?order"""
+
+# board games: as Wikidata's search box finds them, & then (for names too common to find so, eg. "Root") by full
+# text, among items with a BoardGameGeek id (P2339), ranked after
+BOARD_SEARCH = """
+  { SERVICE wikibase:mwapi {
+      bd:serviceParam wikibase:endpoint "www.wikidata.org"; wikibase:api "EntitySearch";
+                      mwapi:search "%(q)s"; mwapi:language "en"; mwapi:limit "25" .
+      ?item wikibase:apiOutputItem mwapi:item . ?rank wikibase:apiOrdinal true . } }
+  UNION
+  { SERVICE wikibase:mwapi {
+      bd:serviceParam wikibase:endpoint "www.wikidata.org"; wikibase:api "Search";
+                      mwapi:srsearch "%(q)s haswbstatement:P2339"; mwapi:srlimit "10" .
+      ?found wikibase:apiOutput mwapi:title . ?ordinal wikibase:apiOrdinal true . }
+    BIND(IRI(CONCAT(STR(wd:), ?found)) AS ?item) BIND(?ordinal + 100 AS ?rank) }"""
+
+# what has a BoardGameGeek id, or is a board game (Q131436) of any subclass (Wikidata files many under card,
+# party, strategy or tabletop games instead); designers are named by any of game designer, designer, creator, author
+# or developer, & names fall back to other languages (some games have no English label)
+BOARD_GAMES = """
+SELECT ?item (MIN(?rank) AS ?order) (SAMPLE(?label) AS ?title) (SAMPLE(?about) AS ?description)
+       (MIN(?date) AS ?released) (GROUP_CONCAT(DISTINCT ?makerName; separator="|") AS ?makers)
+       (MIN(?low) AS ?fewest) (MAX(?high) AS ?most) (SAMPLE(?id) AS ?bgg)
+WHERE {%s
+  { ?item wdt:P2339 [] } UNION { ?item wdt:P31/wdt:P279* wd:Q131436 }
+  OPTIONAL { ?item wdt:P577 ?date }
+  OPTIONAL { { ?item wdt:P12969 ?maker } UNION { ?item wdt:P287 ?maker } UNION { ?item wdt:P170 ?maker }
+             UNION { ?item wdt:P50 ?maker } UNION { ?item wdt:P178 ?maker } }
+  OPTIONAL { ?item wdt:P1872 ?low } OPTIONAL { ?item wdt:P1873 ?high }
+  OPTIONAL { ?item wdt:P2339 ?id }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul,en-gb,de,fr,es,it,nl" .
                            ?item rdfs:label ?label; schema:description ?about . ?maker rdfs:label ?makerName . }
 }
 GROUP BY ?item ORDER BY ?order"""
@@ -128,6 +165,37 @@ class WikidataGames(Source):
                        "developer": " & ".join(makers) or None, "igdb": row.get("igdb")}, GAME_KINDS, notes)
         return Candidate(self.name, _id(row), row["title"], " & ".join(makers), str(year or ""),
                          row.get("description") or "game", fields, notes=notes)
+
+
+def players(fewest, most) -> str | None:
+    """How many can play, from the fewest & most (as Wikidata gives them, eg. "2"): eg. "2–4", "2", or "3+"."""
+    def whole(value) -> int | None:
+        try: return int(float(value))
+        except (TypeError, ValueError): return None
+    low, high = whole(fewest), whole(most)
+    if low and high: return str(low) if low == high else f"{low}–{high}"
+    return f"{low}+" if low else f"up to {high}" if high else None
+
+
+class WikidataBoardGames(Source):
+    name, label, collection = "wikidata-boardgames", "Wikidata", "boardgames"
+
+    def search(self, query_: str) -> list[Candidate]:
+        words, year = split_year(query_)
+        rows = query(BOARD_GAMES % (BOARD_SEARCH % {"q": literal(words)}))
+        # an item with no name in any of the languages asked for is labelled by its id (eg. "Q58409118")
+        named = [row for row in rows if row.get("title") and not re.fullmatch(r"Q\d+", row["title"])]
+        return _ranked([self.candidate(row) for row in named], year)
+
+    def candidate(self, row: dict) -> Candidate:
+        year = year_of(row.get("released"))
+        makers = _makers(row)
+        notes: dict[str, str] = {}
+        fields = keep({"title": row["title"], "aliases": [short(row["title"])], "year": year,
+                       "designer": " & ".join(makers) or None, "players": players(row.get("fewest"), row.get("most")),
+                       "bgg": int(row["bgg"]) if row.get("bgg", "").isdigit() else None}, BOARD_KINDS, notes)
+        return Candidate(self.name, _id(row), row["title"], " & ".join(makers), str(year or ""),
+                         row.get("description") or "board game", fields, notes=notes)
 
 
 def series_of(olid: str) -> tuple[dict, dict[str, str]]:

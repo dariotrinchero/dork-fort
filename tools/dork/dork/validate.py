@@ -69,7 +69,7 @@ PATTERNS = {
     "arxiv": (r"(?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[A-Z]{2})?/\d{7})(?:v\d+)?", "should be an arXiv id, eg. 2107.03374"),
     "url": (r"https?://\S+", "should be a URL"),
     "tmdb": (r"(?:movie|tv)/\d+", "should be movie/<id> or tv/<id>"),
-    "igdb": (KEBAB, "should be a slug on IGDB"),
+    "igdb": (rf"{KEBAB}(?:--\d+)?", "should be a slug on IGDB"), # "--1" (etc.) tells apart games of a name
 }
 
 
@@ -112,8 +112,9 @@ def check_value(field: dict, value, statuses: list[str] = ()) -> str | None:
         case "attachment":
             return None if is_str and re.fullmatch(rf"attachments/{field['dir']}/[^/]+", value) \
                 else f"should be a path in attachments/{field['dir']}/"
-        case "enum":
-            return None if value in field["values"] else f"should be one of: {', '.join(field['values'])}"
+        case "enum": # matched by type too, as JavaScript does (so 1 isn't true)
+            return None if any(type(v) is type(value) and v == value for v in field["values"]) \
+                else f"should be one of: {', '.join(map(_js_string, field['values']))}"
         case "status": return None if value in statuses else f"should be one of: {', '.join(statuses)}"
     if kind not in PATTERNS: return f'has unknown type "{kind}" in schema'
     pattern, message = PATTERNS[kind]
@@ -166,7 +167,9 @@ def check_entry(schema: dict, name: str, slug: str, fields: dict) -> list[tuple[
 
 
 def _js_string(value) -> str:
-    """Value as JavaScript writes it in a string (eg. 8 for 8.0), so both validators' messages agree."""
+    """Value as JavaScript writes it in a string (eg. 8 for 8.0, & true for True), so both validators' messages
+    agree."""
+    if isinstance(value, bool): return str(value).lower()
     return str(int(value)) if isinstance(value, float) and value.is_integer() else str(value)
 
 

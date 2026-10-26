@@ -13,7 +13,7 @@ from .base import BACKSPACES, ENTER, ESC, TAB, Help, LineEdit, Stars, attr, ctrl
 
 # what each collection's entries are labelled, unless they have a kind (eg. "series", or "paper"), which labels
 # them instead; either way, in the collection's colour
-LABELS = {"novels": "novel", "nonfiction": "nonfic", "films": "film", "games": "game"}
+LABELS = {"novels": "novel", "nonfiction": "nonfic", "films": "film", "games": "game", "boardgames": "board"}
 
 # quick actions' keys, in the list & (with Ctrl) while typing
 KEYS = {"f": "finish", "s": "start", "p": "pause", "d": "dnf", "r": "rate"}

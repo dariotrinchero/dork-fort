@@ -2,7 +2,7 @@
 
     dork [query]                         the update screen (prefiltered by query)
     dork add [collection] [query]        the add screen (searching for query at once, if given; collection is novel,
-                                         nonfiction, film or game, & if not given, every one is searched)
+                                         nonfiction, film, game or board, & if not given, every one is searched)
     dork start|finish|pause|dnf <query>  set the status of the entry query clearly means, else pick in the finder
     dork rate <query> [rating]           likewise, rating it (0 to clear; without a rating, the star meter opens)
     dork check                           validate the vault, as the build does
@@ -24,7 +24,8 @@ COLLECTIONS = {"novel": "novels", "novels": "novels", "fiction": "novels",
                "nonfiction": "nonfiction", "nonfic": "nonfiction", "paper": "nonfiction", "papers": "nonfiction",
                "textbook": "nonfiction", "textbooks": "nonfiction",
                "film": "films", "films": "films", "movie": "films", "movies": "films", "series": "films",
-               "tv": "films", "anime": "films", "game": "games", "games": "games"}
+               "tv": "films", "anime": "films", "game": "games", "games": "games",
+               "board": "boardgames", "boardgame": "boardgames", "boardgames": "boardgames", "tabletop": "boardgames"}
 COMMANDS = ["check", "add", *QUICK]
 
 

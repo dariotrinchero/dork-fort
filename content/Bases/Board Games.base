@@ -1,0 +1,103 @@
+filters:
+  and:
+    - file.inFolder("boardgames")
+formulas:
+  stars: 'if(rating.isEmpty(), "", "★".repeat(rating.floor()) + if(rating - rating.floor() == 0.25, "¼", if(rating - rating.floor() == 0.5, "½", if(rating - rating.floor() == 0.75, "¾", ""))))'
+properties:
+  formula.stars:
+    displayName: Rating
+views:
+  - type: table
+    name: To play
+    filters:
+      and:
+        - status == "to-play"
+    order:
+      - title
+      - players
+      - year
+      - designer
+      - first-played
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: shortlist
+        direction: DESC
+      - property: title
+        direction: ASC
+  - type: table
+    name: Played
+    filters:
+      and:
+        - status == "played"
+    order:
+      - title
+      - players
+      - year
+      - designer
+      - first-played
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: first-played
+        direction: DESC
+      - property: title
+        direction: ASC
+  - type: table
+    name: Owned
+    filters:
+      and:
+        - owned == true
+    order:
+      - title
+      - players
+      - year
+      - designer
+      - first-played
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: title
+        direction: ASC
+  - type: table
+    name: Owned, unplayed
+    filters:
+      and:
+        - owned == true
+        - status == "to-play"
+    order:
+      - title
+      - players
+      - year
+      - designer
+      - first-played
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: shortlist
+        direction: DESC
+      - property: title
+        direction: ASC
+  - type: table
+    name: Wishlist
+    filters:
+      and:
+        - owned == "wishlist"
+    order:
+      - title
+      - players
+      - year
+      - designer
+      - first-played
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: shortlist
+        direction: DESC
+      - property: title
+        direction: ASC

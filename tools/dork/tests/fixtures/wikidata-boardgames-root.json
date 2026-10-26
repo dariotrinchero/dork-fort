@@ -1,0 +1,63 @@
+{
+ "head": {
+  "vars": [
+   "item",
+   "order",
+   "title",
+   "description",
+   "released",
+   "makers",
+   "fewest",
+   "most",
+   "bgg"
+  ]
+ },
+ "results": {
+  "bindings": [
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q101242941"
+    },
+    "order": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#integer",
+     "type": "literal",
+     "value": "100"
+    },
+    "title": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Root"
+    },
+    "description": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "2018 board game"
+    },
+    "released": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "2018-01-01T00:00:00Z"
+    },
+    "makers": {
+     "type": "literal",
+     "value": "Cole Wehrle"
+    },
+    "fewest": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#decimal",
+     "type": "literal",
+     "value": "2"
+    },
+    "most": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#decimal",
+     "type": "literal",
+     "value": "4"
+    },
+    "bgg": {
+     "type": "literal",
+     "value": "237182"
+    }
+   }
+  ]
+ }
+}

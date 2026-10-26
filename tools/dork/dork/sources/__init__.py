@@ -101,12 +101,13 @@ def suspicious(fields: dict) -> dict[str, str]:
     if isinstance(year, int) and year > date.today().year: found["year"] = "is in the future"
     title = fields.get("title")
     if isinstance(title, str) and len(title) > 3 and title.isupper(): found["title"] = "is in capitals"
-    for key in ("author", "director", "developer"):
+    for key in ("author", "director", "developer", "designer"):
         if str(fields.get(key) or "").strip().lower() in ("unknown", "anonymous", "various", "n/a"):
             found[key] = "looks like a placeholder"
     pages = fields.get("pages")
     if isinstance(pages, int) and not 10 <= pages <= 5000: found["pages"] = "looks wrong"
-    for key in ("started", "finished"): # before it came out: early access, or a preview, maybe, but maybe a mistake
+    # before it came out: early access, or a preview, maybe, but maybe a mistake
+    for key in ("started", "finished", "first-played"):
         when = year_of(fields.get(key))
         if isinstance(year, int) and when and when < year:
             found[key] = f"is before {year}, its year: early access, or a preview? (else one of them is wrong)"
@@ -116,6 +117,7 @@ def suspicious(fields: dict) -> dict[str, str]:
 def sources() -> dict[str, Source]:
     """Source of each collection."""
     from .openlibrary import OpenLibrary
-    from .wikidata import WikidataFilms, WikidataGames
+    from .wikidata import WikidataBoardGames, WikidataFilms, WikidataGames
     from .zotero import Zotero
-    return {source.collection: source for source in (OpenLibrary(), Zotero(), WikidataFilms(), WikidataGames())}
+    return {source.collection: source for source in (OpenLibrary(), Zotero(), WikidataFilms(), WikidataGames(),
+                                                           WikidataBoardGames())}

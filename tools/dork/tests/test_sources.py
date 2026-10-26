@@ -144,6 +144,21 @@ class Wikidata(unittest.TestCase):
                                          "developer": "Team Cherry", "igdb": "hollow-knight"})
         self.assertEqual(knight.covers, {}) # Wikidata has no covers
 
+    def test_board_games(self):
+        fetch = serve(("root", "wikidata-boardgames-root.json"))
+        with mock.patch.object(wikidata, "fetch_json", fetch):
+            root, = wikidata.WikidataBoardGames().search("root")
+        self.assertIn("haswbstatement%3AP2339", fetch.asked[0][0]) # a name too common for the search box alone
+        self.assertEqual(root.fields, {"title": "Root", "aliases": ["Root"], "year": 2018, "designer": "Cole Wehrle",
+                                       "players": "2–4", "bgg": 237182})
+
+    def test_players(self):
+        self.assertEqual(wikidata.players("2", "4"), "2–4")
+        self.assertEqual(wikidata.players("2", "2"), "2")
+        self.assertEqual(wikidata.players("3", None), "3+")
+        self.assertEqual(wikidata.players(None, "6"), "up to 6")
+        self.assertIsNone(wikidata.players(None, None))
+
     def test_series(self):
         with mock.patch.object(wikidata, "fetch_json", serve(("OL453735W", "wikidata-series-guards-guards.json"))):
             fields, notes = wikidata.series_of("OL453735W")

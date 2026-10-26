@@ -77,7 +77,8 @@ const PATTERNS = {
     arxiv: [ /^(?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?$/, "should be an arXiv id, eg. 2107.03374" ],
     url: [ /^https?:\/\/\S+$/, "should be a URL" ],
     tmdb: [ /^(?:movie|tv)\/\d+$/, "should be movie/<id> or tv/<id>" ],
-    igdb: [ KEBAB, "should be a slug on IGDB" ],
+    // "--1" (etc.) tells apart games of a name
+    igdb: [ /^[a-z0-9]+(?:-[a-z0-9]+)*(?:--\d+)?$/, "should be a slug on IGDB" ],
 };
 
 /**

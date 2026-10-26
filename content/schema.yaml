@@ -21,9 +21,9 @@
 #   doi, arxiv, url identifiers, eg. 10.1000/xyz123, 2107.03374 (or math/0211159), https://…
 #   tmdb            "movie/<id>" or "tv/<id>", as TMDB's ids are per media type
 #   igdb            the game's slug on IGDB (igdb.com/games/<slug>)
-#   digits          a numeric id, eg. of an iNaturalist observation
+#   digits          a numeric id, eg. of an iNaturalist observation, or a game on BoardGameGeek
 #   attachment      a path from the vault root into attachments/<dir>/, eg. attachments/covers/the-cave-saramago.jpg
-#   enum            one of `values`
+#   enum            one of `values` (which may include true & false, eg. owned: true, false or wishlist)
 #   status          one of the collection's status words (below)
 #
 # A field may name another it `requires` (eg. series-number, series). A collection may list sets of fields that are
@@ -34,22 +34,22 @@
 # `from` says how dork makes one: fields in braces, with `|short` (title without its subtitle) & `|surname`.
 
 # What each status means, shared across collections, which name them in their own words (a collection needn't name
-# every role). Each role may stamp a date field with today when an entry takes it on, & may forbid fields, which
+# every role). Each role may stamp date fields with today when an entry takes it on, & may forbid fields, which
 # must then be empty, or false (as nothing in the backlog has been started, & only what's yet to be begun or
-# resumed is shortlisted); its colour is dork's.
+# resumed is shortlisted); both apply only to fields the collection has (board games have first-played, rather
+# than started & finished). Its colour is dork's.
 roles:
-  backlog: { colour: yellow, forbids: [ started, finished ] }
-  active: { colour: cyan, stamps: started, forbids: [ finished, shortlist ] }
+  backlog: { colour: yellow, forbids: [ started, finished, first-played ] }
+  active: { colour: cyan, stamps: [ started ], forbids: [ finished, shortlist ] }
   paused: { colour: blue, forbids: [ finished ] }
   ongoing: { colour: magenta, forbids: [ finished, shortlist ] } # with nothing to finish (eg. Minecraft), so never done
-  done: { colour: green, stamps: finished, forbids: [ shortlist ] }
+  done: { colour: green, stamps: [ finished, first-played ], forbids: [ shortlist ] }
   dropped: { colour: red, forbids: [ shortlist ] }
 
-# fields shared by every collection with a status (novels, nonfiction, films & games), added to their `fields`
+# fields shared by every collection with a status (novels, nonfiction, films, games & board games), added to their
+# `fields` (dates are each collection's own)
 tracked:
   status: { type: status, required: true }
-  started: { type: partial-date }
-  finished: { type: partial-date }
   rating: { type: rating }
   shortlist: { type: bool }
   recommended-by: { type: initials }
@@ -75,7 +75,9 @@ collections:
       isbn: { type: isbn }
       pages: { type: count }
       cover: { type: attachment, dir: covers }
-      owned: { type: bool }
+      owned: &owned { type: enum, values: [ true, false, wishlist ] } # wishlist: not owned, but wanted
+      started: { type: partial-date }
+      finished: { type: partial-date }
 
   nonfiction:
     template: Nonfiction.md
@@ -94,7 +96,9 @@ collections:
       doi: { type: doi }
       arxiv: { type: arxiv }
       url: { type: url }
-      owned: { type: bool }
+      owned: *owned
+      started: { type: partial-date }
+      finished: { type: partial-date }
 
   films:
     template: Film.md
@@ -109,6 +113,8 @@ collections:
       director: { type: text }
       tmdb: { type: tmdb }
       poster: { type: attachment, dir: posters }
+      started: { type: partial-date }
+      finished: { type: partial-date }
 
   games:
     template: Game.md
@@ -123,7 +129,27 @@ collections:
       platform: { type: text }
       igdb: { type: igdb }
       cover: { type: attachment, dir: covers }
-      owned: { type: bool }
+      owned: *owned
+      started: { type: partial-date }
+      finished: { type: partial-date }
+
+  boardgames:
+    template: Board Game.md
+    destination: moon-and-stars
+    slug: { style: kebab, from: "{title}-{year}" }
+    # played: played at all, as board games are made to be played again (few can be finished, & even campaigns
+    # replay), so they're never in progress, paused or dropped
+    status: { backlog: to-play, done: played }
+    fields:
+      title: { type: text, required: true }
+      aliases: { type: list }
+      year: { type: year }
+      designer: { type: text }
+      players: { type: text } # how many can play, eg. "2–4", "1–5", "3+" or "2"
+      bgg: { type: digits }   # the game's id on BoardGameGeek (boardgamegeek.com/boardgame/<id>)
+      cover: { type: attachment, dir: covers }
+      owned: *owned
+      first-played: { type: partial-date } # stamped once, & kept through replays
 
   adventures:
     template: Adventure.md

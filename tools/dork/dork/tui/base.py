@@ -24,7 +24,7 @@ PALETTE = {
     "dim": "7f848e", "accent": "e5c07b", "error": "e06c75", "warn": "e5904f", "ok": "98c379", "bar": "3a3f4b",
     "ink": "1e2127",
     "yellow": "e5c07b", "cyan": "56b6c2", "blue": "61afef", "green": "98c379", "red": "e06c75", "magenta": "d55fde",
-    "novels": "c678dd", "nonfiction": "d19a66", "films": "f08dbd", "games": "7fd1b9",
+    "novels": "c678dd", "nonfiction": "d19a66", "films": "f08dbd", "games": "7fd1b9", "boardgames": "8fa8e8",
 }
 
 # the eight basic colours, for terminals with no more

@@ -48,6 +48,8 @@ TIDY = {
     "tmdb": lambda text: (lambda m: f"{m[1]}/{m[2]}" if m else text)(
         re.search(r"themoviedb\.org/(movie|tv)/(\d+)", text)),
     "igdb": lambda text: (lambda m: m[1] if m else text)(re.search(r"igdb\.com/games/([a-z0-9-]+)", text)),
+    "digits": lambda text: (lambda m: m[1] if m else text)( # eg. a BoardGameGeek page, to its id
+        re.search(r"boardgamegeek\.com/boardgame(?:expansion)?/(\d+)", text)),
 }
 
 
@@ -222,7 +224,7 @@ class Editor:
             # dates stamped, & flags turned off, by an earlier change of status go back to what they were, unless
             # set by hand
             roles = self.app.schema["roles"].values()
-            changed = {r["stamps"] for r in roles if "stamps" in r} | \
+            changed = {k for r in roles for k in r.get("stamps", [])} | \
                 {k for r in roles for k in r.get("forbids", []) if self.kind(k) == "bool"}
             stamped = {k: self.entry.fields.get(k) for k in changed if k not in self.manual and k in self.fields}
             self.fields = with_role(self.app.schema, self.entry, self.fields, role, stamped)
@@ -355,7 +357,8 @@ class Editor:
         if kind == "rating":
             number = value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
             return f"{meter(number)}  {as_text(value) or '—'}", "accent" if number else "dim", False
-        if kind == "enum" and value is not None: return f"◂ {value} ▸", "fg", False
+        if kind == "enum" and value is not None:
+            return f"◂ {str(value).lower() if isinstance(value, bool) else value} ▸", "fg", False
         if is_empty(value): return "—", "dim", False
         return as_text(value), "fg", False
 

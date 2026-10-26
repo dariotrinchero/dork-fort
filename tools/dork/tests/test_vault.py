@@ -120,8 +120,10 @@ class Browsing(unittest.TestCase):
                                     note("novels", "2023", title="B", status="read", finished="2023"),
                                     note("films", "2023-05", title="C", status="watched", finished="2023-05"),
                                     note("games", "2024-01-02", title="D", status="played", finished="2024-01-02"),
-                                    note("novels", "2022-12-31", title="E", status="read", finished="2022-12-31")),
-                         ["2024-01-02", "2023-05", "2023", "2022-12-31", "undated"])
+                                    note("novels", "2022-12-31", title="E", status="read", finished="2022-12-31"),
+                                    note("boardgames", "2023-06", title="F", status="played",
+                                         **{"first-played": "2023-06"})),
+                         ["2024-01-02", "2023-06", "2023-05", "2023", "2022-12-31", "undated"])
 
     def test_done_series_latest_first_within_a_date(self):
         """A series read in order reads down the timeline: highest number first, among those finished at once."""
@@ -251,6 +253,18 @@ class Actions(unittest.TestCase):
         self.assertFalse(outcome.failed, outcome.message)
         self.assertIn("shortlist true → false", outcome.message)
         self.assertIs(reload(entry).fields["shortlist"], False)
+
+    def test_board_games_are_played_once_for_all(self):
+        """A board game is to play or played: playing it stamps first-played (once), & it's never paused."""
+        entry = next(e for e in self.entries if e.collection == "boardgames" and e.fields["status"] == "to-play")
+        outcome = actions.act(SCHEMA, entry, "finish")
+        self.assertFalse(outcome.failed, outcome.message)
+        after = reload(entry)
+        self.assertEqual((after.fields["status"], after.fields["first-played"], after.fields.get("shortlist")),
+                         ("played", actions.today(), False if "shortlist" in entry.fields else None))
+        self.assertNotIn("finished", after.fields)
+        self.assertEqual(actions.act(SCHEMA, after, "pause").message, f"{entry.file}: boardgames can't be paused")
+        self.assertEqual(actions.applicable(SCHEMA, [entry], "start"), [])
 
     def test_already(self):
         entry = next(e for e in self.entries if e.fields["status"] == "watched")

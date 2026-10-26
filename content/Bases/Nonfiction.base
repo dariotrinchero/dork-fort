@@ -104,3 +104,21 @@ views:
     sort:
       - property: title
         direction: ASC
+  - type: table
+    name: Wishlist
+    filters:
+      and:
+        - owned == "wishlist"
+    order:
+      - title
+      - kind
+      - authors
+      - topics
+      - status
+      - finished
+      - formula.stars
+    sort:
+      - property: shortlist
+        direction: DESC
+      - property: title
+        direction: ASC

@@ -111,8 +111,8 @@ types:
     invalid: [ 550, "550", film/550, movie/abc ]
   igdb:
     field: { type: igdb }
-    valid: [ hollow-knight, the-witcher-3-wild-hunt ]
-    invalid: [ Hollow Knight, hollow_knight, "https://www.igdb.com/games/hollow-knight" ]
+    valid: [ hollow-knight, the-witcher-3-wild-hunt, hades--1 ]
+    invalid: [ Hollow Knight, hollow_knight, "https://www.igdb.com/games/hollow-knight", hades--, hades---1, hades--a ]
   digits:
     field: { type: digits }
     valid: [ 12345, "12345" ]
@@ -125,6 +125,10 @@ types:
     field: { type: enum, values: [ film, series, anime ] }
     valid: [ film, anime ]
     invalid: [ Film, movie, 1 ]
+  enum of flags & words:
+    field: { type: enum, values: [ true, false, wishlist ] }
+    valid: [ true, false, wishlist ]
+    invalid: [ 1, 0, "true", Wishlist, yes ]
 
 # Whole notes, checked against content/schema.yaml: `errors` lists the fields (or "slug") that should have
 # problems, & no others should.
@@ -237,6 +241,27 @@ entries:
     slug: minecraft-2011
     fields: { title: Minecraft, status: endless, started: "2012", finished: "2014" }
     errors: [ finished ]
+  - collection: boardgames
+    slug: root-2018
+    fields: { title: Root, year: 2018, designer: Cole Wehrle, players: "2–4", bgg: 237182, status: played,
+              owned: true }
+    errors: []
+  - collection: boardgames # nothing to finish is a video game's status, not a board game's
+    slug: root-2018
+    fields: { title: Root, status: endless }
+    errors: [ status ]
+  - collection: boardgames # a board game is never in progress, & is first played, not started or finished
+    slug: root-2018
+    fields: { title: Root, status: playing, started: "2025", finished: "2025" }
+    errors: [ status, started, finished ]
+  - collection: boardgames # nothing in the backlog has been played
+    slug: root-2018
+    fields: { title: Root, status: to-play, first-played: 2025-03-01 }
+    errors: [ first-played ]
+  - collection: boardgames
+    slug: root-2018
+    fields: { title: Root, status: played, first-played: "2025-03" }
+    errors: []
   - collection: novels # only games are endless
     slug: the-cave-saramago
     fields: { title: The Cave, status: endless }

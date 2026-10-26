@@ -40,11 +40,18 @@ def stars(rating) -> str:
     return "★" * whole + ["", "¼", "½", "¾"][quarters] + "☆" * (5 - whole - (quarters > 0))
 
 
+def stamp_of(schema: dict, collection: str, role: str) -> str | None:
+    """Date field role stamps in collection, if any (eg. finished, or a board game's first-played)."""
+    fields = schema["collections"][collection]["fields"]
+    return next((key for key in schema["roles"].get(role, {}).get("stamps", []) if key in fields), None)
+
+
 def creator(entry: Entry) -> str:
-    """Who made it: author (or first of authors), director, or developer."""
+    """Who made it: author (or first of authors), director, developer, or designer."""
     fields = entry.fields
     authors = fields.get("authors") or [None]
-    return str(fields.get("author") or authors[0] or fields.get("director") or fields.get("developer") or "")
+    return str(fields.get("author") or authors[0] or fields.get("director") or fields.get("developer")
+               or fields.get("designer") or "")
 
 
 def with_role(schema: dict, entry: Entry, fields: dict, role: str, stamped: dict | None = None) -> dict:
@@ -52,7 +59,7 @@ def with_role(schema: dict, entry: Entry, fields: dict, role: str, stamped: dict
     role forbids turned off (eg. shortlist, once begun; dates it forbids are kept, for validation to refuse).
     Fields named in stamped first take those values (as before an earlier change, in the editor)."""
     new = {**fields, **(stamped or {}), "status": schema["collections"][entry.collection]["status"][role]}
-    stamp = schema["roles"][role].get("stamps")
+    stamp = stamp_of(schema, entry.collection, role)
     if stamp and is_empty(new.get(stamp)): new[stamp] = today()
     for key in schema["roles"][role].get("forbids", []):
         if new.get(key) is True: new[key] = False
@@ -106,6 +113,8 @@ def act(schema: dict, entry: Entry, action: str, rating=None) -> Outcome:
         if rating == entry.fields.get("rating"): return Outcome(f"{entry.file}: already rated that", failed=True)
         return apply(schema, entry, {**entry.fields, "rating": rating})
     role = ACTIONS[action]
+    if role not in schema["collections"][entry.collection]["status"]:
+        return Outcome(f"{entry.file}: {entry.collection} can't be {DONE[action]}", failed=True)
     if role_of(schema, entry) == role:
         return Outcome(f"{entry.file}: already {entry.fields['status']}", failed=True)
     return apply(schema, entry, with_role(schema, entry, entry.fields, role))
@@ -149,7 +158,8 @@ def browse_order(schema: dict, entries: list[Entry]) -> list[Entry]:
     """Entries in the order to browse them (with no query): by status role (in progress, the backlog, paused,
     done, dropped), & within each, as the site's reading list orders them:
 
-    - done: by date finished, newest first (undated last), & within a date, a series' latest first;
+    - done: by date finished (or first played), newest first (undated last), & within a date, a series' latest
+      first;
     - active: by date started, newest first;
     - backlog & paused: shortlisted first;
 
@@ -162,7 +172,7 @@ def browse_order(schema: dict, entries: list[Entry]) -> list[Entry]:
         role, values = role_of(schema, entry), entry.fields
         first: tuple = ()
         if role in ("done", "active"):
-            date = values.get("finished" if role == "done" else "started")
+            date = values.get(stamp_of(schema, entry.collection, role) or "")
             first = (is_empty(date), _newest("" if is_empty(date) else str(date)))
         elif role in ("backlog", "paused"): first = (not values.get("shortlist"),)
         return roles.get(role, len(roles)), first, names.index(entry.collection), \
@@ -213,6 +223,8 @@ def clear_best(schema: dict, entries: list[Entry], query: str) -> Entry | None:
 
 
 def applicable(schema: dict, entries: list[Entry], action: str) -> list[Entry]:
-    """Entries the command line takes action to apply to (eg. only those not yet finished, for finish)."""
+    """Entries the command line takes action to apply to (eg. only those not yet finished, for finish, & not board
+    games, for pause)."""
     if action not in FROM: return entries
-    return [entry for entry in entries if role_of(schema, entry) in FROM[action]]
+    return [entry for entry in entries if role_of(schema, entry) in FROM[action]
+            and ACTIONS[action] in schema["collections"][entry.collection]["status"]]

@@ -1,6 +1,6 @@
 # dork
 
-A terminal tool for keeping track of novels, nonfiction, films & games in the site's content vault
+A terminal tool for keeping track of novels, nonfiction, films, games & board games in the site's content vault
 (`content/`): adding them (from Open Library, Zotero & Wikidata), finding them, marking them started, finished,
 paused or dropped, rating them, & editing their frontmatter, with every value checked by the same rules as the
 site's build.
@@ -40,8 +40,8 @@ data-dir = "~/Zotero"     # where zotero.sqlite is (by default, ~/Zotero or ~/Do
 |---|---|
 | `dork` | opens the finder |
 | `dork <query>` | opens the finder, prefiltered by query |
-| `dork add [collection] [query]` | opens the add screen, searching for query at once if given; collection (`novel`, `nonfiction`, `film` or `game`, or eg. `paper`, `movie`, `anime`) picks its tab, & otherwise every tab is searched |
-| `dork finish <query>` | marks the entry the query clearly means as finished (read, watched, played), dated today; if it isn't clear which, opens the finder with the action armed |
+| `dork add [collection] [query]` | opens the add screen, searching for query at once if given; collection (`novel`, `nonfiction`, `film`, `game` or `board`, or eg. `paper`, `movie`, `anime`, `tabletop`) picks its tab, & otherwise every tab is searched |
+| `dork finish <query>` | marks the entry the query clearly means as finished (read, watched, played), dated today (a board game's `first-played`, if not yet set); if it isn't clear which, opens the finder with the action armed |
 | `dork start <query>` | likewise, as started (dated today) |
 | `dork pause <query>` | likewise, as paused |
 | `dork dnf <query>` | likewise, as dropped |
@@ -95,6 +95,7 @@ A tab for each collection, each with its source:
 | nonfiction | your Zotero library (read from disk) | as you type |
 | films | Wikidata (films, series & anime) | on Enter |
 | games | Wikidata | on Enter |
+| boardgames | Wikidata | on Enter |
 
 Type a query & press Enter: the current tab is searched. Arriving with a query but no collection searches every
 tab at once (so `dork add piranesi`, or `^A` from the unfiltered finder, searches each source once). Each tab
@@ -103,13 +104,16 @@ the top hit; or ↓ into the list, & Enter (or `e`) on any hit. Tab (or ←/→ 
 tab, `^Z` (or `u` in the list) undoes, `^U` (or `^T`) goes to the finder (taking the query), & Esc clears the
 query, then goes back (to the finder, if it has been open).
 
+For what no source knows, `^N` (or `n` in the list) opens a blank entry of the current tab's collection in the
+editor, titled by the query (if any), to fill in by hand.
+
 Each hit shows its title, who made it, its year, & what tells it apart (eg. "23 editions", "1985 film by Martin
 Scorsese", a citation key). Hits already in the vault are ticked & dimmed, & open the entry there instead.
 
 Opening a hit fills in a new entry from its collection's template, & opens it in the editor (below). Writing it
 returns to the hits, as they were. Opening a novel takes two more requests, made at once & only for the hit
 opened: its editions (Open Library) & its series (Wikidata). Meanwhile the hit's row & the footer show a spinner,
-& Esc cancels. Films & games need nothing more.
+& Esc cancels. Films, games & board games need nothing more.
 
 ### The editor
 
@@ -127,7 +131,7 @@ in the future, a title in capitals, an author "Unknown", 0 pages, a date before 
 | any | `x` (or Backspace) clears it; `u` undoes changes to it |
 
 Typed values are tidied: ISBNs lose hyphens & spaces, a DOI's or arXiv URL becomes its id, a TMDB page becomes
-`movie/<id>` (or `tv/<id>`), & an IGDB page becomes the game's slug.
+`movie/<id>` (or `tv/<id>`), an IGDB page becomes the game's slug, & a BoardGameGeek page the game's id.
 
 Below the fields, the note's body (its review) shows, as much of it as fits. `w` writes the entry, & `e` writes
 it & then opens `$EDITOR` (or `$VISUAL`) at its first line after the frontmatter, to write (or read all of) the
@@ -143,7 +147,7 @@ Editing the **filename** row renames the note on writing, & rewrites wikilinks t
   block writing, & editing a field clears its warning.
 - The cover row offers a novel's cover: ←/→ toggle whether it's downloaded on writing (the setting
   `download-covers` gives the default). It is saved as `attachments/covers/<slug>.jpg`, & undo removes it with the
-  note. (Wikidata has no posters or covers, which are copyrighted, so films & games come without.)
+  note. (Wikidata has no posters or covers, which are copyrighted, so films, games & board games come without.)
 - For a novel, `p` lists the editions fetched (every one with an ISBN: the likely ones first, the guess first of
   all, then the rest, eg. other languages & audiobooks) to pick the one read, without another request. Picking
   one sets its ISBN & pages, & offers its own cover.
@@ -210,14 +214,19 @@ future, say) is for dork alone to warn of, & doesn't belong in them.
 `schema.yaml` gives six status **roles**, which each tracked collection names in its own words (a collection
 needn't name them all):
 
-| Role | Novels & nonfiction | Films | Games | Colour | Stamps | Forbids |
-|---|---|---|---|---|---|---|
-| backlog | `to-read` | `to-watch` | `to-play` | yellow | — | `started`, `finished` |
-| active | `reading` | `watching` | `playing` | cyan | `started` | `finished` |
-| paused | `paused` | `paused` | `paused` | blue | — | `finished` |
-| ongoing | — | — | `endless` | magenta | — | `finished` |
-| done | `read` | `watched` | `played` | green | `finished` | — |
-| dropped | `dnf` | `dnf` | `dnf` | red | — | — |
+| Role | Novels & nonfiction | Films | Games | Board games | Colour | Stamps | Forbids |
+|---|---|---|---|---|---|---|---|
+| backlog | `to-read` | `to-watch` | `to-play` | `to-play` | yellow | — | `started`, `finished`, `first-played` |
+| active | `reading` | `watching` | `playing` | — | cyan | `started` | `finished`, `shortlist` |
+| paused | `paused` | `paused` | `paused` | — | blue | — | `finished` |
+| ongoing | — | — | `endless` | — | magenta | — | `finished`, `shortlist` |
+| done | `read` | `watched` | `played` | `played` | green | `finished`, `first-played` | `shortlist` |
+| dropped | `dnf` | `dnf` | `dnf` | — | red | — | `shortlist` |
+
+Stamps & forbids apply only to fields a collection has. Board games are made to be played again (few can be
+finished, & even campaigns replay), so they're only `to-play` or `played`, & have one date, `first-played`, rather
+than `started` & `finished`: stamped the first time, & kept through replays. `start`, `pause` & `dnf` don't apply
+to them.
 
 **ongoing** is for what has nothing to finish (eg. Minecraft): played, but never done, & never at the top of the
 finder with what's in progress. It is set in the editor; `finish` & `dnf` still apply to it.
@@ -242,8 +251,8 @@ no two share both (its `unique`). A series without a number is fine.
 ### Finding entries
 
 The query is matched fuzzily, as in fzf, against an entry's title followed by who made it (author, first of
-authors, director, or developer). Each word of the query must match, its letters in order; consecutive letters &
-starts of words score higher. Accents are ignored, so "jose" finds José.
+authors, director, developer, or designer). Each word of the query must match, its letters in order; consecutive
+letters & starts of words score higher. Accents are ignored, so "jose" finds José.
 
 Results come best first. Ties go as the list has them with no query (below), so that eg. "pratchett" lists
 Discworld in order.
@@ -253,7 +262,7 @@ Within each role:
 
 | Role | Sorted by |
 |---|---|
-| done | `finished`, newest first (undated last); within a date, a series highest number first |
+| done | `finished` (or `first-played`), newest first (undated last); within a date, a series highest number first |
 | active | `started`, newest first |
 | backlog, paused | shortlisted first |
 | dropped | — |
@@ -356,6 +365,12 @@ ISBNs), it takes the first valid one.
   video games), of any subclass, & gives each one's earliest release (or a series' start), director (or a series'
   creators) or developers, & TMDB's or IGDB's id, all in one go. Anime is anything of the class anime, or in the
   genre. A year ending the query (eg. "after hours 1985") isn't searched for, but ranks hits from that year first.
+  Board games are searched for by the search box & also by full text among items with a BoardGameGeek id (so that
+  names too common for the search box, eg. "Root", are still found), & kept if they have a BoardGameGeek id or are
+  board games of any subclass (Wikidata files many under card, party, strategy or tabletop games). Each comes with
+  its year, designers (from any of game designer, designer, creator, author or developer), how many can play
+  (eg. "2–4"), & BoardGameGeek id. Wikidata knows only the better-known board games (some 4,300 have a
+  BoardGameGeek id), & of those, few name a designer: well-known games mostly do, but expect to type it for many.
   Its data is public domain (CC0), so it may be kept & shown freely.
 
 Sources were chosen for their terms, as well as their data. TMDB's terms forbid keeping anything from it for over

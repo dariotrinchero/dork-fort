@@ -110,6 +110,7 @@ files. Each folder holds one lorem-ipsum placeholder until its real content arri
 | `nonfiction/` | textbooks, books & papers (`kind: textbook \| book \| paper`) | realm-of-forms |
 | `films/` | films, series & anime (`kind: film \| series \| anime`) | moon-and-stars |
 | `games/` | video games | moon-and-stars |
+| `boardgames/` | board, card & other tabletop games | moon-and-stars |
 | `adventures/` | one per outing | traveller |
 | `garden/` | notes on iNaturalist observations | garden |
 | `blog/` | blog posts, dated (newest first on the site) | realm-of-forms |
@@ -143,7 +144,7 @@ vault keeps human names (no slugs in the kitchen).
 
 The templates give each collection's fields (in order) & defaults; `content/schema.yaml` gives their types,
 & is read by both the build & `dork`, which check notes by the same rules. Novels, nonfiction, films & games
-share:
+share (& board games, but for their dates):
 - **`status`:** `to-read | reading | paused | read | dnf` (films: `to-watch | watching | paused | watched |
   dnf`; games: `to-play | playing | paused | endless | played | dnf`, where `endless` is for games with nothing
   to finish, eg. Minecraft), set explicitly, as many reads have no dates. The build checks it agrees with the dates (eg. no
@@ -155,6 +156,8 @@ share:
   function reference); the site draws `★★★★¾`.
 - **`recommended-by`:** initials only (eg. `JS`); the build rejects anything else, so no names get published by
   accident. Also `shortlist` & `tags`.
+- **`owned`** (novels, nonfiction, games & board games): `true`, `false` (eg. borrowed from a library), or
+  `wishlist` (not owned, but wanted), which each one's Base lists in a Wishlist view.
 - The body holds the review or comments.
 
 Per collection:
@@ -164,6 +167,9 @@ Per collection:
   by topic.
 - **films:** `kind`, `year`, `director` (or creator), `tmdb` (`movie/<id>` or `tv/<id>`), `poster`.
 - **games:** `year`, `developer`, `platform` (what it was played on), `igdb` (its slug there), `cover`, `owned`.
+- **board games:** `year`, `designer`, `players` (eg. `"2–4"`), `bgg` (its id on BoardGameGeek), `cover`, `owned`;
+  only `to-play | played` (played at all, as they're played again & again), with `first-played` rather than
+  `started` & `finished`.
 - **adventures:** `date`, `activity` (climb, run, hike, camp…), `place`, `grade`, `distance` (km), `time`
   (`"h:mm"`, quoted, or YAML 1.1 reads it as a number), `ascent` (m), `gpx`, `photos`.
 - **garden:** `date`, `inaturalist` (observation id), `species`, `place`, `photos`.

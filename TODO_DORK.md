@@ -1,7 +1,7 @@
 # `dork`: progress & plans
 
-A TUI & CLI for adding & updating novels, nonfiction, films & games in the content vault. What's built is
-specified in [tools/dork/README.md](tools/dork/README.md) (usage, parity with the site, behaviour, code &
+A TUI & CLI for adding & updating novels, nonfiction, films, games & board games in the content vault. What's
+built is specified in [tools/dork/README.md](tools/dork/README.md) (usage, parity with the site, behaviour, code &
 testing); this file tracks progress, & plans what isn't built yet.
 
 ## Progress
@@ -39,15 +39,27 @@ testing); this file tracks progress, & plans what isn't built yet.
    - [x] specified in `tools/dork/README.md`
    - [ ] set `contact` (an email) in `~/.config/dork/config.toml`, as Open Library asks
    - [ ] try adding for real for a while, & note what grates
-4. **Later**
+4. **Board games**
+   - [x] `boardgames/` (`Templates/Board Game.md`, `Bases/Board Games.base`, `types.json`, `content.d.ts`):
+     `designer`, `players` (eg. "2–4"), & `bgg` (BoardGameGeek's id)
+   - [x] only `to-play` or `played` (they're played again & again), with `first-played` rather than `started` &
+     `finished` (roles stamp & forbid only the dates a collection has)
+   - [x] `owned`: `true`, `false` or `wishlist` (for novels, nonfiction & games too), so wanting to buy something
+     doesn't take `shortlist`, which says what's next to begin
+   - [x] Wikidata source: the search box, & full text among items with a BoardGameGeek id (for names like "Root")
+   - [ ] maybe, from Wikidata: playing time (P2047, with its unit), minimum age, & expansions (as their own entries,
+     or a `kind`)
+5. **Later**
    - [ ] `dork fill [collection]`: backfill `year`, `pages`, `cover`, `series` & `series-number` of entries that
      have an ISBN (by Open Library's edition, & its work's Wikidata series), & films' & games' fields from
      Wikidata (by their TMDB or IGDB id, or title & year); throttled, resumable, & showing each change for a yes
      or no (the imported novels have ISBNs, but no year, pages, cover or series)
-   - [ ] nonfiction not yet in Zotero: an online fallback (Crossref for papers, Open Library for books), saving
-     the hit to Zotero through its connector (`localhost:23119/connector/saveItems`, while Zotero runs) so that it
-     gets a real citation key, rather than one guessed
-   - [ ] undo across sessions (eg. a journal of the last few changes in `~/.cache/dork/`)
-   - [ ] the site showing games (& films) on moon & stars
+   - [ ] the site showing games, board games (& films) on moon & stars
    - [ ] when the site shows covers (downloaded from Open Library, & dithered), a courtesy link to Open Library on
      it (eg. in each window's footer, or on whoami), as it asks of those who don't show covers from its server
+
+## Decided against
+
+- Saving to Zotero (eg. through its connector, for nonfiction not yet there): dork never touches the Zotero library.
+- Undo across sessions: that's what git is for.
+- Hiding spoilers in dork's reviews: the site will note that reviews may hold spoilers.
