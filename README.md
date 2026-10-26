@@ -57,6 +57,21 @@ Assets in `src/assets/` are processed at compile time, & never deployed as-is:
 Static files that should be deployed as-is (eg. `robots.txt`, & the 404 page `not_found.html`) go in `public/`,
 & are served from the root of the site.
 
+## Content
+
+The site's writing, reading lists, films & the like live in `content/`, an Obsidian vault, whose notes are baked
+into the site at build time by `scripts/bakeContent.js` (see `TODO.md` for how it's organised).
+`content/schema.yaml` gives the type of every field of every collection, & `scripts/validateContent.js` checks
+each note against it: problems fail production builds (naming the file & field), & only warn in dev.
+
+```bash
+npm run check   # validate the vault alone
+npm test        # tests of the validator (also run in CI, before building)
+```
+
+[`dork`](tools/dork/README.md), in `tools/dork/`, is a terminal tool for keeping the reading & watching lists:
+marking things started, finished or dropped, rating them, & editing them, by the same rules as the build.
+
 ## Deploying to Neocities
 
 There is seldom a need to deploy the site manually, because pushing changes to the `main` branch

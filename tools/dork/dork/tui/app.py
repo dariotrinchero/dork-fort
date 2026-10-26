@@ -30,7 +30,6 @@ class App:
 
     def load(self):
         self.entries = load_entries(self.schema, self.names, self.content)
-        self.mtimes = {entry.path: entry.path.stat().st_mtime for entry in self.entries}
         self.version += 1
 
     #---- screens -----------------------------------------------------------------------------

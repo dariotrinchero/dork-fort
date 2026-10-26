@@ -4,7 +4,8 @@
 import re
 import unicodedata
 
-# words that belong to a surname when they come before it (as in Le Guin, or de Beauvoir)
+# words that belong to a surname when they come before it (as in Le Guin, or de Beauvoir); as in the site's
+# surname() (src/moonAndStars.ts), so that both order authors alike
 PARTICLES = {"le", "la", "de", "du", "des", "del", "della", "di", "da", "van", "von", "der", "den", "ter", "ten", "st",
              "st."}
 

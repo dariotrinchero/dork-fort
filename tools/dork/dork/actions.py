@@ -109,6 +109,55 @@ def act(schema: dict, entry: Entry, action: str, rating=None) -> Outcome:
 
 #---- finding entries ------------------------------------------------------------------------------
 
+def _sortable(text) -> str: return fold(str(text)).casefold()
+
+
+def _newest(date: str) -> tuple:
+    """Key sorting dates (as precise as known) newest first; a date counts as later than any less precise date
+    it falls within, as the site's sorting has it ("2023-05" before "2023")."""
+    return (*(-ord(ch) for ch in date), 1)
+
+
+def _by_name(schema: dict, entry: Entry) -> tuple:
+    """Key sorting entries of a collection by name: by kind (in the schema's order), where the collection has
+    kinds; then by surname of the author (or first of the authors), where it has authors; then by title."""
+    from .slugs import surname
+    fields, values = schema["collections"][entry.collection]["fields"], entry.fields
+    key: list = []
+    if fields.get("kind", {}).get("type") == "enum":
+        kinds = fields["kind"]["values"]
+        key.append(kinds.index(values.get("kind")) if values.get("kind") in kinds else len(kinds))
+    if "author" in fields or "authors" in fields:
+        who = str(values.get("author") or (values.get("authors") or [""])[0] or "")
+        key.append((not who, _sortable(surname(who)) if who else "", _sortable(who)))
+    return (*key, _sortable(values.get("title") or entry.slug))
+
+
+def browse_order(schema: dict, entries: list[Entry]) -> list[Entry]:
+    """Entries in the order to browse them (with no query): by status role (in progress, the backlog, paused,
+    done, dropped), & within each, as the site's reading list orders them:
+
+    - done: by date finished, newest first (undated last);
+    - active: by date started, newest first;
+    - backlog: shortlisted first;
+
+    & then by collection (in the schema's order) & by name within it (see _by_name). Dates order entries across
+    collections, so that what's done reads as one timeline."""
+    roles = {role: i for i, role in enumerate(ROLE_ORDER)}
+    names = list(schema["collections"])
+
+    def key(entry: Entry) -> tuple:
+        role, values = role_of(schema, entry), entry.fields
+        first: tuple = ()
+        if role in ("done", "active"):
+            date = values.get("finished" if role == "done" else "started")
+            first = (is_empty(date), _newest("" if is_empty(date) else str(date)))
+        elif role == "backlog": first = (not values.get("shortlist"),)
+        return roles.get(role, len(roles)), first, names.index(entry.collection), _by_name(schema, entry)
+
+    return sorted(entries, key=key)
+
+
 def haystack(entry: Entry) -> str:
     """Text a query is matched against: title first (so its matches can be shown), then who made it."""
     return f"{entry.fields.get('title') or entry.slug}  {creator(entry)}"

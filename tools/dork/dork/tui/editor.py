@@ -2,6 +2,7 @@
 Status, enums & booleans cycle with ←/→, ratings step in quarter stars, & everything else is typed. Values the
 build would reject show in red, with the reason in the footer, & block writing."""
 
+import csv
 import curses
 import re
 
@@ -16,6 +17,8 @@ CYCLED = ("status", "enum", "bool")
 
 HELP = [
     ("↑↓ j k", "move between fields"),
+    ("", "(lists are typed as a, b, c; quote any item"),
+    ("", ' holding a comma, as in "Me, Myself & I")'),
     ("← → h l", "change status, kind, true/false; rating by ¼"),
     ("⏎", "edit the field (or rate, or change)"),
     ("1–5 0", "rating: whole stars, or none"),
@@ -39,10 +42,20 @@ TIDY = {
 }
 
 
+def quote(item: str) -> str:
+    """Item of list as typed: in double quotes if it holds a comma or a quote (doubled), as in CSV."""
+    return f'"{item.replace(chr(34), chr(34) * 2)}"' if "," in item or '"' in item else item
+
+
+def split(text: str) -> list[str]:
+    """Items of list typed as "a, b, c", where an item may be quoted to hold commas (as in CSV)."""
+    return [item.strip() for item in next(csv.reader([text], skipinitialspace=True), []) if item.strip()]
+
+
 def as_text(value) -> str:
     """Value as typed into a field."""
     if value is None: return ""
-    if isinstance(value, list): return ", ".join(map(str, value))
+    if isinstance(value, list): return ", ".join(quote(str(item)) for item in value)
     if isinstance(value, float) and value.is_integer(): return str(int(value))
     return str(value)
 
@@ -51,7 +64,7 @@ def from_text(kind: str, text: str):
     """Value of field of kind typed as text (left as text if it isn't one, to show as an error)."""
     text = TIDY.get(kind, lambda t: t)(text.strip())
     if not text: return [] if kind == "list" else None
-    if kind == "list": return [item.strip() for item in text.split(",") if item.strip()]
+    if kind == "list": return split(text)
     if kind in ("year", "count") and re.fullmatch(r"-?\d+", text): return int(text)
     if kind in ("number", "rating"):
         try: number = float(text)

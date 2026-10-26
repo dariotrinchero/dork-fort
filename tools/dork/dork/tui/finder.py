@@ -7,11 +7,12 @@ import curses
 from pathlib import Path
 
 from .. import actions
-from ..actions import ROLE_ORDER, creator, role_of
+from ..actions import creator, role_of
 from ..vault import Entry
 from .base import BACKSPACES, ENTER, ESC, TAB, Help, LineEdit, Stars, attr, ctrl, dwidth, fit, put, runs
 
-# what each collection's entries are labelled (films by their kind)
+# what each collection's entries are labelled, unless they have a kind (eg. "series", or "paper"), which labels
+# them instead; either way, in the collection's colour
 LABELS = {"novels": "novel", "nonfiction": "nonfic", "films": "film", "games": "game"}
 
 # quick actions' keys, in the list & (with Ctrl) while typing
@@ -30,13 +31,28 @@ HELP = [
     ("", ""),
     ("in the list:", ""),
     ("↑↓ j k", "move (↑ from the top: back to typing)"),
+    ("←→ h l", "filter by collection"),
     ("PgUp PgDn g G", "page, first, last"),
     ("f s p d r", "finish / start / pause / dnf / rate"),
     ("⏎ e", "edit"),
     ("u", "undo the last change"),
-    ("/ esc", "back to typing"),
+    ("/ space esc", "back to typing"),
     ("q", "quit"),
 ]
+
+
+def label_of(schema: dict, entry: Entry) -> str:
+    """Label of entry: its kind, if its collection has kinds & it has one, else its collection's."""
+    kind = entry.fields.get("kind")
+    has_kinds = schema["collections"][entry.collection]["fields"].get("kind", {}).get("type") == "enum"
+    return str(kind) if has_kinds and kind else LABELS.get(entry.collection, entry.collection)
+
+
+def label_width(schema: dict) -> int:
+    """Width of the widest label any entry could have (eg. "textbook")."""
+    kinds = [kind for collection in schema["collections"].values()
+             for kind in collection["fields"].get("kind", {}).get("values", [])]
+    return max(map(dwidth, [*LABELS.values(), *kinds]))
 
 
 class Finder:
@@ -67,10 +83,7 @@ class Finder:
         if self.filter: pool = [e for e in pool if e.collection == self.filters[self.filter]]
         if self.query.text.strip():
             self._results = [(e, indices) for e, indices, _ in actions.rank(self.app.schema, pool, self.query.text)]
-        else:
-            order = {role: i for i, role in enumerate(ROLE_ORDER)}
-            pool = sorted(pool, key=lambda e: (order.get(role_of(self.app.schema, e), 9), -self.app.mtimes[e.path]))
-            self._results = [(e, set()) for e in pool]
+        else: self._results = [(e, set()) for e in actions.browse_order(self.app.schema, pool)]
 
         # a new query starts at its best match; reloaded entries keep the one selected
         paths = [e.path for e, _ in self._results]
@@ -146,7 +159,9 @@ class Finder:
         elif key in CTRL_KEYS: self.act(CTRL_KEYS[key])
         elif key == ord("e"): self.edit()
         elif key in (ord("u"), ctrl("z")): self.app.undo()
-        elif key in (ord("/"), ord("i"), ESC): self.typing = True
+        elif key in (curses.KEY_RIGHT, ord("l")): self.filter = (self.filter + 1) % len(self.filters)
+        elif key in (curses.KEY_LEFT, ord("h")): self.filter = (self.filter - 1) % len(self.filters)
+        elif key in (ord("/"), ord(" "), ord("i"), ESC): self.typing = True
         elif key == ord("q"): self.app.running = False
         elif key == ord("?"): self.app.push(Help("Keys", HELP))
 
@@ -188,7 +203,7 @@ class Finder:
         put(win, y, 0, "▸" if chosen else " ", attr("accent", bg, bold=True))
 
         fields, schema = entry.fields, self.app.schema
-        label = fields.get("kind") if entry.collection == "films" and fields.get("kind") else LABELS[entry.collection]
+        label = label_of(schema, entry)
         role = role_of(schema, entry)
         status = str(fields.get("status") or "")
         rating = fields.get("rating")
@@ -198,16 +213,17 @@ class Finder:
         who = creator(entry)
 
         # columns, from the right: stars, status, year, who made it; the title takes the rest
+        tag = label_width(schema) + 1
         stars_x = w - 6
         status_x = stars_x - 10
         year_x = status_x - 6
-        who_width = max(0, min(24, (year_x - 9) // 3))
+        who_width = max(0, min(24, (year_x - 2 - tag) // 3))
         who_x = year_x - who_width - 2
-        title_width = max(1, (who_x if who_width else year_x) - 9 - 2)
+        title_width = max(1, (who_x if who_width else year_x) - 2 - tag - 2)
 
-        put(win, y, 2, fit(label, 7), attr(entry.collection, bg))
+        put(win, y, 2, fit(label, tag), attr(entry.collection, bg))
         hits = attr("accent", bg, bold=True)
-        self.draw_matched(win, y, 9, title, 0, indices, title_width, attr("fg", bg, bold=chosen), hits)
+        self.draw_matched(win, y, 2 + tag, title, 0, indices, title_width, attr("fg", bg, bold=chosen), hits)
         if who_width: self.draw_matched(win, y, who_x, who, len(title) + 2, indices, who_width, attr("dim", bg), hits)
         put(win, y, year_x, year[:4], attr("dim", bg))
         colour = schema["roles"][role]["colour"] if role else "error"
@@ -232,5 +248,5 @@ class Finder:
         if self.typing:
             return ["⏎ edit · ↓ list · ⇥ collection · ^F finish ^S start ^P pause ^D dnf ^R rate · ^Z undo",
                     "⏎ edit · ↓ list · ^F ^S ^P ^D ^R · ^Z undo", "⏎ edit · ↓ list"]
-        return ["f finish  s start  p pause  d dnf  r rate  ⏎ edit  u undo  / search  ? help  q quit",
+        return ["f finish  s start  p pause  d dnf  r rate  ⏎ edit  u undo  ←→ collection  space search  ? help",
                 "f s p d r · ⏎ edit · u undo · ? help", "? help"]

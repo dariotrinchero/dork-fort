@@ -84,6 +84,75 @@ class Writing(unittest.TestCase):
                          "---\ntitle: X\ntags: [a]\nstatus: to-watch\n---\n")
 
 
+class Editing(unittest.TestCase):
+    def test_lists_survive_the_editor(self):
+        """Every list in the vault, shown in the editor & typed back unchanged, is the same list (an alias holding a
+        comma, say, isn't split in two)."""
+        from dork.tui.editor import as_text, from_text
+        for entry in load_entries(SCHEMA, list(SCHEMA["collections"])):
+            for key, value in entry.fields.items():
+                if isinstance(value, list) and value:
+                    with self.subTest(file=entry.file, key=key):
+                        self.assertEqual(from_text("list", as_text(value)), value)
+        self.assertEqual(from_text("list", 'a, "b, c" , d'), ["a", "b, c", "d"])
+        self.assertEqual(from_text("list", ' a ,, b, '), ["a", "b"])
+
+
+def note(collection: str, slug: str, **fields) -> "Entry":
+    """Entry made up of fields (as if read from a note)."""
+    return parse(collection, Path(f"{slug}.md"), "---\n" + "\n".join(emit(k, v) for k, v in fields.items()) + "\n---\n")
+
+
+class Browsing(unittest.TestCase):
+    def order(self, *entries):
+        return [entry.slug for entry in actions.browse_order(SCHEMA, list(entries))]
+
+    def test_roles_first(self):
+        self.assertEqual(self.order(note("novels", "dropped", title="A", status="dnf"),
+                                    note("novels", "done", title="A", status="read"),
+                                    note("novels", "paused", title="A", status="paused"),
+                                    note("novels", "backlog", title="A", status="to-read"),
+                                    note("novels", "active", title="A", status="reading")),
+                         ["active", "backlog", "paused", "done", "dropped"])
+
+    def test_done_newest_first_across_collections(self):
+        self.assertEqual(self.order(note("novels", "undated", title="A", status="read"),
+                                    note("novels", "2023", title="B", status="read", finished="2023"),
+                                    note("films", "2023-05", title="C", status="watched", finished="2023-05"),
+                                    note("games", "2024-01-02", title="D", status="played", finished="2024-01-02"),
+                                    note("novels", "2022-12-31", title="E", status="read", finished="2022-12-31")),
+                         ["2024-01-02", "2023-05", "2023", "2022-12-31", "undated"])
+
+    def test_active_newest_started_first(self):
+        self.assertEqual(self.order(note("novels", "old", title="A", status="reading", started="2024-01-01"),
+                                    note("films", "new", title="B", status="watching", started="2025-06-01")),
+                         ["new", "old"])
+
+    def test_backlog_shortlist_then_collection_then_name(self):
+        self.assertEqual(self.order(
+            note("films", "series-a", title="A", status="to-watch", kind="series"),
+            note("films", "film-z", title="Z", status="to-watch", kind="film"),
+            note("novels", "smith", title="A", author="Zadie Smith", status="to-read"),
+            note("novels", "pratchett-mort", title="Mort", author="Terry Pratchett", status="to-read"),
+            note("novels", "pratchett-eric", title="Eric", author="Terry Pratchett", status="to-read"),
+            note("novels", "le-guin", title="Z", author="Ursula K. Le Guin", status="to-read"),
+            note("nonfiction", "book-a", title="A", kind="book", authors=["Al Able"], status="to-read"),
+            note("nonfiction", "textbook-z", title="Z", kind="textbook", authors=["Zed Zee"], status="to-read"),
+            note("films", "shortlisted", title="Q", status="to-watch", kind="anime", shortlist=True)),
+            ["shortlisted",                                          # shortlisted first, whatever it is
+             "le-guin", "pratchett-eric", "pratchett-mort", "smith", # novels: by surname, then title
+             "textbook-z", "book-a",                                 # nonfiction: by kind, in the schema's order
+             "film-z", "series-a"])                                  # films: by kind, then title
+
+    def test_labels(self):
+        from dork.tui.finder import label_of, label_width
+        self.assertEqual(label_of(SCHEMA, note("nonfiction", "a", title="A", kind="paper", status="read")), "paper")
+        self.assertEqual(label_of(SCHEMA, note("nonfiction", "a", title="A", status="read")), "nonfic")
+        self.assertEqual(label_of(SCHEMA, note("films", "a", title="A", kind="series", status="watched")), "series")
+        self.assertEqual(label_of(SCHEMA, note("novels", "a", title="A", status="read")), "novel")
+        self.assertEqual(label_width(SCHEMA), len("textbook"))
+
+
 class Slugs(unittest.TestCase):
     def test_parts(self):
         self.assertEqual(slugify("Howl's Moving Castle"), "howls-moving-castle")

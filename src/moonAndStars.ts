@@ -69,42 +69,65 @@ export const moonAndStarsMenu = (accent: RGB): MenuSection[] => {
     }];
 };
 
+// words belonging to a surname when they come before it (as in Le Guin, or de Beauvoir); as in dork's surname()
+// (tools/dork/dork/slugs.py), so that both order authors alike
+const PARTICLES = new Set([ "le", "la", "de", "du", "des", "del", "della", "di", "da", "van", "von", "der", "den",
+    "ter", "ten", "st", "st." ]);
+
+/**
+ * Get surname of person, with any particles before it.
+ *
+ * @param name name of person, eg. "Ursula K. Le Guin"
+ * @returns surname, eg. "Le Guin"
+ */
+const surname = (name: string): string => {
+    const words = name.split(/\s+/).filter(Boolean);
+    let i = words.length - 1;
+    while (i > 1 && PARTICLES.has(words[i - 1]?.toLowerCase() ?? "")) i--;
+    return words.slice(i).join(" ");
+};
+
+/**
+ * Order novels by author's surname (those without an author last), then by author, then by title, as dork lists
+ * them.
+ *
+ * @param a novel
+ * @param b novel
+ * @returns negative if a comes first, positive if b does, & otherwise 0
+ */
+const byName = (a: Novel, b: Novel): number =>
+    Number(!a.author) - Number(!b.author)
+    || surname(a.author ?? "").localeCompare(surname(b.author ?? ""))
+    || (a.author ?? "").localeCompare(b.author ?? "")
+    || a.title.localeCompare(b.title);
+
 /**
  * Order novels by date finished, latest first (dates as precise as known sort as text, those known only to the year
- * or month before others in it), then undated ones by title.
+ * or month before others in it), then undated ones by name (see byName).
  *
  * @param a novel
  * @param b novel
  * @returns negative if a comes first, positive if b does, & otherwise 0
  */
 const byFinished = (a: Novel, b: Novel): number =>
-    (b.finished ?? "").localeCompare(a.finished ?? "") || a.title.localeCompare(b.title);
+    (b.finished ?? "").localeCompare(a.finished ?? "") || byName(a, b);
 
 /**
- * Order novels shortlisted first, then by title.
+ * Order novels shortlisted first, then by name (see byName).
  *
  * @param a novel
  * @param b novel
  * @returns negative if a comes first, positive if b does, & otherwise 0
  */
 const byShortlist = (a: Novel, b: Novel): number =>
-    Number(b.shortlist ?? false) - Number(a.shortlist ?? false) || a.title.localeCompare(b.title);
-
-/**
- * Order novels by title.
- *
- * @param a novel
- * @param b novel
- * @returns negative if a comes first, positive if b does, & otherwise 0
- */
-const byTitle = (a: Novel, b: Novel): number => a.title.localeCompare(b.title);
+    Number(b.shortlist ?? false) - Number(a.shortlist ?? false) || byName(a, b);
 
 // tabs of reading list, each of novels with a status, in an order (the first tab being shown at first)
 const READING_TABS: { label: string; order: (a: Novel, b: Novel) => number; status: ReadingStatus }[] = [
     { label: "finished", order: byFinished, status: "read" },
     { label: "to read", order: byShortlist, status: "to-read" },
-    { label: "paused", order: byTitle, status: "paused" },
-    { label: "dnf", order: byTitle, status: "dnf" },
+    { label: "paused", order: byName, status: "paused" },
+    { label: "dnf", order: byName, status: "dnf" },
 ];
 
 /**
