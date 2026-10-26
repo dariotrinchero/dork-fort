@@ -6,7 +6,7 @@ year: 2025
 director: Park Chan-wook
 tmdb: movie/639988
 poster:
-status: to-watch
+status: paused
 started:
 finished:
 rating:

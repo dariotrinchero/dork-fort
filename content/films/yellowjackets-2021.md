@@ -11,6 +11,6 @@ started:
 finished:
 rating:
 shortlist: false
-recommended-by:
+recommended-by: LK
 tags: [horror, drama]
 ---

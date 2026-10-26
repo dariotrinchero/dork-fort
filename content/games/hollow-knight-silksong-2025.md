@@ -10,7 +10,7 @@ status: to-play
 started:
 finished:
 rating:
-owned: false
+owned: wishlist
 shortlist: true
 recommended-by:
 tags: [metroidvania, soulslike]

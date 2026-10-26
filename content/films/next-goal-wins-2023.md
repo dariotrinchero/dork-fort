@@ -9,8 +9,8 @@ poster:
 status: watched
 started:
 finished: 2026-09-12
-rating:
+rating: 4.75
 shortlist: false
-recommended-by:
+recommended-by: TVZ
 tags: []
 ---

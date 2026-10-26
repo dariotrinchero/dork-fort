@@ -4,13 +4,13 @@ aliases: [Shroom and Gloom]
 year: 2026
 developer: Team Lazerbeam
 platform: Steam
-igdb:
+igdb: shroom-and-gloom--1
 cover:
 status: to-play
 started:
 finished:
 rating:
-owned: false
+owned: wishlist
 shortlist: false
 recommended-by:
 tags: []

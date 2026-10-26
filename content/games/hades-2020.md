@@ -4,7 +4,7 @@ aliases: [Hades]
 year: 2020
 developer: Supergiant Games
 platform: Steam
-igdb:
+igdb: hades--1
 cover:
 status: endless
 started:

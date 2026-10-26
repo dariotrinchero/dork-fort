@@ -6,7 +6,7 @@ year: 2022
 director: Zachary Wigon
 tmdb:
 poster:
-status: watched
+status: to-watch
 started:
 finished:
 rating: 4

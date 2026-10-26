@@ -9,7 +9,7 @@ poster:
 status: watched
 started:
 finished: 2026-07-24
-rating:
+rating: 4.5
 shortlist: false
 recommended-by:
 tags: []

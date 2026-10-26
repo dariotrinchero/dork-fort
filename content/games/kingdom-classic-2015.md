@@ -4,7 +4,7 @@ aliases: ["Kingdom: Classic"]
 year: 2015
 developer: Noio & Licorice
 platform: Steam
-igdb:
+igdb: kingdom-classic--1
 cover:
 status: played
 started:

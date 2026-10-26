@@ -9,7 +9,7 @@ poster:
 status: watched
 started:
 finished:
-rating:
+rating: 2.75
 shortlist: false
 recommended-by:
 tags: [horror]
