@@ -19,10 +19,13 @@ validation** (flag junk rather than autofill it).
      broken in every way they check, & insists they report the very same problems
    - [x] `dork check`, with the same rules as the build
 2. **Vault & update** (fully useful offline)
-   - [ ] vault read/write; line-preserving emitter (round-trip: unchanged files stay byte-identical)
-   - [ ] fuzzy finder (port of `src/fuzzy.ts`), quick actions, star overlay, undo of the last quick action
-   - [ ] editor
-   - [ ] headless `start`/`finish`/`pause`/`dnf`/`rate`
+   - [x] vault read/write (`vault.py`); line-preserving emitter (round-trip: every note in the vault renders
+     back byte for byte, in the tests)
+   - [x] fuzzy finder (`fuzzy.py`, checked against `src/fuzzy.ts` itself under Node), quick actions, star
+     overlay, undo (of every change this session, last first)
+   - [x] editor, incl. renaming (which rewrites wikilinks to the note across the vault)
+   - [x] headless `start`/`finish`/`pause`/`dnf`/`rate`
+   - [ ] try it for real for a while, & note what grates
 3. **Add**
    - [ ] net layer (throttle, in-RAM cache, User-Agent)
    - [ ] Open Library → TMDB → Zotero/Crossref/arXiv → IGDB
@@ -126,14 +129,18 @@ validation** (flag junk rather than autofill it).
 
   | Field type | Controls |
   |---|---|
-  | text | Enter or typing edits inline (`^A ^E ^W ^U`; Esc cancels) |
-  | enum, status, bool | ←/→ cycle, each value in its colour |
-  | rating | ←/→ in quarter steps; digits set it; `0` or Backspace clears it |
+  | text | Enter edits inline (`^A ^E ^W ^U ^K`; Esc cancels) |
+  | enum, status, bool | ←/→ cycle (Enter too), each value in its colour |
+  | rating | ←/→ in quarter steps; digits set it; `0` clears it; Enter opens the star meter |
   | list | edited as `a, b, c` |
   | partial date | `t` sets today |
+  | any | `x` (or Backspace) clears it; `u` undoes changes to it |
 
+- **Pasted values are tidied:** a DOI's or arXiv's URL to its id, a TMDB page to `movie/<id>`, an IGDB page to
+  its slug, & an ISBN to digits.
 - **Status stamps dates.** Changing status applies the role's stamp: `active` stamps `started`, `done` stamps
-  `finished`, each with today if empty.
+  `finished`, each with today if empty. Cycling past a status undoes its stamp (so passing `reading` on the way
+  to `read` leaves no `started`), unless the date was set by hand.
 - **Colours.** Errors show red, warnings orange, & the footer gives the highlighted field's reason.
 - **Keys.**
 
@@ -141,17 +148,19 @@ validation** (flag junk rather than autofill it).
   |---|---|
   | `w` | write (blocked while there are errors) |
   | `e` | write, then `$EDITOR` at the body |
-  | `b` | back |
+  | Esc, `q` | back |
   | `u` | undo field |
 
-  Leaving with unsaved changes asks first.
+  Leaving with unsaved changes asks first. After `$EDITOR` changes a note, undo no longer reaches back past it
+  (undoing would discard what was written there).
 
 ### Update (fuzzy finder)
 
 - **One list of all entries**, filtered live as you type.
   - Each row has a type tag coloured by collection, & its status in its role's colour.
-  - Tab cycles a type filter.
-  - Active & backlog entries win ties.
+  - Tab (⇧Tab back) cycles a filter by collection, in either mode.
+  - Active & backlog entries win ties; with no query, what's in progress comes first, then what changed last.
+  - Matching ignores accents ("jose" finds José).
 - **Query mode** (the default): typing filters, & Ctrl acts on the highlighted match:
 
   | Key | Action |
@@ -162,13 +171,14 @@ validation** (flag junk rather than autofill it).
   | `^D` | dnf |
   | `^R` | rate |
 
-  Curses runs in `raw()` mode, so `^S` isn't flow control, & `^C` quits.
-- **List mode:** ↓ or Tab moves into the list.
+  `^Z` undoes. Curses runs in `raw()` mode, so `^S` isn't flow control, & `^C` quits.
+- **List mode:** ↓ moves into the list, & down a row (as ↓ always does).
   - Bare `f s p d r` act on the selected entry.
   - Enter or `e` edits.
-  - `/`, or ↑ past the top, returns to the query.
+  - `/`, Esc, or ↑ past the top, returns to the query; `q` quits; `?` lists the keys.
 - **Feedback.** Every action writes immediately & reports what changed, eg.
-  `novels/a-discovery-of-witches-harkness.md: to-read → read, finished 2026-10-26`. `u` undoes the last action.
+  `novels/a-discovery-of-witches-harkness.md: to-read → read, finished 2026-10-26`. `u` undoes the last change.
+  Actions refuse to leave an entry invalid (eg. pausing something with a `finished` date), saying why.
 
 ## Command line
 
@@ -182,7 +192,12 @@ dork check                          validate the vault, as the build does
 dork fill [collection]              later: backfill year/pages/cover (throttled)
 ```
 
-A **clear best match** is either the only match, or a top score that beats the runner-up by a clear margin.
+Headless actions only consider entries the action can follow (finish & dnf: backlog, active or paused; start:
+backlog, paused or dropped; pause: backlog or active), & only those the query matches *strongly*: every word of
+it appearing as typed (accents aside), not scattered letter by letter (fuzzily, "dune" matches "Jury Duty"). A
+**clear best match** among those is either the only one, one titled exactly the query, or one that outscores the
+runner-up by half as much again. Otherwise the finder opens, prefiltered, with the action armed (or, without a
+terminal, the candidates are listed).
 
 ## Verification
 

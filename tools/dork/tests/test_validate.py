@@ -68,7 +68,7 @@ class Parity(unittest.TestCase):
         with tempfile.TemporaryDirectory() as scratch:
             vault = Path(scratch) / "content"
             shutil.copytree(CONTENT, vault, ignore=shutil.ignore_patterns(".obsidian", ".trash"))
-            novel, film, paper = (sorted((vault / folder).glob("*.md"))[0] for folder in ("novels", "films", "nonfiction"))
+            novel, film, paper = (sorted((vault / name).glob("*.md"))[0] for name in ("novels", "films", "nonfiction"))
             _edit(novel, (r"^status: .*", "status: watched"), (r"^tags: .*", 'tags: [Fantasy, "magical realism"]'))
             _edit(film, (r"^rating:.*", "rating: 4.6"), (r"^recommended-by:.*", "recommended-by: John"),
                   (r"^year: .*", "year: 1985.5"), (r"^finished:.*", "finished: 2023"))

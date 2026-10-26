@@ -1,11 +1,22 @@
-"""dork's command line (see TODO_DORK.md)."""
+"""dork's command line (see TODO_DORK.md):
 
-import argparse
+    dork [query]                         the update screen (prefiltered by query)
+    dork start|finish|pause|dnf <query>  set the status of the entry query clearly means, else pick in the finder
+    dork rate <query> [rating]           likewise, rating it (0 to clear; without a rating, the star meter opens)
+    dork check                           validate the vault, as the build does
+"""
+
+import re
 import sys
 
 from . import __version__
-from .schema import CONTENT
-from .validate import validate_vault
+from .actions import ACTIONS, DONE, act, applicable, clear_best, rank
+from .schema import CONTENT, load_schema
+from .validate import check_value, validate_vault
+from .vault import load_entries, tracked
+
+QUICK = [*ACTIONS, "rate"]
+COMMANDS = ["check", "add", *QUICK]
 
 
 def check() -> int:
@@ -16,17 +27,81 @@ def check() -> int:
     return 1 if problems else 0
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="dork", description="Add & update media in the content vault.")
-    parser.add_argument("--version", action="version", version=f"dork {__version__}")
-    commands = parser.add_subparsers(dest="command", metavar="command")
-    commands.add_parser("check", help="validate the vault, as the build does")
-    args = parser.parse_args(argv)
+def interactive() -> bool: return sys.stdin.isatty() and sys.stdout.isatty()
 
-    if args.command == "check": return check()
-    parser.print_help()
+
+def finder(query: str = "") -> int:
+    if not interactive(): return fail("dork's update screen needs an interactive terminal")
+    from .tui.app import start
+    from .tui.finder import Finder
+    result = start(load_schema(), Finder(query))
+    if result: print(result)
     return 0
 
 
+def quick(action: str, words: list[str]) -> int:
+    """Do action to the entry the query clearly means; else let the finder pick it, with the action armed."""
+    rating = None
+    if action == "rate" and len(words) > 1 and re.fullmatch(r"\d+(?:\.\d+)?", words[-1]):
+        rating = float(words.pop())
+        rating = None if rating == 0 else int(rating) if rating.is_integer() else rating
+        if rating is not None and (problem := check_value({"type": "rating"}, rating)):
+            return fail(f"rating {problem}")
+    query = " ".join(words).strip()
+    if not query: return fail(f"usage: dork {action} <query>{' [rating]' if action == 'rate' else ''}")
+
+    schema = load_schema()
+    entries = load_entries(schema, tracked(schema))
+    pool = applicable(schema, entries, action)
+    best = clear_best(schema, pool, query)
+    if best and (action != "rate" or rating is not None):
+        outcome = act(schema, best, action, rating)
+        print(outcome.message, file=sys.stderr if outcome.failed else sys.stdout)
+        return 1 if outcome.failed else 0
+
+    ranked = rank(schema, pool, query)
+    if not ranked:
+        could = f" that could be {DONE[action]}" if action in ACTIONS else ""
+        return fail(f'nothing matches "{query}"{could}')
+    if not interactive():
+        print(f'"{query}" could mean any of:', file=sys.stderr)
+        for entry, _, _ in ranked[:8]: print(f"  {entry.file}", file=sys.stderr)
+        return 1
+
+    from .tui.app import start
+    from .tui.base import Stars
+    from .tui.finder import Finder
+    screen = Finder(query, armed=action, rating=rating)
+    meter = None
+    if best: # rate, with no rating given: the star meter, over the finder
+        title = str(best.fields.get("title") or best.slug)
+        meter = Stars(title, best.fields.get("rating"), lambda value: screen.done(act(schema, best, "rate", value)))
+    result = start(schema, screen, meter)
+    if result: print(result)
+    return 0
+
+
+def fail(message: str) -> int:
+    print(f"dork: {message}", file=sys.stderr)
+    return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    if not args: return finder()
+    command, rest = args[0], args[1:]
+    if command in ("-h", "--help", "help"):
+        print(__doc__.strip())
+        return 0
+    if command == "--version":
+        print(f"dork {__version__}")
+        return 0
+    if command == "check": return check()
+    if command == "add": return fail("add is coming in phase 3 (see TODO_DORK.md)")
+    if command in QUICK: return quick(command, rest)
+    return finder(" ".join(args))
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    try: sys.exit(main())
+    except KeyboardInterrupt: sys.exit(130)
