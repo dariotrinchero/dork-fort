@@ -3,6 +3,8 @@ title:
 aliases: []
 author:
 translator:
+series:
+series-number:
 year:
 isbn:
 pages:

@@ -70,7 +70,8 @@ npm test        # tests of the validator (also run in CI, before building)
 ```
 
 [`dork`](tools/dork/README.md), in `tools/dork/`, is a terminal tool for keeping the reading & watching lists:
-marking things started, finished or dropped, rating them, & editing them, by the same rules as the build.
+adding things (from Open Library, Zotero & Wikidata), marking them started, finished or dropped, rating them, &
+editing them, by the same rules as the build.
 
 ## Deploying to Neocities
 
@@ -100,6 +101,8 @@ npm run publish -- --dry-run
 
 ## Credits
 
+- Book data & covers from [Open Library](https://openlibrary.org/); film, series, game & book series data from
+  [Wikidata](https://www.wikidata.org/) (CC0), both fetched by `dork` as entries are added
 - Text set in Helena Zhang's [Departure Mono](https://departuremono.com/), under the SIL Open Font License (see
   `public/fonts/DepartureMono-OFL.txt`)
 - QR code generated with Noel Friedrich's awesome [human-readable QR

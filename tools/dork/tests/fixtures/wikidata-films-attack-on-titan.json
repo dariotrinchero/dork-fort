@@ -1,0 +1,241 @@
+{
+ "head": {
+  "vars": [
+   "item",
+   "order",
+   "title",
+   "description",
+   "released",
+   "began",
+   "makers",
+   "tmdbMovie",
+   "tmdbTv",
+   "series",
+   "anime"
+  ]
+ },
+ "results": {
+  "bindings": [
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q22126305"
+    },
+    "order": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#int",
+     "type": "literal",
+     "value": "1"
+    },
+    "title": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Attack on Titan"
+    },
+    "description": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Japanese anime television series"
+    },
+    "makers": {
+     "type": "literal",
+     "value": ""
+    },
+    "series": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "true"
+    },
+    "anime": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "true"
+    },
+    "began": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "2013-04-07T00:00:00Z"
+    },
+    "tmdbTv": {
+     "type": "literal",
+     "value": "1429"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q20313191"
+    },
+    "order": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#int",
+     "type": "literal",
+     "value": "4"
+    },
+    "title": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Attack on Titan"
+    },
+    "description": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "2015 Japanese film directed by Shinji Higuchi"
+    },
+    "makers": {
+     "type": "literal",
+     "value": "Shinji Higuchi"
+    },
+    "series": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "false"
+    },
+    "anime": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "false"
+    },
+    "released": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "2015-08-01T00:00:00Z"
+    },
+    "tmdbMovie": {
+     "type": "literal",
+     "value": "295830"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q118187296"
+    },
+    "order": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#int",
+     "type": "literal",
+     "value": "13"
+    },
+    "title": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Attack on Titan"
+    },
+    "description": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "2022 film directed by Noah Luke"
+    },
+    "makers": {
+     "type": "literal",
+     "value": "Noah Luke"
+    },
+    "series": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "false"
+    },
+    "anime": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "false"
+    },
+    "tmdbMovie": {
+     "type": "literal",
+     "value": "1033219"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q115921828"
+    },
+    "order": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#int",
+     "type": "literal",
+     "value": "21"
+    },
+    "title": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Attack on Titan: End of the World"
+    },
+    "description": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "2015 film directed by Shinji Higuchi"
+    },
+    "makers": {
+     "type": "literal",
+     "value": ""
+    },
+    "series": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "false"
+    },
+    "anime": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "false"
+    },
+    "released": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "2015-09-01T00:00:00Z"
+    },
+    "tmdbMovie": {
+     "type": "literal",
+     "value": "340382"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q48989907"
+    },
+    "order": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#int",
+     "type": "literal",
+     "value": "24"
+    },
+    "title": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Attack on Titan: Counter Rockets"
+    },
+    "description": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "live-action miniseries"
+    },
+    "makers": {
+     "type": "literal",
+     "value": ""
+    },
+    "series": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "true"
+    },
+    "anime": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "false"
+    },
+    "began": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "2015-08-15T00:00:00Z"
+    },
+    "tmdbTv": {
+     "type": "literal",
+     "value": "65242"
+    },
+    "released": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "2015-08-15T00:00:00Z"
+    }
+   }
+  ]
+ }
+}

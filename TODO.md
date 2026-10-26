@@ -145,7 +145,8 @@ The templates give each collection's fields (in order) & defaults; `content/sche
 & is read by both the build & `dork`, which check notes by the same rules. Novels, nonfiction, films & games
 share:
 - **`status`:** `to-read | reading | paused | read | dnf` (films: `to-watch | watching | paused | watched |
-  dnf`; games: `to-play | playing | paused | played | dnf`), set explicitly, as many reads have no dates. The build checks it agrees with the dates (eg. no
+  dnf`; games: `to-play | playing | paused | endless | played | dnf`, where `endless` is for games with nothing
+  to finish, eg. Minecraft), set explicitly, as many reads have no dates. The build checks it agrees with the dates (eg. no
   `finished` while `to-read`). Rereads aren't tracked.
 - **`started` & `finished`:** optional, & as precise as known: `2024-06-28`, `"2024-05"` or `"2023"` (quoted, so
   YAML keeps them as text). Text properties in Obsidian, so partial dates aren't flagged, & they still sort.
@@ -157,7 +158,8 @@ share:
 - The body holds the review or comments.
 
 Per collection:
-- **novels:** `author`, `translator`, `year`, `isbn` (quoted), `pages`, `cover`, `owned`.
+- **novels:** `author`, `translator`, `series` & `series-number` (eg. Discworld & 8; a number needs a series, & no
+  two novels share both), `year`, `isbn` (quoted), `pages`, `cover`, `owned`.
 - **nonfiction:** `kind`, `authors`, `translator`, `year`, `isbn`, `topics`, `doi`, `arxiv`, `url`, `owned`. Indexed
   by topic.
 - **films:** `kind`, `year`, `director` (or creator), `tmdb` (`movie/<id>` or `tv/<id>`), `poster`.

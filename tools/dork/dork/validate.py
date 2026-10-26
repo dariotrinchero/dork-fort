@@ -92,6 +92,9 @@ def check_value(field: dict, value, statuses: list[str] = ()) -> str | None:
             if not _is_int(value) or abs(value) > 9999: return "should be a year, eg. 1985"
             return "should not be 0 (there is no year 0)" if value == 0 else None
         case "count": return None if _is_int(value) and value >= 0 else "should be a whole number"
+        case "series-number":
+            return None if _is_number(value) and value >= 0 and abs(value * 10 - round(value * 10)) < 1e-9 \
+                else "should be a number ≥ 0, eg. 3, 0 (a prequel), or 2.5 (between books)"
         case "number": return None if _is_number(value) and value >= 0 else "should be a number"
         case "partial-date":
             return None if is_str and _is_partial_date(value) \
@@ -144,19 +147,24 @@ def check_entry(schema: dict, name: str, slug: str, fields: dict) -> list[tuple[
         elif not is_empty(value) and (wrong := check_value(field, value, statuses)): problems.append((key, wrong))
     for key, field in collection["fields"].items():
         if field.get("required") and is_empty(fields.get(key)): problems.append((key, "is required"))
+        if field.get("requires") and not is_empty(fields.get(key)) and is_empty(fields.get(field["requires"])):
+            problems.append((key, f"needs {field['requires']} too"))
 
-    # status must agree with dates: nothing started in backlog, & nothing finished before it is done (or dropped)
+    # status must agree with dates: the role of the status may forbid some (eg. nothing in the backlog is started)
     role = next((role for role, word in (collection.get("status") or {}).items() if word == fields.get("status")),
                 None)
+    for key in (schema["roles"].get(role) or {}).get("forbids", []):
+        if not is_empty(fields.get(key)): problems.append((key, f"should be empty while {fields['status']}"))
     started, finished = fields.get("started"), fields.get("finished")
-    if role == "backlog" and not is_empty(started):
-        problems.append(("started", f"should be empty while {fields['status']}"))
-    if role in ("backlog", "active", "paused") and not is_empty(finished):
-        problems.append(("finished", f"should be empty while {fields['status']}"))
     if isinstance(started, str) and isinstance(finished, str):
         length = min(len(started), len(finished))
         if started[:length] > finished[:length]: problems.append(("finished", "should not be before started"))
     return problems
+
+
+def _js_string(value) -> str:
+    """Value as JavaScript writes it in a string (eg. 8 for 8.0), so both validators' messages agree."""
+    return str(int(value)) if isinstance(value, float) and value.is_integer() else str(value)
 
 
 def read_frontmatter(text: str) -> dict | None:
@@ -191,6 +199,7 @@ def validate_vault(content: Path = CONTENT) -> list[Problem]:
 
         folder = content / name
         if not folder.is_dir(): continue
+        seen = [{} for _ in collection.get("unique", [])] # for each set of keys unique together: values → file
         for path in sorted(folder.glob("*.md")):
             file, slug = f"{name}/{path.name}", path.stem
             frontmatter = read_frontmatter(path.read_text(encoding="utf-8"))
@@ -208,6 +217,16 @@ def validate_vault(content: Path = CONTENT) -> list[Problem]:
                     if isinstance(target, str) and target.startswith("attachments/") \
                             and not (content / target).exists():
                         problems.append(Problem(file, f"names {target}, which doesn't exist", key))
+
+            # sets of keys unique together (eg. series & series-number) must be
+            for keys, files in zip(collection.get("unique", []), seen):
+                values = [frontmatter.get(key) for key in keys]
+                if any(is_empty(value) for value in values): continue
+                together = json.dumps(values)
+                if together in files:
+                    shown = " ".join(_js_string(value) for value in values)
+                    problems.append(Problem(file, f"shares {shown} with {files[together]}", keys[-1]))
+                else: files[together] = file
 
             # URLs (build/<destination>/<slug>.html) must be unique
             url = f"{collection.get('destination') or frontmatter.get('destination')}/{slug}"

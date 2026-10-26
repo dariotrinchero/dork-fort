@@ -27,6 +27,8 @@ HELP = [
     ("^F ^S ^P ^D", "finish / start / pause / dnf it (today's date)"),
     ("^R", "rate it"),
     ("^Z", "undo the last change"),
+    ("^N", "add something new (searching for the query)"),
+    ("^T", "to the add screen (taking the query, without searching)"),
     ("esc", "clear the query, or quit"),
     ("", ""),
     ("in the list:", ""),
@@ -36,6 +38,7 @@ HELP = [
     ("f s p d r", "finish / start / pause / dnf / rate"),
     ("⏎ e", "edit"),
     ("u", "undo the last change"),
+    ("a", "add something new (searching for the query)"),
     ("/ space esc", "back to typing"),
     ("q", "quit"),
 ]
@@ -119,6 +122,16 @@ class Finder:
             self.app.result = outcome.message
             self.app.running = False
 
+    def add(self):
+        """The add screen, searching for the query (in the collection filtered by, if any) at once."""
+        other = self.app.switch(self)
+        if self.query.text.strip(): other.submit()
+
+    def take(self, query: str):
+        """Take the query from the add screen, when switched to from it."""
+        if query.strip(): self.query = LineEdit(query)
+        self.typing = True
+
     def edit(self):
         from .editor import Editor
         entry = self.selected()
@@ -134,6 +147,8 @@ class Finder:
     def handle_typing(self, key: int, ch):
         if key in CTRL_KEYS: self.act(CTRL_KEYS[key])
         elif key == ctrl("z"): self.app.undo()
+        elif key == ctrl("n"): self.add()
+        elif key == ctrl("t"): self.app.switch(self)
         elif key == curses.KEY_DOWN: # into the list, moving down as ↓ always does (^-keys act on the top)
             if self.results():
                 self.typing = False
@@ -159,6 +174,8 @@ class Finder:
         elif key in CTRL_KEYS: self.act(CTRL_KEYS[key])
         elif key == ord("e"): self.edit()
         elif key in (ord("u"), ctrl("z")): self.app.undo()
+        elif key in (ord("a"), ctrl("n")): self.add()
+        elif key == ctrl("t"): self.app.switch(self)
         elif key in (curses.KEY_RIGHT, ord("l")): self.filter = (self.filter + 1) % len(self.filters)
         elif key in (curses.KEY_LEFT, ord("h")): self.filter = (self.filter - 1) % len(self.filters)
         elif key in (ord("/"), ord(" "), ord("i"), ESC): self.typing = True
@@ -246,7 +263,8 @@ class Finder:
             return [f"⏎ {self.armed} the highlighted entry · ↑↓ choose · esc quit",
                     f"⏎ {self.armed} · esc quit"]
         if self.typing:
-            return ["⏎ edit · ↓ list · ⇥ collection · ^F finish ^S start ^P pause ^D dnf ^R rate · ^Z undo",
+            return ["⏎ edit · ↓ list · ⇥ collection · ^F finish ^S start ^P pause ^D dnf ^R rate · ^Z undo · ^N add",
                     "⏎ edit · ↓ list · ^F ^S ^P ^D ^R · ^Z undo", "⏎ edit · ↓ list"]
-        return ["f finish  s start  p pause  d dnf  r rate  ⏎ edit  u undo  ←→ collection  space search  ? help",
+        return ["f finish  s start  p pause  d dnf  r rate  ⏎ edit  u undo  a add  ←→ collection  space search"
+                "  ? help",
                 "f s p d r · ⏎ edit · u undo · ? help", "? help"]

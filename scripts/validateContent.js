@@ -107,6 +107,9 @@ export const checkValue = (field, value, statuses = []) => {
                 : value === 0 ? "should not be 0 (there is no year 0)"
                     : Math.abs(value) > 9999 ? "should be a year, eg. 1985" : undefined;
         case "count": return isInt(value) && value >= 0 ? undefined : "should be a whole number";
+        case "series-number":
+            return isNumber(value) && value >= 0 && Math.abs(value * 10 - Math.round(value * 10)) < 1e-9 ? undefined
+                : "should be a number ≥ 0, eg. 3, 0 (a prequel), or 2.5 (between books)";
         case "number": return isNumber(value) && value >= 0 ? undefined : "should be a number";
         case "partial-date":
             return isString(value) && isPartialDate(value) ? undefined
@@ -171,15 +174,17 @@ export const checkEntry = (schema, name, slug, fields) => {
             if (wrong) problem(key, wrong);
         }
     }
-    for (const [ key, field ] of Object.entries(collection.fields))
+    for (const [ key, field ] of Object.entries(collection.fields)) {
         if (field.required && isEmpty(fields[key])) problem(key, "is required");
+        if (field.requires && !isEmpty(fields[key]) && isEmpty(fields[field.requires]))
+            problem(key, `needs ${field.requires} too`);
+    }
 
-    // status must agree with dates: nothing started in backlog, & nothing finished before it is done (or dropped)
+    // status must agree with dates: the role of the status may forbid some (eg. nothing in the backlog is started)
     const role = Object.keys(collection.status ?? {}).find(role => collection.status[role] === fields.status);
+    for (const key of schema.roles[role]?.forbids ?? [])
+        if (!isEmpty(fields[key])) problem(key, `should be empty while ${fields.status}`);
     const { started, finished } = fields;
-    if (role === "backlog" && !isEmpty(started)) problem("started", `should be empty while ${fields.status}`);
-    if ([ "backlog", "active", "paused" ].includes(role) && !isEmpty(finished))
-        problem("finished", `should be empty while ${fields.status}`);
     if (isString(started) && isString(finished)) {
         const length = Math.min(started.length, finished.length);
         if (started.slice(0, length) > finished.slice(0, length)) problem("finished", "should not be before started");
@@ -228,6 +233,8 @@ export const validateVault = async (contentDir = CONTENT) => {
 
         const dir = join(contentDir, name);
         if (!existsSync(dir)) continue;
+        // for each set of keys unique together: their values (as JSON) → file
+        const seen = (collection.unique ?? []).map(() => new Map());
         for (const filename of (await readdir(dir)).filter(f => f.endsWith(".md")).sort()) {
             const file = join(name, filename);
             const slug = basename(filename, ".md");
@@ -246,6 +253,16 @@ export const validateVault = async (contentDir = CONTENT) => {
                     if (isString(path) && path.startsWith("attachments/") && !existsSync(join(contentDir, path)))
                         problems.push({ file, field: key, message: `names ${path}, which doesn't exist` });
             }
+
+            // sets of keys unique together (eg. series & series-number) must be
+            (collection.unique ?? []).forEach((keys, i) => {
+                const values = keys.map(key => frontmatter[key]);
+                if (values.some(isEmpty)) return;
+                const together = JSON.stringify(values);
+                if (seen[i].has(together)) problems.push({ file, field: keys.at(-1),
+                    message: `shares ${values.join(" ")} with ${seen[i].get(together)}` });
+                else seen[i].set(together, file);
+            });
 
             // URLs (build/<destination>/<slug>.html) must be unique
             const url = `${collection.destination ?? frontmatter.destination}/${slug}`;

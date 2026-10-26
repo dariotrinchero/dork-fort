@@ -80,6 +80,23 @@ views:
       - property: title
         direction: ASC
   - type: table
+    name: Endless
+    filters:
+      and:
+        - status == "endless"
+    order:
+      - title
+      - platform
+      - year
+      - developer
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: title
+        direction: ASC
+  - type: table
     name: DNF
     filters:
       and:

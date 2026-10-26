@@ -7,6 +7,7 @@ import os
 import shlex
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from ..actions import Outcome
@@ -26,6 +27,8 @@ class App:
         self.result: str | None = None # what to print once the UI closes
         self.running = True
         self.version = 0                # bumped whenever entries are reloaded
+        self.pool = ThreadPoolExecutor(4)  # for requests, so the screen never waits on them
+        self.kept: dict[str, object] = {}  # the finder & the add screen, kept as they were, to switch between
         self.load()
 
     def load(self):
@@ -37,7 +40,29 @@ class App:
     def push(self, screen):
         screen.app = self
         self.stack.append(screen)
-        if hasattr(screen, "opened"): screen.opened()
+        if hasattr(screen, "opened") and not getattr(screen, "_opened", False):
+            screen._opened = True
+            screen.opened()
+
+    def switch(self, screen):
+        """Switch from the finder to the add screen, or back: the other as it was left (or new), taking the query
+        (& from the finder, the collection filtered by). Returns the other."""
+        from .add import Add
+        from .finder import Finder
+        kind = "add" if isinstance(screen, Finder) else "finder"
+        self.kept["finder" if kind == "add" else "add"] = screen
+        other = self.kept.get(kind) or (Add() if kind == "add" else Finder())
+        self.kept[kind] = other
+        self.stack = [] # the finder & the add screen are only ever at the bottom
+        self.push(other)
+        if kind == "add":
+            other.take(screen.query.text, screen.filters[screen.filter] if screen.filter else None)
+        else: other.take(screen.query.text)
+        return other
+
+    def has_other(self, screen) -> bool:
+        """Whether the other of the finder & the add screen has been open (so back from one goes to it)."""
+        return any(kept is not screen for kept in self.kept.values())
 
     def pop(self, screen):
         if screen in self.stack: self.stack.remove(screen)
@@ -82,11 +107,14 @@ class App:
             self.undos = [outcome for outcome in self.undos if path not in outcome.changes.before]
         self.load()
 
-    def footer(self, win, y: int, hints: list[str], note: str | None = None):
-        """Toast, else note (eg. what's wrong with a field), else the widest hints that fit."""
+    def footer(self, win, y: int, hints: list[str], note: str | None = None, warn: bool = False,
+               style: str | None = None):
+        """Toast, else note (eg. what's wrong with a field, or with warn, what looks it; or in another style, eg.
+        what's under way), else the widest hints that fit."""
         w = win.getmaxyx()[1]
-        if self.toast and self.toast.live: put(win, y, 1, fit(self.toast.text, w - 2), self.toast.style)
-        elif note: put(win, y, 1, fit(note, w - 2), attr("error"))
+        if self.toast and self.toast.live and not style:
+            put(win, y, 1, fit(self.toast.text, w - 2), self.toast.style)
+        elif note: put(win, y, 1, fit(note, w - 2), attr(style or ("warn" if warn else "error"), bold=bool(style)))
         else:
             text = next((h for h in hints if dwidth(h) <= w - 2), hints[-1])
             put(win, y, 1, fit(text, w - 2), attr("dim"))
@@ -108,11 +136,21 @@ class App:
         except curses.error: return None
         return (ord(ch) if isinstance(ch, str) else ch), ch
 
+    def spinner(self) -> str: return "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"[int(time.monotonic() * 10) % 10]
+
     def run(self):
+        try: self.loop()
+        finally: self.pool.shutdown(wait=False, cancel_futures=True)
+
+    def loop(self):
         while self.running and self.stack:
+            for screen in list(self.stack):
+                if hasattr(screen, "poll"): screen.poll()
+            if not (self.running and self.stack): break
             self.draw()
+            busy = any(getattr(screen, "busy", False) for screen in self.stack)
             live = self.toast and self.toast.live
-            self.scr.timeout(250 if live else -1) # repaint when a toast runs out
+            self.scr.timeout(100 if busy else 250 if live else -1) # repaint as work finishes, & toasts run out
             got = self.read()
             self.scr.timeout(0)
             while got and self.running and self.stack: # every key already waiting, then one repaint

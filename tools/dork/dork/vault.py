@@ -70,6 +70,15 @@ def load_entries(schema: dict, names: list[str], content: Path = CONTENT) -> lis
     return entries
 
 
+def new_entry(schema: dict, name: str, content: Path = CONTENT) -> Entry:
+    """Entry of a note not yet written: its collection's (first) template, filled in with nothing more (a date
+    placeholder, as in the Post template, is today). Its path is a placeholder too, until the note is saved."""
+    from datetime import date
+    template = (content / "Templates" / schema["collections"][name]["templates"][0]).read_text(encoding="utf-8")
+    template = template.replace("{{date}}", date.today().isoformat())
+    return parse(name, content / name / ".new.md", template)
+
+
 def reload(entry: Entry) -> Entry:
     """Entry as now on disk."""
     return parse(entry.collection, entry.path, entry.path.read_text(encoding="utf-8")) or entry
@@ -136,14 +145,14 @@ def render(entry: Entry, fields: dict, order: list[str], kinds: dict[str, str] |
 @dataclass
 class Changes:
     """Files written (or removed) together, & what they held before, to undo them."""
-    before: dict[Path, str | None] = field(default_factory=dict)
+    before: dict[Path, bytes | None] = field(default_factory=dict)
 
     def _keep(self, path: Path):
-        if path not in self.before: self.before[path] = path.read_text(encoding="utf-8") if path.exists() else None
+        if path not in self.before: self.before[path] = path.read_bytes() if path.exists() else None
 
-    def write(self, path: Path, text: str):
+    def write(self, path: Path, data: str | bytes):
         self._keep(path)
-        _write(path, text)
+        _write(path, data)
 
     def remove(self, path: Path):
         self._keep(path)
@@ -155,11 +164,11 @@ class Changes:
             else: _write(path, text)
 
 
-def _write(path: Path, text: str):
+def _write(path: Path, data: str | bytes):
     """Write file whole or not at all (through a temporary file, renamed over it)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.dork")
-    temporary.write_text(text, encoding="utf-8")
+    temporary.write_bytes(data.encode("utf-8") if isinstance(data, str) else data)
     os.replace(temporary, path)
 
 
@@ -170,10 +179,14 @@ def links_to(slug: str) -> re.Pattern:
 
 def save(entry: Entry, fields: dict, order: list[str], kinds: dict[str, str], slug: str | None = None,
          content: Path = CONTENT) -> Changes:
-    """Write entry with fields, renamed to slug if given (& then rewriting wikilinks to it across the vault)."""
+    """Write entry with fields, renamed to slug if given (& then rewriting wikilinks to it across the vault); a new
+    entry (not yet on disk) is simply written, named slug."""
     changes = Changes()
     path = entry.path if slug is None or slug == entry.slug else entry.path.with_name(f"{slug}.md")
     text = render(entry, fields, order, kinds)
+    if not entry.path.exists():
+        changes.write(path, text)
+        return changes
     if path == entry.path:
         if not entry.path.exists() or text != entry.path.read_text(encoding="utf-8"): changes.write(path, text)
         return changes

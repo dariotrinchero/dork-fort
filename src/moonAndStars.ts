@@ -88,8 +88,8 @@ const surname = (name: string): string => {
 };
 
 /**
- * Order novels by author's surname (those without an author last), then by author, then by title, as dork lists
- * them.
+ * Order novels by author's surname (those without an author last), then by author, then by series (or a book outside
+ * one, by its title) & number in it, then by title, as dork lists them.
  *
  * @param a novel
  * @param b novel
@@ -99,6 +99,8 @@ const byName = (a: Novel, b: Novel): number =>
     Number(!a.author) - Number(!b.author)
     || surname(a.author ?? "").localeCompare(surname(b.author ?? ""))
     || (a.author ?? "").localeCompare(b.author ?? "")
+    || (a.series ?? a.title).localeCompare(b.series ?? b.title)
+    || (a["series-number"] ?? -1) - (b["series-number"] ?? -1)
     || a.title.localeCompare(b.title);
 
 /**

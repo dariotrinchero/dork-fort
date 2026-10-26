@@ -14,14 +14,14 @@ ACTIONS = {"start": "active", "finish": "done", "pause": "paused", "dnf": "dropp
 
 # roles from which the command line takes each quick action to apply (eg. not finishing what's finished, or
 # dropping it); in the finder, anything goes that leaves an entry valid
-FROM = {"start": {"backlog", "paused", "dropped"}, "finish": {"backlog", "active", "paused"},
-        "pause": {"backlog", "active"}, "dnf": {"backlog", "active", "paused"}}
+FROM = {"start": {"backlog", "paused", "dropped"}, "finish": {"backlog", "active", "paused", "ongoing"},
+        "pause": {"backlog", "active"}, "dnf": {"backlog", "active", "paused", "ongoing"}}
 
 # what each quick action makes of an entry, eg. "finished"
 DONE = {"start": "started", "finish": "finished", "pause": "paused", "dnf": "dropped", "rate": "rated"}
 
 # order of roles in which entries come, other things being equal (what's in progress first)
-ROLE_ORDER = ["active", "backlog", "paused", "done", "dropped"]
+ROLE_ORDER = ["active", "backlog", "paused", "ongoing", "done", "dropped"]
 
 
 def today() -> str: return date.today().isoformat()
@@ -120,7 +120,8 @@ def _newest(date: str) -> tuple:
 
 def _by_name(schema: dict, entry: Entry) -> tuple:
     """Key sorting entries of a collection by name: by kind (in the schema's order), where the collection has
-    kinds; then by surname of the author (or first of the authors), where it has authors; then by title."""
+    kinds; then by surname of the author (or first of the authors), where it has authors; then by series (or a
+    book outside one, by its title) & number in it, where it has series; then by title."""
     from .slugs import surname
     fields, values = schema["collections"][entry.collection]["fields"], entry.fields
     key: list = []
@@ -130,7 +131,12 @@ def _by_name(schema: dict, entry: Entry) -> tuple:
     if "author" in fields or "authors" in fields:
         who = str(values.get("author") or (values.get("authors") or [""])[0] or "")
         key.append((not who, _sortable(surname(who)) if who else "", _sortable(who)))
-    return (*key, _sortable(values.get("title") or entry.slug))
+    title = _sortable(values.get("title") or entry.slug)
+    if "series" in fields:
+        number = values.get("series-number")
+        key.append((_sortable(values["series"]) if values.get("series") else title,
+                    number if isinstance(number, (int, float)) and not isinstance(number, bool) else -1))
+    return (*key, title)
 
 
 def browse_order(schema: dict, entries: list[Entry]) -> list[Entry]:

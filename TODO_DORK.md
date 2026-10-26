@@ -25,69 +25,29 @@ testing); this file tracks progress, & plans what isn't built yet.
    - [x] headless `start`/`finish`/`pause`/`dnf`/`rate`
    - [ ] try it for real for a while, & note what grates
 3. **Add**
-   - [ ] net layer (throttle, in-RAM cache, User-Agent)
-   - [ ] Open Library → TMDB → Zotero/Crossref/arXiv → IGDB
-   - [ ] optional cover/poster download on write
-   - [ ] `~/.config/dork/config.toml` (keys, contact for `User-Agent`, `download-covers`), read with `tomllib`,
-     which raises dork's minimum Python from 3.10 to 3.11
-   - [ ] spec it in `tools/dork/README.md`, & trim it from here
-4. **Later:** `dork fill`; Zotero's connector (so an external hit gets a real citekey); undo across sessions;
-   the site showing games.
-
----
-
-## Sources & API etiquette
-
-| Type | Source | Key | Requests |
-|---|---|---|---|
-| novel | Open Library `search.json` | none | 1 per search |
-| film / series / anime | TMDB `search/multi` | yes | 1 per search; credits only for the candidate opened |
-| nonfiction | Zotero first (local API, or a copy of `zotero.sqlite`); then Crossref / arXiv / Open Library | none | 1 per source per search |
-| game | IGDB `/v4/games` | Twitch client id/secret; token cached in `~/.cache/dork/` | 1 per search |
-
-- **Zotero holds all nonfiction**, so a hit from it gives the filename (its `citationKey`; read it, never guess
-  it), the metadata (its edition) & `kind` (its item type). Zotero locks its database while running, so read
-  `~/Documents/Zotero/zotero.sqlite` through a copy, or else Zotero 7's local API (`localhost:23119/api/`) while
-  it runs. Crossref, arXiv & Open Library are only for things not yet in Zotero; better to add them there first.
-- **Explicit submit only.** A query typed on the command line counts as submitted.
-- **Untyped `dork add "…"` fans out** to one request per source, & the results fill the type tabs with counts.
-- **In-RAM caches.** Searches are cached by `(source, query)` & details by `(source, id)`, so going back to the
-  candidates, switching tabs, or resubmitting the same query costs nothing.
-- **Per-host throttling**, & a `User-Agent: dork/<version> (<contact>)` header.
-- **Mapping prefers empty over junk.** It takes the first *valid* value, eg. the first ISBN-13 whose checksum
-  passes. Invalid values arrive coloured as errors.
-- **Cover downloads are optional, per entry.** The editor shows a `cover` row with the remote image & a
-  download toggle (←/→), defaulting to `download-covers` in the config. When off, `cover` stays empty, &
-  `dork fill` can fetch it later. Covers are only ever downloaded on write, at full size (the build resizes &
-  dithers them).
-
-## Screens
-
-### Add
-
-- **Layout.** Type tabs, a query line, & the top hits with distinguishing detail: author or director, year,
-  ISBN, kind. Hits already in the vault are dimmed.
-- **Picking a hit.** Enter opens the editor on the filled template.
-- **Going back.** The editor's back key returns to the list exactly as it was, without a new request.
-
-### Editor, for new entries
-
-- **The `file` row follows the fields** (by the schema's `slug.from` rule) until edited by hand; this is built
-  (`Editor.follow`), awaiting the add screen.
-- **The cover row** shows the remote image's URL & the download toggle (above).
-- **dork's own warnings** (orange): values that pass validation but look like junk from an API, eg. a year in
-  the future, an ALL-CAPS title, an author "Unknown", 0 pages.
-
-## Command line, to come
-
-```
-dork add [type] [query]             add screen; a query is searched at once
-dork fill [collection]              backfill year/pages/cover from ISBNs & ids (throttled, resumable)
-```
-
-## Verification of add
-
-- **Manual,** in a scratch copy of the vault (`DORK_CONTENT=…`):
-  - `dork add novel "piranesi"`: pick a hit, go back & pick another (the `--debug` log shows no second
-    request), enter a bad ISBN (it turns red & blocks `w`), & check that `e` opens `$EDITOR`;
-  - `dork add film "after hours"` shows the hit as already in the vault.
+   - [x] request layer (`net.py`: throttled per host, cached for the session, identified, logged to `$DORK_LOG`)
+   - [x] `~/.config/dork/config.toml`, read with `tomllib` (so dork now needs Python 3.11+)
+   - [x] sources: Open Library (with a guessed edition, flagged, & any other pickable with `p`), Zotero
+     (read-only, from disk, as you type), Wikidata (films, series & anime, & games; & novels' series), chosen
+     for their terms (TMDB's & IGDB's, first built, were dropped: see "Sources" in the README)
+   - [x] the add screen (`dork add`, `^N`/`a` from the finder, & `^T` between the two); the editor for new
+     entries (slugs that follow the fields, warnings in orange, an optional cover download, undoable with the
+     note)
+   - [x] novels' `series` & `series-number`, validated (a number needs a series; no two novels share both), &
+     sorting an author's series in order, in dork & on the site
+   - [x] requests try IPv4 first (IPv6 timed out on every request, making each take 20 s)
+   - [x] specified in `tools/dork/README.md`
+   - [ ] set `contact` (an email) in `~/.config/dork/config.toml`, as Open Library asks
+   - [ ] try adding for real for a while, & note what grates
+4. **Later**
+   - [ ] `dork fill [collection]`: backfill `year`, `pages`, `cover`, `series` & `series-number` of entries that
+     have an ISBN (by Open Library's edition, & its work's Wikidata series), & films' & games' fields from
+     Wikidata (by their TMDB or IGDB id, or title & year); throttled, resumable, & showing each change for a yes
+     or no (the imported novels have ISBNs, but no year, pages, cover or series)
+   - [ ] nonfiction not yet in Zotero: an online fallback (Crossref for papers, Open Library for books), saving
+     the hit to Zotero through its connector (`localhost:23119/connector/saveItems`, while Zotero runs) so that it
+     gets a real citation key, rather than one guessed
+   - [ ] undo across sessions (eg. a journal of the last few changes in `~/.cache/dork/`)
+   - [ ] the site showing games (& films) on moon & stars
+   - [ ] when the site shows covers (downloaded from Open Library, & dithered), a courtesy link to Open Library on
+     it (eg. in each window's footer, or on whoami), as it asks of those who don't show covers from its server

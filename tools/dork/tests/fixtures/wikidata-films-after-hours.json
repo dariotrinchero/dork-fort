@@ -1,0 +1,65 @@
+{
+ "head": {
+  "vars": [
+   "item",
+   "order",
+   "title",
+   "description",
+   "released",
+   "began",
+   "makers",
+   "tmdbMovie",
+   "tmdbTv",
+   "series",
+   "anime"
+  ]
+ },
+ "results": {
+  "bindings": [
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q846209"
+    },
+    "order": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#int",
+     "type": "literal",
+     "value": "7"
+    },
+    "title": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "After Hours"
+    },
+    "description": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "1985 film by Martin Scorsese"
+    },
+    "released": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "1985-09-11T00:00:00Z"
+    },
+    "makers": {
+     "type": "literal",
+     "value": "Martin Scorsese"
+    },
+    "tmdbMovie": {
+     "type": "literal",
+     "value": "10843"
+    },
+    "series": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "false"
+    },
+    "anime": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "false"
+    }
+   }
+  ]
+ }
+}

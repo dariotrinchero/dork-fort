@@ -144,6 +144,19 @@ class Browsing(unittest.TestCase):
              "textbook-z", "book-a",                                 # nonfiction: by kind, in the schema's order
              "film-z", "series-a"])                                  # films: by kind, then title
 
+    def test_series_in_order(self):
+        """Within an author, books go by series (one outside a series, by its title), then by number in it."""
+        pratchett = lambda slug, title, **more: note("novels", slug, title=title, author="Terry Pratchett",
+                                                       status="to-read", **more)
+        self.assertEqual(self.order(
+            pratchett("guards", "Guards! Guards!", series="Discworld", **{"series-number": 8}),
+            pratchett("colour", "The Colour of Magic", series="Discworld", **{"series-number": 1}),
+            pratchett("nation", "Nation"),
+            pratchett("long-earth", "The Long Earth", series="The Long Earth", **{"series-number": 1}),
+            pratchett("unnumbered", "Raising Steam", series="Discworld"),
+            pratchett("between", "Interlude", series="Discworld", **{"series-number": 1.5})),
+            ["unnumbered", "colour", "between", "guards", "nation", "long-earth"])
+
     def test_labels(self):
         from dork.tui.finder import label_of, label_width
         self.assertEqual(label_of(SCHEMA, note("nonfiction", "a", title="A", kind="paper", status="read")), "paper")
@@ -231,6 +244,22 @@ class Actions(unittest.TestCase):
         self.assertEqual(outcome.message, "films/after-hours-1985.md: rating ★★★★¼")
         self.assertEqual(reload(entry).fields["rating"], 4.25)
         self.assertTrue(actions.act(SCHEMA, entry, "rate", 4.6).failed)
+
+    def test_new_entry_with_cover_then_undo(self):
+        from dork.vault import new_entry
+        entry = new_entry(SCHEMA, "novels", self.vault)
+        self.assertEqual(entry.fields["status"], "to-read") # the template's defaults
+        fields = {**entry.fields, "title": "Piranesi", "author": "Susanna Clarke",
+                  "cover": "attachments/covers/piranesi-clarke.jpg"}
+        changes = save(entry, fields, template_order(SCHEMA, "novels"), {}, "piranesi-x", self.vault)
+        cover = self.vault / "attachments/covers/piranesi-clarke.jpg"
+        changes.write(cover, b"\xff\xd8 jpeg")
+        note = self.vault / "novels/piranesi-x.md"
+        self.assertTrue(note.read_text(encoding="utf-8").startswith("---\ntitle: Piranesi\naliases: []\nauthor: "))
+        self.assertFalse((self.vault / "novels/.new.md").exists())
+        changes.undo()
+        self.assertFalse(note.exists())
+        self.assertFalse(cover.exists())
 
     def test_rename_rewrites_links(self):
         entry = self.entry("arrietty-2010")

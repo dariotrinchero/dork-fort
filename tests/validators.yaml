@@ -53,6 +53,10 @@ types:
     field: { type: count }
     valid: [ 0, 312 ]
     invalid: [ -1, 3.5, "312" ]
+  series-number:
+    field: { type: series-number }
+    valid: [ 0, 1, 8, 2.5, 1.1, 12 ]
+    invalid: [ -1, 2.25, "8", "#8", true ]
   number:
     field: { type: number }
     valid: [ 0, 12.3, 5 ]
@@ -177,6 +181,18 @@ entries:
     slug: The-Cave
     fields: { title: The Cave, status: read }
     errors: [ slug ]
+  - collection: novels
+    slug: guards-guards-pratchett
+    fields: { title: "Guards! Guards!", status: read, series: Discworld, series-number: 8 }
+    errors: []
+  - collection: novels # a series without a number is fine (an order not known, or not kept)
+    slug: guards-guards-pratchett
+    fields: { title: "Guards! Guards!", status: read, series: Discworld }
+    errors: []
+  - collection: novels # a number without a series isn't
+    slug: guards-guards-pratchett
+    fields: { title: "Guards! Guards!", status: read, series-number: 8 }
+    errors: [ series-number ]
   - collection: nonfiction
     slug: kripkeNamingNecessity1980
     fields: { title: Naming and Necessity, kind: book, authors: [ Saul Kripke ], status: read, topics: [ logic ] }
@@ -200,6 +216,18 @@ entries:
   - collection: games
     slug: hollow-knight-2017
     fields: { title: Hollow Knight, status: read }
+    errors: [ status ]
+  - collection: games # endless: started, but with nothing to finish
+    slug: minecraft-2011
+    fields: { title: Minecraft, status: endless, started: "2012" }
+    errors: []
+  - collection: games
+    slug: minecraft-2011
+    fields: { title: Minecraft, status: endless, started: "2012", finished: "2014" }
+    errors: [ finished ]
+  - collection: novels # only games are endless
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: endless }
     errors: [ status ]
   - collection: adventures
     slug: 2026-10-01-table-mountain

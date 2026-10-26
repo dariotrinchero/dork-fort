@@ -10,7 +10,8 @@ interface Note {
 
 export type ReadingStatus = "to-read" | "reading" | "paused" | "read" | "dnf";
 export type WatchingStatus = "to-watch" | "watching" | "paused" | "watched" | "dnf";
-export type PlayingStatus = "to-play" | "playing" | "paused" | "played" | "dnf";
+// "endless": played, but with nothing to finish (eg. Minecraft)
+export type PlayingStatus = "to-play" | "playing" | "paused" | "endless" | "played" | "dnf";
 
 // fields shared by novels, nonfiction, films & games
 interface Tracked<Status> extends Note {
@@ -27,6 +28,8 @@ interface Tracked<Status> extends Note {
 export interface Novel extends Tracked<ReadingStatus> {
     author?: string;
     translator?: string;
+    series?: string;
+    "series-number"?: number; // place in series: 0 for a prequel, 2.5 between books 2 & 3
     year?: number;
     isbn?: string;
     pages?: number;

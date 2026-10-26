@@ -1,0 +1,45 @@
+{
+ "head": {
+  "vars": [
+   "seriesLabel",
+   "number",
+   "within"
+  ]
+ },
+ "results": {
+  "bindings": [
+   {
+    "seriesLabel": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Ankh-Morpork City Watch series"
+    },
+    "number": {
+     "type": "literal",
+     "value": "1"
+    },
+    "within": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "true"
+    }
+   },
+   {
+    "seriesLabel": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Discworld"
+    },
+    "number": {
+     "type": "literal",
+     "value": "8"
+    },
+    "within": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#boolean",
+     "type": "literal",
+     "value": "false"
+    }
+   }
+  ]
+ }
+}

@@ -1,0 +1,115 @@
+{
+ "head": {
+  "vars": [
+   "item",
+   "order",
+   "title",
+   "description",
+   "released",
+   "makers",
+   "igdb"
+  ]
+ },
+ "results": {
+  "bindings": [
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q29300592"
+    },
+    "order": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#int",
+     "type": "literal",
+     "value": "0"
+    },
+    "title": {
+     "xml:lang": "mul",
+     "type": "literal",
+     "value": "Hollow Knight"
+    },
+    "description": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "2017 video game"
+    },
+    "released": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "2017-02-24T00:00:00Z"
+    },
+    "makers": {
+     "type": "literal",
+     "value": "Team Cherry"
+    },
+    "igdb": {
+     "type": "literal",
+     "value": "hollow-knight"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q63294487"
+    },
+    "order": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#int",
+     "type": "literal",
+     "value": "1"
+    },
+    "title": {
+     "xml:lang": "mul",
+     "type": "literal",
+     "value": "Hollow Knight: Silksong"
+    },
+    "description": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "2025 Metroidvania action-adventure video game developed by Team Cherry"
+    },
+    "released": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "2025-09-04T00:00:00Z"
+    },
+    "makers": {
+     "type": "literal",
+     "value": "Team Cherry"
+    },
+    "igdb": {
+     "type": "literal",
+     "value": "hollow-knight-silksong"
+    }
+   },
+   {
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q137398334"
+    },
+    "order": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#int",
+     "type": "literal",
+     "value": "6"
+    },
+    "title": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "Sea of Sorrow"
+    },
+    "description": {
+     "xml:lang": "en",
+     "type": "literal",
+     "value": "2026 content pack for Hollow Knight: Silksong"
+    },
+    "released": {
+     "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+     "type": "literal",
+     "value": "2026-01-01T00:00:00Z"
+    },
+    "makers": {
+     "type": "literal",
+     "value": "Team Cherry"
+    }
+   }
+  ]
+ }
+}

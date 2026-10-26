@@ -21,8 +21,9 @@ def ctrl(letter: str) -> int: return ord(letter.upper()) - 64
 
 # colours by name: text, status roles (as named in the schema), & collections
 PALETTE = {
-    "dim": "7f848e", "accent": "e5c07b", "error": "e06c75", "ok": "98c379", "bar": "3a3f4b", "ink": "1e2127",
-    "yellow": "e5c07b", "cyan": "56b6c2", "blue": "61afef", "green": "98c379", "red": "e06c75",
+    "dim": "7f848e", "accent": "e5c07b", "error": "e06c75", "warn": "e5904f", "ok": "98c379", "bar": "3a3f4b",
+    "ink": "1e2127",
+    "yellow": "e5c07b", "cyan": "56b6c2", "blue": "61afef", "green": "98c379", "red": "e06c75", "magenta": "d55fde",
     "novels": "c678dd", "nonfiction": "d19a66", "films": "f08dbd", "games": "7fd1b9",
 }
 

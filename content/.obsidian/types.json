@@ -41,6 +41,8 @@
     "destination": "text",
     "status": "text",
     "owned": "checkbox",
-    "translator": "text"
+    "translator": "text",
+    "series": "text",
+    "series-number": "number"
   }
 }

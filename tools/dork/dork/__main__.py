@@ -1,6 +1,8 @@
-"""dork's command line (see TODO_DORK.md):
+"""dork's command line (see tools/dork/README.md):
 
     dork [query]                         the update screen (prefiltered by query)
+    dork add [collection] [query]        the add screen (searching for query at once, if given; collection is novel,
+                                         nonfiction, film or game, & if not given, every one is searched)
     dork start|finish|pause|dnf <query>  set the status of the entry query clearly means, else pick in the finder
     dork rate <query> [rating]           likewise, rating it (0 to clear; without a rating, the star meter opens)
     dork check                           validate the vault, as the build does
@@ -16,6 +18,13 @@ from .validate import check_value, validate_vault
 from .vault import load_entries, tracked
 
 QUICK = [*ACTIONS, "rate"]
+
+# words naming collections on the command line
+COLLECTIONS = {"novel": "novels", "novels": "novels", "fiction": "novels",
+               "nonfiction": "nonfiction", "nonfic": "nonfiction", "paper": "nonfiction", "papers": "nonfiction",
+               "textbook": "nonfiction", "textbooks": "nonfiction",
+               "film": "films", "films": "films", "movie": "films", "movies": "films", "series": "films",
+               "tv": "films", "anime": "films", "game": "games", "games": "games"}
 COMMANDS = ["check", "add", *QUICK]
 
 
@@ -35,6 +44,18 @@ def finder(query: str = "") -> int:
     from .tui.app import start
     from .tui.finder import Finder
     result = start(load_schema(), Finder(query))
+    if result: print(result)
+    return 0
+
+
+def add(words: list[str]) -> int:
+    """The add screen, searching at once for the query given (in the collection given first, if one is)."""
+    if not interactive(): return fail("dork's add screen needs an interactive terminal")
+    collection = COLLECTIONS.get(words[0].lower()) if words else None
+    query = " ".join(words[1:] if collection else words)
+    from .tui.add import Add
+    from .tui.app import start
+    result = start(load_schema(), Add(query, collection, search=True))
     if result: print(result)
     return 0
 
@@ -97,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"dork {__version__}")
         return 0
     if command == "check": return check()
-    if command == "add": return fail("add is coming in phase 3 (see TODO_DORK.md)")
+    if command == "add": return add(rest)
     if command in QUICK: return quick(command, rest)
     return finder(" ".join(args))
 
