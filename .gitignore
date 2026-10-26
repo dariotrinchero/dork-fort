@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 # Obsidian workspace caches & trash, in the content vault (its other settings are committed)
 content/.obsidian/workspace*.json
 content/.trash/
+
+# Python bytecode (tools/dork/)
+__pycache__/

@@ -7,6 +7,7 @@ import { glsl } from "esbuild-plugin-glsl";
 import { bakeContent } from "./bakeContent.js";
 import { bakeQR } from "./bakeQR.js";
 import { subsetToGlyphSet } from "./subsetFont.js";
+import { describe, validateVault } from "./validateContent.js";
 
 const isProd = process.argv.includes("--prod");
 
@@ -48,8 +49,8 @@ const buildOptions = {
         {
             name: "typecheck-and-copy-assets",
             setup(build) {
-                // typecheck & lint (lint errors only block production builds)
-                build.onStart(() => {
+                // validate content, typecheck & lint (content & lint errors only block production builds)
+                build.onStart(async () => {
                     console.log(" ⟳ Rebuilding...");
                     const errors = [];
                     try {
@@ -62,6 +63,12 @@ const buildOptions = {
                     } catch {
                         if (isProd) errors.push({ text: "ESLint linting failed; skipping build" });
                         else console.log("ESLint linting failed; building anyway...");
+                    }
+                    const problems = await validateVault();
+                    problems.forEach(problem => console.error(describe(problem)));
+                    if (problems.length > 0) {
+                        if (isProd) errors.push({ text: "Content validation failed; skipping build" });
+                        else console.log("Content validation failed; building anyway...");
                     }
                     return { errors };
                 });

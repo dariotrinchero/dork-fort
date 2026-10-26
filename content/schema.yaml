@@ -1,0 +1,168 @@
+# Schema of the content vault, read by the build (scripts/validateContent.js) & by dork (tools/dork/), so both
+# agree on what a note may hold. The templates (Templates/) give each collection's fields, in order, & their
+# defaults (dork fills a collection's first template); this file gives their types. The build checks that the two
+# list the same fields.
+#
+# Field types (any field may be left empty, unless required):
+#   text            a string
+#   list            a list of strings; `item` sets their type (text by default)
+#   tag             lowercase words joined by hyphens, nested with slashes (eg. "magical-realism")
+#   bool            true or false
+#   year            an integer, eg. 1985 (negative for BCE)
+#   count           a whole number ≥ 0 (eg. pages, metres)
+#   number          a number ≥ 0 (eg. kilometres)
+#   date            a full date, eg. 2024-06-28
+#   partial-date    a date as precise as known: 2024-06-28, "2024-05" or "2023" (quoted, so YAML keeps it as text)
+#   time            a duration "h:mm", eg. "3:45"
+#   rating          1–5 in quarter steps
+#   initials        2 or 3 capital letters, eg. JS (so no names get published by accident)
+#   isbn            a quoted ISBN-10 or ISBN-13, digits only (an X allowed last in ISBN-10), with a valid checksum
+#   doi, arxiv, url identifiers, eg. 10.1000/xyz123, 2107.03374 (or math/0211159), https://…
+#   tmdb            "movie/<id>" or "tv/<id>", as TMDB's ids are per media type
+#   igdb            the game's slug on IGDB (igdb.com/games/<slug>)
+#   digits          a numeric id, eg. of an iNaturalist observation
+#   attachment      a path from the vault root into attachments/<dir>/, eg. attachments/covers/the-cave-saramago.jpg
+#   enum            one of `values`
+#   status          one of the collection's status words (below)
+#
+# Slugs (filenames, which are also URLs) take a style: kebab ("after-hours-1985"), citekey (Zotero's, eg.
+# "kripkeNamingNecessity1980"), or dated ("2026-10-01-table-mountain", whose date must match the `date` field).
+# `from` says how dork makes one: fields in braces, with `|short` (title without its subtitle) & `|surname`.
+
+# What each status means, shared across collections, which name them in their own words. Each role may stamp a
+# date field with today when an entry takes it on; its colour is dork's.
+roles:
+  backlog: { colour: yellow }
+  active: { colour: cyan, stamps: started }
+  paused: { colour: blue }
+  done: { colour: green, stamps: finished }
+  dropped: { colour: red }
+
+# fields shared by every collection with a status (novels, nonfiction, films & games), added to their `fields`
+tracked:
+  status: { type: status, required: true }
+  started: { type: partial-date }
+  finished: { type: partial-date }
+  rating: { type: rating }
+  shortlist: { type: bool }
+  recommended-by: { type: initials }
+  tags: { type: list, item: tag }
+
+destinations: &destinations [ whoami, traveller, companion, campfire, moon-and-stars, realm-of-forms, garden ]
+
+collections:
+  novels:
+    template: Novel.md
+    destination: moon-and-stars
+    slug: { style: kebab, from: "{title|short}-{author|surname}" }
+    status: { backlog: to-read, active: reading, paused: paused, done: read, dropped: dnf }
+    fields:
+      title: { type: text, required: true }
+      aliases: { type: list }
+      author: { type: text }
+      translator: { type: text }
+      year: { type: year }
+      isbn: { type: isbn }
+      pages: { type: count }
+      cover: { type: attachment, dir: covers }
+      owned: { type: bool }
+
+  nonfiction:
+    template: Nonfiction.md
+    destination: realm-of-forms
+    slug: { style: citekey }
+    status: { backlog: to-read, active: reading, paused: paused, done: read, dropped: dnf }
+    fields:
+      title: { type: text, required: true }
+      aliases: { type: list }
+      kind: { type: enum, values: [ textbook, book, paper ] }
+      authors: { type: list }
+      translator: { type: text }
+      year: { type: year }
+      isbn: { type: isbn }
+      topics: { type: list, item: tag }
+      doi: { type: doi }
+      arxiv: { type: arxiv }
+      url: { type: url }
+      owned: { type: bool }
+
+  films:
+    template: Film.md
+    destination: moon-and-stars
+    slug: { style: kebab, from: "{title}-{year}" }
+    status: { backlog: to-watch, active: watching, paused: paused, done: watched, dropped: dnf }
+    fields:
+      title: { type: text, required: true }
+      aliases: { type: list }
+      kind: { type: enum, values: [ film, series, anime ] }
+      year: { type: year }
+      director: { type: text }
+      tmdb: { type: tmdb }
+      poster: { type: attachment, dir: posters }
+
+  games:
+    template: Game.md
+    destination: moon-and-stars
+    slug: { style: kebab, from: "{title}-{year}" }
+    status: { backlog: to-play, active: playing, paused: paused, done: played, dropped: dnf }
+    fields:
+      title: { type: text, required: true }
+      aliases: { type: list }
+      year: { type: year }
+      developer: { type: text }
+      platform: { type: text }
+      igdb: { type: igdb }
+      cover: { type: attachment, dir: covers }
+      owned: { type: bool }
+
+  adventures:
+    template: Adventure.md
+    destination: traveller
+    slug: { style: dated, from: "{date}-{place}" }
+    fields:
+      title: { type: text, required: true }
+      aliases: { type: list }
+      date: { type: date, required: true }
+      activity: { type: text }
+      place: { type: text }
+      grade: { type: text }
+      distance: { type: number }
+      time: { type: time }
+      ascent: { type: count }
+      gpx: { type: attachment, dir: gpx }
+      photos: { type: list, item: attachment, dir: photos }
+      tags: { type: list, item: tag }
+
+  garden:
+    template: Sighting.md
+    destination: garden
+    slug: { style: dated, from: "{date}-{title}" }
+    fields:
+      title: { type: text, required: true }
+      aliases: { type: list }
+      date: { type: date, required: true }
+      inaturalist: { type: digits }
+      species: { type: text }
+      place: { type: text }
+      photos: { type: list, item: attachment, dir: photos }
+      tags: { type: list, item: tag }
+
+  blog:
+    template: Post.md
+    destination: realm-of-forms
+    slug: { style: kebab, from: "{title}" }
+    fields:
+      title: { type: text, required: true }
+      aliases: { type: list }
+      date: { type: date, required: true }
+      draft: { type: bool }
+      tags: { type: list, item: tag }
+
+  pages:
+    template: [ Page.md, List.md ] # a page, or a ranked list
+    slug: { style: kebab, from: "{title}" }
+    fields:
+      title: { type: text, required: true }
+      aliases: { type: list }
+      destination: { type: enum, values: *destinations, required: true }
+      draft: { type: bool }

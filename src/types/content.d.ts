@@ -10,8 +10,9 @@ interface Note {
 
 export type ReadingStatus = "to-read" | "reading" | "paused" | "read" | "dnf";
 export type WatchingStatus = "to-watch" | "watching" | "paused" | "watched" | "dnf";
+export type PlayingStatus = "to-play" | "playing" | "paused" | "played" | "dnf";
 
-// fields shared by novels, nonfiction & films
+// fields shared by novels, nonfiction, films & games
 interface Tracked<Status> extends Note {
     status: Status;
     started?: string;    // as precise as known, eg. "2024-06-28", "2024-05", or "2023"
@@ -40,6 +41,16 @@ export interface Film extends Tracked<WatchingStatus> {
     director?: string;   // or creator, of series
     tmdb?: string;
     poster?: string;
+}
+
+// video game, from content/games/
+export interface Game extends Tracked<PlayingStatus> {
+    year?: number;
+    developer?: string;
+    platform?: string;   // what it was played on
+    igdb?: string;       // slug on IGDB
+    cover?: string;
+    owned?: boolean;
 }
 
 // standalone page (eg. a packlist, or a ranked list), from content/pages/

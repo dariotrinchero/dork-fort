@@ -1,0 +1,98 @@
+filters:
+  and:
+    - file.inFolder("games")
+formulas:
+  stars: 'if(rating.isEmpty(), "", "★".repeat(rating.floor()) + if(rating - rating.floor() == 0.25, "¼", if(rating - rating.floor() == 0.5, "½", if(rating - rating.floor() == 0.75, "¾", ""))))'
+properties:
+  formula.stars:
+    displayName: Rating
+views:
+  - type: table
+    name: Playing
+    filters:
+      and:
+        - status == "playing"
+    order:
+      - title
+      - platform
+      - year
+      - developer
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: started
+        direction: DESC
+  - type: table
+    name: To play
+    filters:
+      and:
+        - status == "to-play"
+    order:
+      - title
+      - platform
+      - year
+      - developer
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: shortlist
+        direction: DESC
+      - property: title
+        direction: ASC
+  - type: table
+    name: Played
+    filters:
+      and:
+        - status == "played"
+    order:
+      - title
+      - platform
+      - year
+      - developer
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: finished
+        direction: DESC
+      - property: title
+        direction: ASC
+  - type: table
+    name: Paused
+    filters:
+      and:
+        - status == "paused"
+    order:
+      - title
+      - platform
+      - year
+      - developer
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: title
+        direction: ASC
+  - type: table
+    name: DNF
+    filters:
+      and:
+        - status == "dnf"
+    order:
+      - title
+      - platform
+      - year
+      - developer
+      - finished
+      - formula.stars
+      - tags
+      - recommended-by
+    sort:
+      - property: title
+        direction: ASC

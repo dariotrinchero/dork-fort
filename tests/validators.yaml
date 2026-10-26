@@ -1,0 +1,223 @@
+# Cases that the build's validator (scripts/validateContent.js) & dork's (tools/dork/) must agree on, each run by
+# its own tests (tests/validateContent.test.js & tools/dork/tests/test_validate.py). Values are YAML, so each side
+# reads them with the same YAML reader it uses for notes.
+
+# How each side's YAML reader (YAML 1.2, core schema) reads plain scalars: `yaml` read as a value, should equal
+# `json`. In particular, dates stay text, "3:45" isn't sexagesimal, & yes/no aren't booleans (unlike YAML 1.1).
+parsing:
+  - { yaml: "2024-06-28", json: '"2024-06-28"' }
+  - { yaml: '"2023"', json: '"2023"' }
+  - { yaml: "2023", json: "2023" }
+  - { yaml: "3:45", json: '"3:45"' }
+  - { yaml: "yes", json: '"yes"' }
+  - { yaml: "no", json: '"no"' }
+  - { yaml: "on", json: '"on"' }
+  - { yaml: "true", json: "true" }
+  - { yaml: "False", json: "false" }
+  - { yaml: "012", json: "12" }
+  - { yaml: "0o17", json: "15" }
+  - { yaml: "0x1F", json: "31" }
+  - { yaml: "4.75", json: "4.75" }
+  - { yaml: "1e3", json: "1000" }
+  - { yaml: "1_000", json: '"1_000"' }
+  - { yaml: "", json: "null" }
+  - { yaml: "~", json: "null" }
+  - { yaml: "Null", json: "null" }
+  - { yaml: "[a, b]", json: '["a", "b"]' }
+  - { yaml: "9780670022410", json: "9780670022410" }
+
+# Values of each type that should pass (`valid`) & fail (`invalid`) for a field of that type. Empty values are
+# always fine (unless the field is required), so aren't listed.
+types:
+  text:
+    field: { type: text }
+    valid: [ After Hours, "1984", "Dune: Part Two" ]
+    invalid: [ 1984, true, [ a ] ]
+  list:
+    field: { type: list }
+    valid: [ [ After Hours ], [ a, b ] ]
+    invalid: [ After Hours, [ 1984 ], [ a, "" ], [ a, null ] ]
+  tags:
+    field: { type: list, item: tag }
+    valid: [ [ fantasy ], [ magical-realism, sci-fi ], [ discworld/witches ], [ 20th-century ] ]
+    invalid: [ [ Fantasy ], [ magical realism ], [ "#fantasy" ], [ sci--fi ], [ "1984" ], [ -fantasy ] ]
+  bool:
+    field: { type: bool }
+    valid: [ true, false ]
+    invalid: [ "true", "yes", 1 ]
+  year:
+    field: { type: year }
+    valid: [ 1985, 2024, -400, 99 ]
+    invalid: [ "1985", 0, 1985.5, 20240, true ]
+  count:
+    field: { type: count }
+    valid: [ 0, 312 ]
+    invalid: [ -1, 3.5, "312" ]
+  number:
+    field: { type: number }
+    valid: [ 0, 12.3, 5 ]
+    invalid: [ -0.5, "12.3", .inf, .nan ]
+  date:
+    field: { type: date }
+    valid: [ 2024-06-28, 2024-02-29 ]
+    invalid: [ "2024-06", "2023", 2023, 2023-02-29, 2024-13-01, 2024-6-28, "28/06/2024" ]
+  partial-date:
+    field: { type: partial-date }
+    valid: [ 2024-06-28, "2024-05", "2023", 2024-02-29 ]
+    invalid: [ 2023, 2023-02-29, "2024-00", "2024-13", "2024-5", "24", "2024-06-28T10:00", June 2024 ]
+  time:
+    field: { type: time }
+    valid: [ "3:45", "0:05", "12:00", 3:45 ]
+    invalid: [ "3:60", "3", 3.45, "3h45", "3:5" ]
+  rating:
+    field: { type: rating }
+    valid: [ 1, 3.5, 4.75, 5, 1.25 ]
+    invalid: [ 0, 0.75, 5.25, 4.6, "4", -1 ]
+  initials:
+    field: { type: initials }
+    valid: [ JS, BM, ABC ]
+    invalid: [ J, js, John Smith, J.S., ABCD ]
+  isbn:
+    field: { type: isbn }
+    valid: [ "9780670022410", "0306406152", "080442957X", "9791032305690" ]
+    invalid:
+      - 9780670022410   # unquoted, so a number
+      - "9780670022411" # bad checksum
+      - "0306406153"
+      - "978-0670022410"
+      - "080442957x"
+      - "X804429570"
+      - "9770670022410" # not 978 or 979
+      - "12345"
+  doi:
+    field: { type: doi }
+    valid: [ 10.1000/xyz123, 10.1093/mind/LIX.236.433, 10.48550/arXiv.2107.03374 ]
+    invalid: [ "doi:10.1000/xyz123", https://doi.org/10.1000/xyz123, 10.10/xyz, 10.1000/ ]
+  arxiv:
+    field: { type: arxiv }
+    valid: [ "2107.03374", "2107.03374v2", "0704.0001", math/0211159, math.GT/0309136 ]
+    invalid: [ 2107.03374, "arXiv:2107.03374", "2107.033", "21070.3374", "MATH/0211159" ]
+  url:
+    field: { type: url }
+    valid: [ https://example.com, "http://example.com/a?b=c" ] # quoted: PyYAML (unlike yaml) rejects "?" in flow lists
+    invalid: [ example.com, ftp://example.com, "https://example.com/a b" ]
+  tmdb:
+    field: { type: tmdb }
+    valid: [ movie/550, tv/1399 ]
+    invalid: [ 550, "550", film/550, movie/abc ]
+  igdb:
+    field: { type: igdb }
+    valid: [ hollow-knight, the-witcher-3-wild-hunt ]
+    invalid: [ Hollow Knight, hollow_knight, "https://www.igdb.com/games/hollow-knight" ]
+  digits:
+    field: { type: digits }
+    valid: [ 12345, "12345" ]
+    invalid: [ -5, "12a", 1.5 ]
+  attachment:
+    field: { type: attachment, dir: covers }
+    valid: [ attachments/covers/the-cave-saramago.jpg, attachments/covers/Pasted image 1.png ]
+    invalid: [ covers/the-cave-saramago.jpg, attachments/posters/x.jpg, attachments/covers/a/b.jpg, attachments/covers/ ]
+  enum:
+    field: { type: enum, values: [ film, series, anime ] }
+    valid: [ film, anime ]
+    invalid: [ Film, movie, 1 ]
+
+# Whole notes, checked against content/schema.yaml: `errors` lists the fields (or "slug") that should have
+# problems, & no others should.
+entries:
+  - collection: novels
+    slug: the-cave-saramago
+    fields: { title: The Cave, author: José Saramago, isbn: "9780151012930", status: read, finished: "2023" }
+    errors: []
+  - collection: novels
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: to-read }
+    errors: []
+  - collection: novels # status words of films aren't those of novels
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: watched }
+    errors: [ status ]
+  - collection: novels
+    slug: the-cave-saramago
+    fields: { title: The Cave }
+    errors: [ status ]
+  - collection: novels
+    slug: the-cave-saramago
+    fields: { title: "", status: read }
+    errors: [ title ]
+  - collection: novels # unknown field
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: read, director: Someone }
+    errors: [ director ]
+  - collection: novels # nothing started in the backlog
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: to-read, started: 2024-06-28, finished: "2024" }
+    errors: [ started, finished ]
+  - collection: novels # nothing finished while reading or paused
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: reading, started: 2024-06-28, finished: 2024-07-01 }
+    errors: [ finished ]
+  - collection: novels
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: paused, started: "2024-06" }
+    errors: []
+  - collection: novels # a dnf may have a date given up
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: dnf, started: 2024-06-01, finished: 2024-06-28 }
+    errors: []
+  - collection: novels # finished before started, compared at the coarser precision
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: read, started: 2024-06-28, finished: "2024-05" }
+    errors: [ finished ]
+  - collection: novels
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: read, started: 2024-06-28, finished: "2024" }
+    errors: []
+  - collection: novels
+    slug: The-Cave
+    fields: { title: The Cave, status: read }
+    errors: [ slug ]
+  - collection: nonfiction
+    slug: kripkeNamingNecessity1980
+    fields: { title: Naming and Necessity, kind: book, authors: [ Saul Kripke ], status: read, topics: [ logic ] }
+    errors: []
+  - collection: nonfiction
+    slug: kripke naming
+    fields: { title: Naming and Necessity, kind: essay, status: read }
+    errors: [ slug, kind ]
+  - collection: films
+    slug: after-hours-1985
+    fields: { title: After Hours, kind: film, year: 1985, status: watched, rating: 4.5, recommended-by: JS }
+    errors: []
+  - collection: films
+    slug: after-hours-1985
+    fields: { title: After Hours, status: watched, rating: 4.6, recommended-by: John }
+    errors: [ rating, recommended-by ]
+  - collection: games
+    slug: hollow-knight-2017
+    fields: { title: Hollow Knight, year: 2017, igdb: hollow-knight, status: played, platform: Switch }
+    errors: []
+  - collection: games
+    slug: hollow-knight-2017
+    fields: { title: Hollow Knight, status: read }
+    errors: [ status ]
+  - collection: adventures
+    slug: 2026-10-01-table-mountain
+    fields: { title: Table Mountain, date: 2026-10-01, distance: 12.3, time: "3:45" }
+    errors: []
+  - collection: adventures # slug's date must be the note's
+    slug: 2026-10-02-table-mountain
+    fields: { title: Table Mountain, date: 2026-10-01 }
+    errors: [ slug ]
+  - collection: adventures
+    slug: table-mountain
+    fields: { title: Table Mountain }
+    errors: [ slug, date ]
+  - collection: pages
+    slug: packlist
+    fields: { title: Packlist, destination: traveller }
+    errors: []
+  - collection: pages
+    slug: packlist
+    fields: { title: Packlist, destination: narnia }
+    errors: [ destination ]

@@ -10,7 +10,7 @@ delete the original. See [Content](#content-organisation--workflow) for where ev
 3. **Music backlog:** process it into your new system, then delete it (not published).
 4. **Books:** imported from StoryGraph (96 in `novels/`, 21 in `nonfiction/`). Check the split, `kind`s, tags &
    topics in the Novels & Nonfiction Bases, then close the StoryGraph account.
-5. **Build `dork`** (`add`, `start`/`finish`/`pause`/`dnf`, `rate`, `fill`); `dork fill` then gives the imported
+5. **Build `dork`** (see [TODO_DORK.md](TODO_DORK.md)); `dork fill` then gives the imported
    novels their `year`, `pages` & `cover` from Open Library.
 6. **Letterboxd:** either close the account, or keep logging there & pull its RSS feed
    (`letterboxd.com/<user>/rss/`) into `films/` at build, as with iNaturalist.
@@ -109,12 +109,14 @@ files. Each folder holds one lorem-ipsum placeholder until its real content arri
 | `novels/` | literature (incl. plays & short stories) | moon-and-stars |
 | `nonfiction/` | textbooks, books & papers (`kind: textbook \| book \| paper`) | realm-of-forms |
 | `films/` | films, series & anime (`kind: film \| series \| anime`) | moon-and-stars |
+| `games/` | video games | moon-and-stars |
 | `adventures/` | one per outing | traveller |
 | `garden/` | notes on iNaturalist observations | garden |
 | `blog/` | blog posts, dated (newest first on the site) | realm-of-forms |
 | `pages/` | standalone pages (packlist, wishlist) & ranked lists | each names its own `destination` |
 | `attachments/` | `covers/`, `posters/`, `photos/` (Obsidian pastes here), `gpx/` | — |
 | `Templates/`, `Bases/` | templates (also read by `dork`), & table views | — |
+| `schema.yaml` | the type of every field, read by the build & `dork` | — |
 
 The repo is public, so all of `content/` is visible on GitHub, even what the site leaves out; anything private
 stays in `~/Documents/Notes`.
@@ -139,9 +141,11 @@ vault keeps human names (no slugs in the kitchen).
 
 ### Schemas
 
-The templates are the source of truth. Novels, nonfiction & films share:
+The templates give each collection's fields (in order) & defaults; `content/schema.yaml` gives their types,
+& is read by both the build & `dork`, which check notes by the same rules. Novels, nonfiction, films & games
+share:
 - **`status`:** `to-read | reading | paused | read | dnf` (films: `to-watch | watching | paused | watched |
-  dnf`), set explicitly, as many reads have no dates. The build checks it agrees with the dates (eg. no
+  dnf`; games: `to-play | playing | paused | played | dnf`), set explicitly, as many reads have no dates. The build checks it agrees with the dates (eg. no
   `finished` while `to-read`). Rereads aren't tracked.
 - **`started` & `finished`:** optional, & as precise as known: `2024-06-28`, `"2024-05"` or `"2023"` (quoted, so
   YAML keeps them as text). Text properties in Obsidian, so partial dates aren't flagged, & they still sort.
@@ -156,7 +160,8 @@ Per collection:
 - **novels:** `author`, `translator`, `year`, `isbn` (quoted), `pages`, `cover`, `owned`.
 - **nonfiction:** `kind`, `authors`, `translator`, `year`, `isbn`, `topics`, `doi`, `arxiv`, `url`, `owned`. Indexed
   by topic.
-- **films:** `kind`, `year`, `director` (or creator), `tmdb`, `poster`.
+- **films:** `kind`, `year`, `director` (or creator), `tmdb` (`movie/<id>` or `tv/<id>`), `poster`.
+- **games:** `year`, `developer`, `platform` (what it was played on), `igdb` (its slug there), `cover`, `owned`.
 - **adventures:** `date`, `activity` (climb, run, hike, camp…), `place`, `grade`, `distance` (km), `time`
   (`"h:mm"`, quoted, or YAML 1.1 reads it as a number), `ascent` (m), `gpx`, `photos`.
 - **garden:** `date`, `inaturalist` (observation id), `species`, `place`, `photos`.
@@ -174,25 +179,9 @@ in metadata.
 
 ### `dork` CLI
 
-A Python script in `~/git-repos/cli-tools/`, on PATH, outside this repo.
-- Finds the vault through `DORK_CONTENT` (default `~/git-repos/dork-fort/content`), & keeps the TMDB key in
-  `~/.config/dork/config.toml`. Obsidian rewrites lists in block style (`tags:` then `  - fantasy`) when
-  properties are edited, so frontmatter isn't flat `key: value` lines: use PyYAML (the one dependency beside
-  the standard library's `urllib`, `json`, & `tomllib`), as the build uses `yaml`.
-- Fills the vault's own `Templates/*.md`, so the schema lives in one place.
-- `dork add novel "piranesi clarke"`: searches Open Library (title, author, or ISBN), lets you pick from the top
-  matches, writes the file (named as above), downloads the cover (the build resizes & dithers it), & opens
-  `$EDITOR`.
-- `dork add film|series|anime "after hours 1985"`: likewise, from TMDB.
-- `dork add nonfiction <citekey | query>`: from Zotero, which holds them all, so the filename is its
-  `citationKey`, the metadata its edition, & `kind` its item type (`--textbook` to override `book`). Zotero's
-  database is locked while it runs, so read `~/Documents/Zotero/zotero.sqlite` through a copy, or Zotero 7's
-  local API (`localhost:23119/api/`) while it runs. Crossref, arXiv or Open Library only for things not yet in
-  Zotero (better: add them to Zotero first).
-- `dork start|finish|pause|dnf <query>` sets the status of the best fuzzy match (stamping today's date); `dork
-  rate <query> 4.5`.
-- `dork fill [--folder novels]` adds missing `year`, `pages` & `cover` to entries with an ISBN.
-- Metadata is fetched when adding, never at build time, so builds don't depend on the APIs.
+Designed, & tracked, in [TODO_DORK.md](TODO_DORK.md): a TUI & CLI in `tools/dork/` (in this repo, for parity
+with the build) for adding & updating novels, nonfiction, films & games. Metadata is fetched when adding, never
+at build time, so builds don't depend on the APIs.
 - Maybe later: a `workflow_dispatch` action running `dork add` (taking the top match) from the GitHub app on
   the phone.
 
@@ -200,9 +189,10 @@ A Python script in `~/git-repos/cli-tools/`, on PATH, outside this repo.
 
 `scripts/bakeContent.js` generalises `bakeRecipes.js`: each collection gives a source folder, schema,
 destination, & templates, & the recipes are one more collection (from `RECIPES_DIR`).
-- **Validation:** filenames that aren't slugs (or clash), unknown keys, wrong types, ratings off the quarter
-  steps, a `status` at odds with the dates, or `recommended-by` that isn't initials fail the build, naming the
-  file & field.
+- **Validation** (done; `scripts/validateContent.js`, from `schema.yaml`): filenames that aren't slugs (or
+  clash), unknown keys, wrong types, ratings off the quarter steps, a `status` at odds with the dates,
+  `recommended-by` that isn't initials, missing attachments, or templates out of step with the schema fail the
+  build (& only warn in dev), naming the file & field. `npm run check` runs it alone.
 - **Feeds:** iNaturalist observations (`api.inaturalist.org/v1/observations?user_id=…`, no key), fetched at
   build with a fallback snapshot so an outage doesn't fail the deploy, & joined with `garden/` notes by
   `inaturalist` id. GPX files become elevation sparklines.

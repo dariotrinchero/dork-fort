@@ -6,7 +6,9 @@
   "scripts": {
     "build": "node scripts/build.js --prod",
     "publish": "node scripts/deploy.js",
-    "dev": "node scripts/build.js"
+    "dev": "node scripts/build.js",
+    "check": "node scripts/validateContent.js",
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [
     "Neocities"
