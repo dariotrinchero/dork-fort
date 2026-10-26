@@ -34,15 +34,16 @@
 # `from` says how dork makes one: fields in braces, with `|short` (title without its subtitle) & `|surname`.
 
 # What each status means, shared across collections, which name them in their own words (a collection needn't name
-# every role). Each role may stamp a date field with today when an entry takes it on, & may forbid date fields
-# (as nothing in the backlog has been started); its colour is dork's.
+# every role). Each role may stamp a date field with today when an entry takes it on, & may forbid fields, which
+# must then be empty, or false (as nothing in the backlog has been started, & only what's yet to be begun or
+# resumed is shortlisted); its colour is dork's.
 roles:
   backlog: { colour: yellow, forbids: [ started, finished ] }
-  active: { colour: cyan, stamps: started, forbids: [ finished ] }
+  active: { colour: cyan, stamps: started, forbids: [ finished, shortlist ] }
   paused: { colour: blue, forbids: [ finished ] }
-  ongoing: { colour: magenta, forbids: [ finished ] } # with nothing to finish (eg. Minecraft), so never done
-  done: { colour: green, stamps: finished }
-  dropped: { colour: red }
+  ongoing: { colour: magenta, forbids: [ finished, shortlist ] } # with nothing to finish (eg. Minecraft), so never done
+  done: { colour: green, stamps: finished, forbids: [ shortlist ] }
+  dropped: { colour: red, forbids: [ shortlist ] }
 
 # fields shared by every collection with a status (novels, nonfiction, films & games), added to their `fields`
 tracked:

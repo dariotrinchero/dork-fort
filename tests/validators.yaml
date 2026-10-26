@@ -165,6 +165,18 @@ entries:
     slug: the-cave-saramago
     fields: { title: The Cave, status: paused, started: "2024-06" }
     errors: []
+  - collection: novels # nothing shortlisted once begun (false is as good as empty), but a paused book may be
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: reading, shortlist: true }
+    errors: [ shortlist ]
+  - collection: novels
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: read, shortlist: false }
+    errors: []
+  - collection: novels
+    slug: the-cave-saramago
+    fields: { title: The Cave, status: paused, shortlist: true }
+    errors: []
   - collection: novels # a dnf may have a date given up
     slug: the-cave-saramago
     fields: { title: The Cave, status: dnf, started: 2024-06-01, finished: 2024-06-28 }

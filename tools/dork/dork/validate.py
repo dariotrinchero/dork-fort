@@ -150,11 +150,14 @@ def check_entry(schema: dict, name: str, slug: str, fields: dict) -> list[tuple[
         if field.get("requires") and not is_empty(fields.get(key)) and is_empty(fields.get(field["requires"])):
             problems.append((key, f"needs {field['requires']} too"))
 
-    # status must agree with dates: the role of the status may forbid some (eg. nothing in the backlog is started)
+    # status must agree with dates & flags: its role may forbid some (eg. nothing in the backlog is started), which
+    # must then be empty (or a flag, false)
     role = next((role for role, word in (collection.get("status") or {}).items() if word == fields.get("status")),
                 None)
     for key in (schema["roles"].get(role) or {}).get("forbids", []):
-        if not is_empty(fields.get(key)): problems.append((key, f"should be empty while {fields['status']}"))
+        value = fields.get(key)
+        if value is not False and not is_empty(value):
+            problems.append((key, f"should be {'false' if value is True else 'empty'} while {fields['status']}"))
     started, finished = fields.get("started"), fields.get("finished")
     if isinstance(started, str) and isinstance(finished, str):
         length = min(len(started), len(finished))

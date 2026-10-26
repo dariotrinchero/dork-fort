@@ -93,26 +93,27 @@ const surname = (name: string): string => {
  *
  * @param a novel
  * @param b novel
+ * @param latestFirst whether a series goes highest number first (as a newest-first timeline has one read in order)
  * @returns negative if a comes first, positive if b does, & otherwise 0
  */
-const byName = (a: Novel, b: Novel): number =>
+const byName = (a: Novel, b: Novel, latestFirst = false): number =>
     Number(!a.author) - Number(!b.author)
     || surname(a.author ?? "").localeCompare(surname(b.author ?? ""))
     || (a.author ?? "").localeCompare(b.author ?? "")
     || (a.series ?? a.title).localeCompare(b.series ?? b.title)
-    || (a["series-number"] ?? -1) - (b["series-number"] ?? -1)
+    || (latestFirst ? -1 : 1) * ((a["series-number"] ?? -1) - (b["series-number"] ?? -1))
     || a.title.localeCompare(b.title);
 
 /**
  * Order novels by date finished, latest first (dates as precise as known sort as text, those known only to the year
- * or month before others in it), then undated ones by name (see byName).
+ * or month before others in it), then those finished at once (or undated) by name, a series latest first (see byName).
  *
  * @param a novel
  * @param b novel
  * @returns negative if a comes first, positive if b does, & otherwise 0
  */
 const byFinished = (a: Novel, b: Novel): number =>
-    (b.finished ?? "").localeCompare(a.finished ?? "") || byName(a, b);
+    (b.finished ?? "").localeCompare(a.finished ?? "") || byName(a, b, true);
 
 /**
  * Order novels shortlisted first, then by name (see byName).
@@ -128,7 +129,7 @@ const byShortlist = (a: Novel, b: Novel): number =>
 const READING_TABS: { label: string; order: (a: Novel, b: Novel) => number; status: ReadingStatus }[] = [
     { label: "finished", order: byFinished, status: "read" },
     { label: "to read", order: byShortlist, status: "to-read" },
-    { label: "paused", order: byName, status: "paused" },
+    { label: "paused", order: byShortlist, status: "paused" },
     { label: "dnf", order: byName, status: "dnf" },
 ];
 

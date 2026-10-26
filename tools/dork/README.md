@@ -57,7 +57,7 @@ entry invalid (eg. pausing something that has a `finished` date) changes nothing
 Every entry of every collection with a status, filtered as you type. Each row shows the collection (or the
 entry's kind, if its collection has kinds: film, series, anime; textbook, book, paper), in the collection's
 colour, the title & who made it (with the characters the query matched highlighted), year, status (in its
-colour) & rating.
+colour; "shortlist", in bold, for a shortlisted entry yet to be begun or resumed) & rating.
 
 **Typing** (the default) filters the list. Ctrl+letter acts on the highlighted entry:
 
@@ -66,10 +66,10 @@ colour) & rating.
 | `^F` `^S` `^P` `^D` | finish, start, pause, or drop it (dates as above) |
 | `^R` | rate it, in the star meter (↑/↓ by quarter stars, `1`–`5` whole stars, `0` none, Enter to save) |
 | `^Z` | undo the last change |
-| `^N` | add something new, searching for the query (in the collection filtered by, if any) |
+| `^A` (or `^N`) | add something new, searching for the query (in the collection filtered by, else in every one) |
 | `^T` | to the add screen, as it was left, taking the query (without searching) |
 | Enter | edit it |
-| Tab, ⇧Tab | cycle a filter by collection |
+| Tab, ⇧Tab | cycle a filter by collection (as do ←/→, with no query) |
 | ↓ | into the list (& down a row) |
 | Esc | clear the query; with no query, quit |
 
@@ -96,11 +96,12 @@ A tab for each collection, each with its source:
 | films | Wikidata (films, series & anime) | on Enter |
 | games | Wikidata | on Enter |
 
-Type a query & press Enter: the current tab is searched, or every tab if dork wasn't given a collection (so
-`dork add piranesi` searches each source once). Each tab shows its count of hits (or a spinner, while searching);
-tabs only change when you change them. Enter again opens the top hit; or ↓ into the list, & Enter (or `e`) on any
-hit. Tab (or ←/→ in the list) switches tab, `^Z` (or `u` in the list) undoes, `^T` goes to the finder (taking the
-query), & Esc clears the query, then goes back (to the finder, if it has been open).
+Type a query & press Enter: the current tab is searched. Arriving with a query but no collection searches every
+tab at once (so `dork add piranesi`, or `^A` from the unfiltered finder, searches each source once). Each tab
+shows its count of hits (or a spinner, while searching); tabs only change when you change them. Enter again opens
+the top hit; or ↓ into the list, & Enter (or `e`) on any hit. Tab (or ←/→ in the list, or with no query) switches
+tab, `^Z` (or `u` in the list) undoes, `^U` (or `^T`) goes to the finder (taking the query), & Esc clears the
+query, then goes back (to the finder, if it has been open).
 
 Each hit shows its title, who made it, its year, & what tells it apart (eg. "23 editions", "1985 film by Martin
 Scorsese", a citation key). Hits already in the vault are ticked & dimmed, & open the entry there instead.
@@ -128,8 +129,9 @@ in the future, a title in capitals, an author "Unknown", 0 pages, a date before 
 Typed values are tidied: ISBNs lose hyphens & spaces, a DOI's or arXiv URL becomes its id, a TMDB page becomes
 `movie/<id>` (or `tv/<id>`), & an IGDB page becomes the game's slug.
 
-`w` writes the entry, & `e` writes it & then opens `$EDITOR` (or `$VISUAL`) at its first line after the
-frontmatter, to write a review. Esc or `q` goes back, asking first if there are unsaved changes.
+Below the fields, the note's body (its review) shows, as much of it as fits. `w` writes the entry, & `e` writes
+it & then opens `$EDITOR` (or `$VISUAL`) at its first line after the frontmatter, to write (or read all of) the
+review. Esc or `q` goes back, asking first if there are unsaved changes.
 
 Editing the **filename** row renames the note on writing, & rewrites wikilinks to it (`[[old-slug|…]]`,
 `[[old-slug#…]]`) across the vault, as renaming in Obsidian does.
@@ -227,7 +229,8 @@ In the editor, cycling past a status undoes its stamp, so passing `reading` on t
 `started`. A date set by hand is never touched.
 
 Validation requires that an entry's dates agree with its status:
-- no date its role **forbids** (eg. nothing in the backlog has `started`);
+- nothing its role **forbids**: no date (eg. nothing in the backlog has `started`), & no flag set (only the
+  backlog & paused can be `shortlist`ed); starting, finishing or dropping something takes it off the shortlist;
 - `finished` isn't before `started`, compared at the coarser of their precisions (`"2024"` vs `2024-06-28`).
 
 A date in a year before the entry's `year` isn't rejected (early access, previews & advance copies come first, &
@@ -242,18 +245,18 @@ The query is matched fuzzily, as in fzf, against an entry's title followed by wh
 authors, director, or developer). Each word of the query must match, its letters in order; consecutive letters &
 starts of words score higher. Accents are ignored, so "jose" finds José.
 
-Results come best first. Ties go to entries in progress, then the backlog, then paused, done & dropped, & then
-by title.
+Results come best first. Ties go as the list has them with no query (below), so that eg. "pratchett" lists
+Discworld in order.
 
 With no query (`actions.browse_order`), entries come in that order of roles (ongoing between paused & done).
 Within each role:
 
 | Role | Sorted by |
 |---|---|
-| done | `finished`, newest first (undated last) |
+| done | `finished`, newest first (undated last); within a date, a series highest number first |
 | active | `started`, newest first |
-| backlog | shortlisted first |
-| paused, dropped | — |
+| backlog, paused | shortlisted first |
+| dropped | — |
 
 After that, entries sort by collection (in the schema's order), & then by name within it:
 - kind first, in the schema's order (eg. film, series, anime), in collections with a `kind`;

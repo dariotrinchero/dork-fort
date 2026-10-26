@@ -5,6 +5,7 @@ build would reject show in red, with the reason in the footer, & block writing."
 import csv
 import curses
 import re
+import textwrap
 
 from pathlib import PurePosixPath
 from urllib.parse import urlsplit
@@ -218,9 +219,12 @@ class Editor:
             words = list(self.collection["status"].values())
             word = words[(words.index(value) + delta) % len(words)] if value in words else words[0]
             role = next(role for role, w in self.collection["status"].items() if w == word)
-            # dates stamped by an earlier change of status go back to what they were, unless set by hand
-            stamps = {r["stamps"] for r in self.app.schema["roles"].values() if "stamps" in r}
-            stamped = {k: self.entry.fields.get(k) for k in stamps if k not in self.manual and k in self.fields}
+            # dates stamped, & flags turned off, by an earlier change of status go back to what they were, unless
+            # set by hand
+            roles = self.app.schema["roles"].values()
+            changed = {r["stamps"] for r in roles if "stamps" in r} | \
+                {k for r in roles for k in r.get("forbids", []) if self.kind(k) == "bool"}
+            stamped = {k: self.entry.fields.get(k) for k in changed if k not in self.manual and k in self.fields}
             self.fields = with_role(self.app.schema, self.entry, self.fields, role, stamped)
             self.follow()
         elif kind == "enum":
@@ -380,10 +384,36 @@ class Editor:
             style = attr("error" if wrong else "warn" if doubtful else colour, bg, bold=bold)
             put(win, y, 2 + label, fit(text, w - label - 3).rstrip(), style)
 
+        if len(self.rows) < room: self.draw_review(win, 2 + len(self.rows), room - len(self.rows), w)
+
         if self.key in problems: self.app.footer(win, h - 1, self.hints(), f"{self.key} {problems[self.key]}")
         elif self.key in warnings:
             self.app.footer(win, h - 1, self.hints(), f"{self.key}: {warnings[self.key]}", warn=True)
         else: self.app.footer(win, h - 1, self.hints())
+
+    def review(self, width: int) -> list[str]:
+        """The note's body (eg. a review), wrapped to width: paragraphs a blank line apart, & list items' lines
+        indented under their markers."""
+        lines: list[str] = []
+        for line in self.entry.body.strip("\n").splitlines():
+            if not line.strip():
+                if lines and lines[-1]: lines.append("")
+                continue
+            marker = re.match(r"\s*(?:[-*+]|\d+[.)])\s+", line)
+            lines += textwrap.wrap(line, width, subsequent_indent=" " * (marker.end() if marker else 0))
+        return lines
+
+    def draw_review(self, win, y: int, rows: int, w: int):
+        """The note's body, under the fields, in what rows are left (if it has one): as much as fits."""
+        lines = self.review(max(10, w - 4))
+        if not lines or rows < 2: return
+        put(win, y, 0, "── review " + "─" * w, attr("dim"))
+        shown = lines[:rows - 1]
+        if len(lines) > len(shown):
+            shown[-1:] = [f"… {len(lines) - len(shown) + 1} more lines (e writes, & opens it all in $EDITOR)"]
+        for i, line in enumerate(shown):
+            more = i == len(shown) - 1 and len(lines) > len(shown)
+            put(win, y + 1 + i, 2, line, attr("dim") if more else 0)
 
     def hints(self) -> list[str]:
         if self.editing:

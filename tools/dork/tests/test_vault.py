@@ -123,6 +123,13 @@ class Browsing(unittest.TestCase):
                                     note("novels", "2022-12-31", title="E", status="read", finished="2022-12-31")),
                          ["2024-01-02", "2023-05", "2023", "2022-12-31", "undated"])
 
+    def test_done_series_latest_first_within_a_date(self):
+        """A series read in order reads down the timeline: highest number first, among those finished at once."""
+        mort = lambda slug, n, finished: note("novels", slug, title=slug, author="Terry Pratchett", status="read",
+                                             series="Discworld", finished=finished, **{"series-number": n})
+        self.assertEqual(self.order(mort("one", 1, "2021"), mort("three", 3, "2021"), mort("two", 2, "2021"),
+                                    mort("four", 4, "2022")), ["four", "three", "two", "one"])
+
     def test_active_newest_started_first(self):
         self.assertEqual(self.order(note("novels", "old", title="A", status="reading", started="2024-01-01"),
                                     note("films", "new", title="B", status="watching", started="2025-06-01")),
@@ -143,6 +150,10 @@ class Browsing(unittest.TestCase):
              "le-guin", "pratchett-eric", "pratchett-mort", "smith", # novels: by surname, then title
              "textbook-z", "book-a",                                 # nonfiction: by kind, in the schema's order
              "film-z", "series-a"])                                  # films: by kind, then title
+
+    def test_paused_shortlist_first(self):
+        self.assertEqual(self.order(note("novels", "a", title="A", status="paused"),
+                                    note("novels", "z", title="Z", status="paused", shortlist=True)), ["z", "a"])
 
     def test_series_in_order(self):
         """Within an author, books go by series (one outside a series, by its title), then by number in it."""
@@ -234,6 +245,13 @@ class Actions(unittest.TestCase):
         self.assertIn("finished should be empty while paused", outcome.message)
         self.assertEqual(reload(finished).fields, finished.fields)
 
+    def test_begun_leaves_shortlist(self):
+        entry = next(e for e in self.entries if e.fields.get("shortlist") is True and e.fields["status"] == "to-watch")
+        outcome = actions.act(SCHEMA, entry, "start")
+        self.assertFalse(outcome.failed, outcome.message)
+        self.assertIn("shortlist true → false", outcome.message)
+        self.assertIs(reload(entry).fields["shortlist"], False)
+
     def test_already(self):
         entry = next(e for e in self.entries if e.fields["status"] == "watched")
         self.assertTrue(actions.act(SCHEMA, entry, "finish").failed)
@@ -301,6 +319,15 @@ class Finding(unittest.TestCase):
         self.assertEqual(best("dune", "rate"), "dune-2021")          # the one titled just that
         self.assertIsNone(best("zzz"))
         self.assertEqual(best("dune", "dnf"), "dune-part-two-2024")     # not dropping what's watched
+
+    def test_ties_as_browsing(self):
+        """Equally good matches come as browsing orders them: by role, then (eg.) in series order, not by title."""
+        pratchett = lambda slug, title, status, n: note("novels", slug, title=title, author="Terry Pratchett",
+                                                         status=status, series="Discworld", **{"series-number": n})
+        ranked = actions.rank(SCHEMA, [pratchett("thud", "Thud!", "to-read", 34),
+                                       pratchett("mort", "Mort", "read", 4),
+                                       pratchett("going-postal", "Going Postal", "to-read", 33)], "pratchett")
+        self.assertEqual([entry.slug for entry, _, _ in ranked], ["going-postal", "thud", "mort"])
 
     def test_scattered_letters_never_act(self):
         """Fuzzy matches letter by letter only open the finder: "dune" mustn't act on "Jury Duty"."""

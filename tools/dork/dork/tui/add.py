@@ -1,10 +1,10 @@
 """The add screen: a tab per tracked collection, each searching its source; picking a hit opens the editor on a
 new entry, filled in from it. Hits already in the vault are marked, & open the entry there instead.
 
-Nothing is fetched until asked for: Enter searches (the current tab, or when dork was given no collection, every
-tab at once, a request each), & a query given on the command line counts as asked. Results are kept for the
-session, so switching tabs or going back from the editor costs nothing. Zotero is read from disk, so its tab
-searches as you type."""
+Nothing is fetched until asked for: Enter searches the current tab, & arriving with a query (from the command line,
+or ^A from the finder) counts as asked, searching every tab at once (a request each) if no collection was given.
+Results are kept for the session, so switching tabs or going back from the editor costs nothing. Zotero is read
+from disk, so its tab searches as you type."""
 
 import curses
 import textwrap
@@ -16,13 +16,13 @@ from ..net import NetError
 from ..slugs import make_slug, surname
 from ..sources import Candidate, Source, sources
 from ..vault import Entry, new_entry
-from .base import ENTER, ESC, TAB, Help, LineEdit, attr, ctrl, dwidth, fit, put, runs
+from .base import ENTER, ESC, TAB, Help, LineEdit, attr, ctrl, dwidth, fit, put, runs, who_width
 
 HELP = [
     ("typing", "the query"),
     ("⏎", "search (or, once searched, open the top hit)"),
-    ("⇥  ⇧⇥", "switch collection"),
-    ("^T", "to the finder (taking the query)"),
+    ("⇥  ⇧⇥", "switch collection (or ←→, with no query)"),
+    ("^U ^T", "to the finder (taking the query)"),
     ("↓", "into the list"),
     ("^Z", "undo the last change (eg. an entry added)"),
     ("esc", "clear the query, or go back"),
@@ -56,7 +56,7 @@ class Add:
 
     def __init__(self, query: str = "", collection: str | None = None, search: bool = False):
         self.query = LineEdit(query)
-        self.typed = collection     # the collection dork was given, if any (else Enter searches every tab)
+        self.typed = collection     # the collection dork was given, if any (else a query given searches every tab)
         self.search_now = search and bool(query.strip())
         self.typing = True
         self.opening: tuple[Future, Tab] | None = None # a hit being filled in, to open once it is
@@ -68,7 +68,7 @@ class Add:
         names = [tab.collection for tab in self.tabs]
         self.current = names.index(self.typed) if self.typed in names else 0
         self.live()
-        if self.search_now: self.submit()
+        if self.search_now: self.submit(everywhere=not self.typed)
 
     @property
     def tab(self) -> Tab: return self.tabs[self.current]
@@ -78,9 +78,9 @@ class Add:
 
     #---- searching ---------------------------------------------------------------------------
 
-    def submit(self):
-        """Search the current tab for the query, or (if dork wasn't given a collection) every tab."""
-        for tab in [self.tab] if self.typed else self.tabs: self.search(tab)
+    def submit(self, everywhere: bool = False):
+        """Search the current tab for the query (or with everywhere, every tab)."""
+        for tab in self.tabs if everywhere else [self.tab]: self.search(tab)
 
     def search(self, tab: Tab):
         query = self.query.text.strip()
@@ -165,9 +165,7 @@ class Add:
         if query.strip() and query != self.query.text:
             self.query = LineEdit(query)
             self.live()
-        if collection:
-            self.typed = collection
-            self.current = [tab.collection for tab in self.tabs].index(collection)
+        if collection: self.current = [tab.collection for tab in self.tabs].index(collection)
         self.typing = True
 
     def back(self):
@@ -185,7 +183,7 @@ class Add:
             return self.app.notify("cancelled")
         if key == TAB: self.switch(1)
         elif key == curses.KEY_BTAB: self.switch(-1)
-        elif key == ctrl("t"): self.app.switch(self)
+        elif key in (ctrl("u"), ctrl("t")): self.app.switch(self)
         elif self.typing: self.handle_typing(key, ch)
         else: self.handle_list(key, ch)
 
@@ -199,6 +197,8 @@ class Add:
                 self.typing = False
                 self.move(1)
         elif key == curses.KEY_UP: pass
+        elif key in (curses.KEY_LEFT, curses.KEY_RIGHT) and not self.query.text:
+            self.switch(1 if key == curses.KEY_RIGHT else -1)
         elif key == ctrl("z"): self.app.undo()
         elif key == ESC:
             if self.query.text: self.query = LineEdit()
@@ -270,8 +270,8 @@ class Add:
         tab.top = max(min(tab.top, tab.sel), tab.sel - rows + 1, 0)
         detail_width = max(0, min(28, w // 4))
         year_x = w - detail_width - 7
-        who_width = max(0, min(24, (year_x - 4) // 3))
-        who_x = year_x - who_width - 2
+        who_cols = who_width(year_x - 4)
+        who_x = year_x - who_cols - 2
         title_width = max(1, who_x - 4)
         for i, hit in enumerate(tab.hits[tab.top:tab.top + rows]):
             y, chosen = 3 + i, tab.top + i == tab.sel
@@ -282,7 +282,7 @@ class Add:
             opening = self.opening and self.opening[1] is tab and chosen
             title = ("✓ " if there else "") + hit.title
             put(win, y, 2, fit(title, title_width), attr("dim" if there else "fg", bg, bold=chosen and not there))
-            put(win, y, who_x, fit(hit.creator, who_width), attr("dim", bg))
+            put(win, y, who_x, fit(hit.creator, who_cols), attr("dim", bg))
             put(win, y, year_x, hit.year[:4], attr("dim", bg))
             detail = f"{self.app.spinner()} filling in…" if opening else "in the vault" if there else hit.detail
             colour = "accent" if opening else "green" if there else "dim"
@@ -291,7 +291,7 @@ class Add:
 
     def hints(self) -> list[str]:
         if self.typing:
-            return ["⏎ search / open top hit · ↓ list · ⇥ collection · ^T finder · esc back",
+            return ["⏎ search / open top hit · ↓ list · ⇥ collection · ^U finder · esc back",
                     "⏎ search · ↓ list · esc"]
-        return ["⏎ open in the editor · ←→ collection · space search · ^T finder · ? help · q back",
+        return ["⏎ open in the editor · ←→ collection · space search · ^U finder · ? help · q back",
                 "⏎ open · ? help"]

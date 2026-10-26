@@ -30,9 +30,9 @@ testing); this file tracks progress, & plans what isn't built yet.
    - [x] sources: Open Library (with a guessed edition, flagged, & any other pickable with `p`), Zotero
      (read-only, from disk, as you type), Wikidata (films, series & anime, & games; & novels' series), chosen
      for their terms (TMDB's & IGDB's, first built, were dropped: see "Sources" in the README)
-   - [x] the add screen (`dork add`, `^N`/`a` from the finder, & `^T` between the two); the editor for new
-     entries (slugs that follow the fields, warnings in orange, an optional cover download, undoable with the
-     note)
+   - [x] the add screen (`dork add`, `^A`/`a` from the finder, `^U` back, & `^T` between the two); the editor
+     for new entries (slugs that follow the fields, warnings in orange, an optional cover download, undoable with
+     the note)
    - [x] novels' `series` & `series-number`, validated (a number needs a series; no two novels share both), &
      sorting an author's series in order, in dork & on the site
    - [x] requests try IPv4 first (IPv6 timed out on every request, making each take 20 s)

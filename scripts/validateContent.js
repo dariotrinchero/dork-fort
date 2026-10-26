@@ -180,10 +180,12 @@ export const checkEntry = (schema, name, slug, fields) => {
             problem(key, `needs ${field.requires} too`);
     }
 
-    // status must agree with dates: the role of the status may forbid some (eg. nothing in the backlog is started)
+    // status must agree with dates & flags: its role may forbid some (eg. nothing in the backlog is started), which
+    // must then be empty (or a flag, false)
     const role = Object.keys(collection.status ?? {}).find(role => collection.status[role] === fields.status);
     for (const key of schema.roles[role]?.forbids ?? [])
-        if (!isEmpty(fields[key])) problem(key, `should be empty while ${fields.status}`);
+        if (fields[key] !== false && !isEmpty(fields[key]))
+            problem(key, `should be ${fields[key] === true ? "false" : "empty"} while ${fields.status}`);
     const { started, finished } = fields;
     if (isString(started) && isString(finished)) {
         const length = Math.min(started.length, finished.length);

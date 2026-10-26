@@ -48,11 +48,14 @@ def creator(entry: Entry) -> str:
 
 
 def with_role(schema: dict, entry: Entry, fields: dict, role: str, stamped: dict | None = None) -> dict:
-    """Fields with status set to role's word, & the date field role stamps (if any) set to today if empty.
-    Fields named in stamped first take those values (as before an earlier stamp, in the editor)."""
+    """Fields with status set to role's word, the date field role stamps (if any) set to today if empty, & flags
+    role forbids turned off (eg. shortlist, once begun; dates it forbids are kept, for validation to refuse).
+    Fields named in stamped first take those values (as before an earlier change, in the editor)."""
     new = {**fields, **(stamped or {}), "status": schema["collections"][entry.collection]["status"][role]}
     stamp = schema["roles"][role].get("stamps")
     if stamp and is_empty(new.get(stamp)): new[stamp] = today()
+    for key in schema["roles"][role].get("forbids", []):
+        if new.get(key) is True: new[key] = False
     return new
 
 
@@ -61,6 +64,7 @@ def describe(schema: dict, entry: Entry, old: dict, new: dict, slug: str | None 
     def show(key, value) -> str:
         if is_empty(value): return "—"
         if key == "rating": return stars(value)
+        if isinstance(value, bool): return str(value).lower() # as YAML has it
         return ", ".join(map(str, value)) if isinstance(value, list) else str(value)
 
     changes = []
@@ -118,10 +122,11 @@ def _newest(date: str) -> tuple:
     return (*(-ord(ch) for ch in date), 1)
 
 
-def _by_name(schema: dict, entry: Entry) -> tuple:
+def _by_name(schema: dict, entry: Entry, latest_first: bool = False) -> tuple:
     """Key sorting entries of a collection by name: by kind (in the schema's order), where the collection has
     kinds; then by surname of the author (or first of the authors), where it has authors; then by series (or a
-    book outside one, by its title) & number in it, where it has series; then by title."""
+    book outside one, by its title) & number in it (with latest_first, highest first, as a newest-first timeline
+    has a series read in order), where it has series; then by title."""
     from .slugs import surname
     fields, values = schema["collections"][entry.collection]["fields"], entry.fields
     key: list = []
@@ -134,8 +139,9 @@ def _by_name(schema: dict, entry: Entry) -> tuple:
     title = _sortable(values.get("title") or entry.slug)
     if "series" in fields:
         number = values.get("series-number")
+        number = number if isinstance(number, (int, float)) and not isinstance(number, bool) else -1
         key.append((_sortable(values["series"]) if values.get("series") else title,
-                    number if isinstance(number, (int, float)) and not isinstance(number, bool) else -1))
+                    -number if latest_first else number))
     return (*key, title)
 
 
@@ -143,9 +149,9 @@ def browse_order(schema: dict, entries: list[Entry]) -> list[Entry]:
     """Entries in the order to browse them (with no query): by status role (in progress, the backlog, paused,
     done, dropped), & within each, as the site's reading list orders them:
 
-    - done: by date finished, newest first (undated last);
+    - done: by date finished, newest first (undated last), & within a date, a series' latest first;
     - active: by date started, newest first;
-    - backlog: shortlisted first;
+    - backlog & paused: shortlisted first;
 
     & then by collection (in the schema's order) & by name within it (see _by_name). Dates order entries across
     collections, so that what's done reads as one timeline."""
@@ -158,8 +164,9 @@ def browse_order(schema: dict, entries: list[Entry]) -> list[Entry]:
         if role in ("done", "active"):
             date = values.get("finished" if role == "done" else "started")
             first = (is_empty(date), _newest("" if is_empty(date) else str(date)))
-        elif role == "backlog": first = (not values.get("shortlist"),)
-        return roles.get(role, len(roles)), first, names.index(entry.collection), _by_name(schema, entry)
+        elif role in ("backlog", "paused"): first = (not values.get("shortlist"),)
+        return roles.get(role, len(roles)), first, names.index(entry.collection), \
+            _by_name(schema, entry, latest_first=role == "done")
 
     return sorted(entries, key=key)
 
@@ -170,13 +177,12 @@ def haystack(entry: Entry) -> str:
 
 
 def rank(schema: dict, entries: list[Entry], query: str) -> list[tuple[Entry, set[int], int]]:
-    """Entries matching query, best first (ties going to what's in progress, then to the backlog), with the
+    """Entries matching query, best first (ties going as browse_order has them, eg. a series in order), with the
     indices of their haystacks matched, & their scores."""
-    order = {role: i for i, role in enumerate(ROLE_ORDER)}
     query = fold(query)
     scored = [(entry, *match) for entry in entries if (match := fuzzy_match(query, fold(haystack(entry))))]
-    scored.sort(key=lambda m: (-m[2], order.get(role_of(schema, m[0]), len(order)),
-                               str(m[0].fields.get("title") or m[0].slug).lower()))
+    position = {id(entry): i for i, entry in enumerate(browse_order(schema, [m[0] for m in scored]))}
+    scored.sort(key=lambda m: (-m[2], position[id(m[0])]))
     return scored
 
 

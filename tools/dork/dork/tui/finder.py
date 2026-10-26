@@ -9,7 +9,7 @@ from pathlib import Path
 from .. import actions
 from ..actions import creator, role_of
 from ..vault import Entry
-from .base import BACKSPACES, ENTER, ESC, TAB, Help, LineEdit, Stars, attr, ctrl, dwidth, fit, put, runs
+from .base import BACKSPACES, ENTER, ESC, TAB, Help, LineEdit, Stars, attr, ctrl, dwidth, fit, put, runs, who_width
 
 # what each collection's entries are labelled, unless they have a kind (eg. "series", or "paper"), which labels
 # them instead; either way, in the collection's colour
@@ -22,12 +22,12 @@ CTRL_KEYS = {ctrl(letter): action for letter, action in KEYS.items()}
 HELP = [
     ("typing", "filters (fuzzy, as fzf): titles & who made them"),
     ("↓", "into the list (to the next entry)"),
-    ("⇥  ⇧⇥", "filter by collection"),
+    ("⇥  ⇧⇥", "filter by collection (or ←→, with no query)"),
     ("⏎", "edit the highlighted entry"),
     ("^F ^S ^P ^D", "finish / start / pause / dnf it (today's date)"),
     ("^R", "rate it"),
     ("^Z", "undo the last change"),
-    ("^N", "add something new (searching for the query)"),
+    ("^A ^N", "add something new (searching for the query)"),
     ("^T", "to the add screen (taking the query, without searching)"),
     ("esc", "clear the query, or quit"),
     ("", ""),
@@ -123,9 +123,9 @@ class Finder:
             self.app.running = False
 
     def add(self):
-        """The add screen, searching for the query (in the collection filtered by, if any) at once."""
+        """The add screen, searching for the query (in the collection filtered by, else in every one) at once."""
         other = self.app.switch(self)
-        if self.query.text.strip(): other.submit()
+        if self.query.text.strip(): other.submit(everywhere=not self.filter)
 
     def take(self, query: str):
         """Take the query from the add screen, when switched to from it."""
@@ -137,9 +137,12 @@ class Finder:
         entry = self.selected()
         if entry: self.app.push(Editor(entry))
 
+    def cycle(self, delta: int):
+        self.filter = (self.filter + delta) % len(self.filters)
+
     def handle(self, key: int, ch):
-        if key == TAB: self.filter = (self.filter + 1) % len(self.filters)
-        elif key == curses.KEY_BTAB: self.filter = (self.filter - 1) % len(self.filters)
+        if key == TAB: self.cycle(1)
+        elif key == curses.KEY_BTAB: self.cycle(-1)
         elif key in ENTER: self.act(self.armed) if self.armed else self.edit()
         elif self.typing: self.handle_typing(key, ch)
         else: self.handle_list(key, ch)
@@ -147,13 +150,15 @@ class Finder:
     def handle_typing(self, key: int, ch):
         if key in CTRL_KEYS: self.act(CTRL_KEYS[key])
         elif key == ctrl("z"): self.app.undo()
-        elif key == ctrl("n"): self.add()
+        elif key in (ctrl("a"), ctrl("n")): self.add()
         elif key == ctrl("t"): self.app.switch(self)
         elif key == curses.KEY_DOWN: # into the list, moving down as ↓ always does (^-keys act on the top)
             if self.results():
                 self.typing = False
                 self.move(1)
         elif key == curses.KEY_UP: pass
+        elif key in (curses.KEY_LEFT, curses.KEY_RIGHT) and not self.query.text:
+            self.cycle(1 if key == curses.KEY_RIGHT else -1)
         elif key == ESC:
             if self.query.text: self.query = LineEdit()
             else: self.app.running = False
@@ -174,10 +179,10 @@ class Finder:
         elif key in CTRL_KEYS: self.act(CTRL_KEYS[key])
         elif key == ord("e"): self.edit()
         elif key in (ord("u"), ctrl("z")): self.app.undo()
-        elif key in (ord("a"), ctrl("n")): self.add()
+        elif key in (ord("a"), ctrl("a"), ctrl("n")): self.add()
         elif key == ctrl("t"): self.app.switch(self)
-        elif key in (curses.KEY_RIGHT, ord("l")): self.filter = (self.filter + 1) % len(self.filters)
-        elif key in (curses.KEY_LEFT, ord("h")): self.filter = (self.filter - 1) % len(self.filters)
+        elif key in (curses.KEY_RIGHT, ord("l")): self.cycle(1)
+        elif key in (curses.KEY_LEFT, ord("h")): self.cycle(-1)
         elif key in (ord("/"), ord(" "), ord("i"), ESC): self.typing = True
         elif key == ord("q"): self.app.running = False
         elif key == ord("?"): self.app.push(Help("Keys", HELP))
@@ -234,17 +239,20 @@ class Finder:
         stars_x = w - 6
         status_x = stars_x - 10
         year_x = status_x - 6
-        who_width = max(0, min(24, (year_x - 2 - tag) // 3))
-        who_x = year_x - who_width - 2
-        title_width = max(1, (who_x if who_width else year_x) - 2 - tag - 2)
+        who_cols = who_width(year_x - 2 - tag)
+        who_x = year_x - who_cols - 2
+        title_width = max(1, (who_x if who_cols else year_x) - 2 - tag - 2)
 
         put(win, y, 2, fit(label, tag), attr(entry.collection, bg))
         hits = attr("accent", bg, bold=True)
         self.draw_matched(win, y, 2 + tag, title, 0, indices, title_width, attr("fg", bg, bold=chosen), hits)
-        if who_width: self.draw_matched(win, y, who_x, who, len(title) + 2, indices, who_width, attr("dim", bg), hits)
+        if who_cols: self.draw_matched(win, y, who_x, who, len(title) + 2, indices, who_cols, attr("dim", bg), hits)
         put(win, y, year_x, year[:4], attr("dim", bg))
         colour = schema["roles"][role]["colour"] if role else "error"
-        put(win, y, status_x, fit(status, 9), attr(colour, bg))
+        # up next (from the backlog, or paused): said so in place of the status, in its colour
+        shortlisted = fields.get("shortlist") is True and \
+            "shortlist" not in schema["roles"].get(role, {}).get("forbids", [])
+        put(win, y, status_x, fit("shortlist" if shortlisted else status, 9), attr(colour, bg, bold=shortlisted))
         put(win, y, stars_x, rated, attr("accent", bg))
 
     @staticmethod
@@ -263,7 +271,7 @@ class Finder:
             return [f"⏎ {self.armed} the highlighted entry · ↑↓ choose · esc quit",
                     f"⏎ {self.armed} · esc quit"]
         if self.typing:
-            return ["⏎ edit · ↓ list · ⇥ collection · ^F finish ^S start ^P pause ^D dnf ^R rate · ^Z undo · ^N add",
+            return ["⏎ edit · ↓ list · ⇥ collection · ^F finish ^S start ^P pause ^D dnf ^R rate · ^Z undo · ^A add",
                     "⏎ edit · ↓ list · ^F ^S ^P ^D ^R · ^Z undo", "⏎ edit · ↓ list"]
         return ["f finish  s start  p pause  d dnf  r rate  ⏎ edit  u undo  a add  ←→ collection  space search"
                 "  ? help",

@@ -113,6 +113,11 @@ def fit(text: str, width: int) -> str:
     return text + " " * max(0, width - dwidth(text))
 
 
+def who_width(space: int) -> int:
+    """Columns for who made something, of space it shares with the title (titles run longer, but not by much)."""
+    return max(0, min(32, space * 2 // 5))
+
+
 def put(win, y: int, x: int, text: str, style: int = 0, limit: int | None = None) -> int:
     """Draw text at (y, x), clipped to the window (or to limit columns) & never wrapping; returns the column
     after it."""
