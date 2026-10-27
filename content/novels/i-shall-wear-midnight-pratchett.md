@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 38
-year:
+year: 2010
 isbn: "9780385611077"
-pages:
-cover:
+pages: 400
+cover: attachments/covers/i-shall-wear-midnight-pratchett.jpg
 status: to-read
 started:
 finished:

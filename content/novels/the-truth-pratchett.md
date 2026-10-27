@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 25
-year:
+year: 1995
 isbn: "9780552167635"
-pages:
-cover:
+pages: 448
+cover: attachments/covers/the-truth-pratchett.jpg
 status: read
 started: 2026-04-12
 finished: 2026-05-02

@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 22
-year:
+year: 1998
 isbn: "9780552154185"
-pages:
-cover:
+pages: 416
+cover: attachments/covers/the-last-continent-pratchett.jpg
 status: read
 started: 2025-12-26
 finished: 2026-01-05

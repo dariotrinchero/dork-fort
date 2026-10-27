@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 33
-year:
+year: 2004
 isbn: "9780552149433"
-pages:
-cover:
+pages: 474
+cover: attachments/covers/going-postal-pratchett.jpg
 status: to-read
 started:
 finished:

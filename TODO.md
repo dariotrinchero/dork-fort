@@ -10,8 +10,8 @@ delete the original. See [Content](#content-organisation--workflow) for where ev
 3. **Music backlog:** process it into your new system, then delete it (not published).
 4. **Books:** imported from StoryGraph (96 in `novels/`, 21 in `nonfiction/`). Check the split, `kind`s, tags &
    topics in the Novels & Nonfiction Bases, then close the StoryGraph account.
-5. **Build `dork`** (see [TODO_DORK.md](TODO_DORK.md)); `dork fill` then gives the imported
-   novels their `year`, `pages` & `cover` from Open Library.
+5. **Build `dork`** (see [TODO_DORK.md](TODO_DORK.md)); a one-off script then gives the imported novels their
+   `year`, `pages` & `cover` from Open Library.
 6. **Letterboxd:** either close the account, or keep logging there & pull its RSS feed
    (`letterboxd.com/<user>/rss/`) into `films/` at build, as with iNaturalist.
 7. **Papers:** `dork add nonfiction` (from Zotero) as you go.

@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 26
-year:
+year: 2001
 isbn: "9780552167642"
-pages:
-cover:
+pages: 432
+cover: attachments/covers/thief-of-time-pratchett.jpg
 status: read
 started: 2026-05-02
 finished: 2026-05-15

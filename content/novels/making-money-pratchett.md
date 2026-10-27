@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 36
-year:
+year: 2007
 isbn: "9780552167703"
-pages:
-cover:
+pages: 480
+cover: attachments/covers/making-money-pratchett.jpg
 status: to-read
 started:
 finished:

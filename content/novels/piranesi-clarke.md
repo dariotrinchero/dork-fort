@@ -3,10 +3,10 @@ title: Piranesi
 aliases: [Piranesi]
 author: Susanna Clarke
 translator:
-year:
+year: 2020
 isbn: "9781526622433"
-pages:
-cover:
+pages: 272
+cover: attachments/covers/piranesi-clarke.jpg
 status: read
 started: 2025-06-21
 finished: 2025-06-22

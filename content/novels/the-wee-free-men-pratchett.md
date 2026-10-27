@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 30
-year:
+year: 1994
 isbn: "9780552551861"
-pages:
-cover:
+pages: 317
+cover: attachments/covers/the-wee-free-men-pratchett.jpg
 status: read
 started: 2026-08-16
 finished: 2026-09-27

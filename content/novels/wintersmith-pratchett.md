@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 35
-year:
+year: 2006
 isbn: "9780385609845"
-pages:
-cover:
+pages: 352
+cover: attachments/covers/wintersmith-pratchett.jpg
 status: to-read
 started:
 finished:

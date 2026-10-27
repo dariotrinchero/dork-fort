@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 41
-year:
+year: 2015
 isbn: "9780857534811"
-pages:
-cover:
+pages: 333
+cover: attachments/covers/the-shepherds-crown-pratchett.jpg
 status: to-read
 started:
 finished:

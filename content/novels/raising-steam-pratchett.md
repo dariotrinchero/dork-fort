@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 40
-year:
+year: 2013
 isbn: "9780857522276"
-pages:
-cover:
+pages: 380
+cover: attachments/covers/raising-steam-pratchett.jpg
 status: to-read
 started:
 finished:

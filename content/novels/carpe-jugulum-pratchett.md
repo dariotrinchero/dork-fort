@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 23
-year:
+year: 1998
 isbn: "9780061051586"
-pages:
-cover:
+pages: 378
+cover: attachments/covers/carpe-jugulum-pratchett.jpg
 status: read
 started:
 finished: "2026-03"

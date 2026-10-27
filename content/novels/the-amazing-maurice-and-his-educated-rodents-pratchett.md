@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 28
-year:
+year: 2001
 isbn: "9780552576802"
-pages:
-cover:
+pages: 304
+cover: attachments/covers/the-amazing-maurice-and-his-educated-rodents-pratchett.jpg
 status: read
 started:
 finished: 2026-06-09

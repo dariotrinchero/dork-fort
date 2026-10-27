@@ -3,10 +3,10 @@ title: Cloud Atlas
 aliases: [Cloud Atlas]
 author: David Mitchell
 translator:
-year:
+year: 2004
 isbn: "9780340822784"
-pages:
-cover:
+pages: 544
+cover: attachments/covers/cloud-atlas-mitchell.jpg
 status: read
 started: 2026-03-30
 finished: 2026-04-02

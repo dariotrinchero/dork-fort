@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 32
-year:
+year: 2004
 isbn: "9780385607360"
-pages:
-cover:
+pages: 349
+cover: attachments/covers/a-hat-full-of-sky-pratchett.jpg
 status: to-read
 started:
 finished:

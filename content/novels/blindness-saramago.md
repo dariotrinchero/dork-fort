@@ -3,10 +3,10 @@ title: Blindness
 aliases: [Blindness]
 author: José Saramago
 translator: Giovanni Pontiero
-year:
+year: 1995
 isbn: "9780151002511"
-pages:
-cover:
+pages: 294
+cover: attachments/covers/blindness-saramago.jpg
 status: read
 started: 2025-03-08
 finished: 2025-04-21

@@ -3,10 +3,10 @@ title: Cold Comfort Farm
 aliases: [Cold Comfort Farm]
 author: Stella Gibbons
 translator:
-year:
+year: 1932
 isbn: "9780143039594"
-pages:
-cover:
+pages: 256
+cover: attachments/covers/cold-comfort-farm-gibbons.jpg
 status: read
 started:
 finished: 2026-08-16

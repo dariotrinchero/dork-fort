@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 31
-year:
+year: 2003
 isbn: "9780552149419"
-pages:
-cover:
+pages: 494
+cover: attachments/covers/monstrous-regiment-pratchett.jpg
 status: to-read
 started:
 finished:

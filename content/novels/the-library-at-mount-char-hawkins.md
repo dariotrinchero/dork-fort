@@ -3,10 +3,10 @@ title: The Library at Mount Char
 aliases: [The Library at Mount Char]
 author: Scott Hawkins
 translator:
-year:
+year: 2015
 isbn: "9780553418620"
-pages:
-cover:
+pages: 390
+cover: attachments/covers/the-library-at-mount-char-hawkins.jpg
 status: to-read
 started:
 finished:

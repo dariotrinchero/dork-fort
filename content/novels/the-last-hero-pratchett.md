@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 27
-year:
+year: 2001
 isbn: "9780575081963"
-pages:
-cover:
+pages: 176
+cover: attachments/covers/the-last-hero-pratchett.jpg
 status: read
 started:
 finished: "2026-06"

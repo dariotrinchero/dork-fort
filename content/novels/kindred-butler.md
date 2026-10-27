@@ -3,10 +3,10 @@ title: Kindred
 aliases: [Kindred]
 author: Octavia E. Butler
 translator:
-year:
-isbn:
-pages:
-cover:
+year: 2017
+isbn: "9781419709470"
+pages: 240
+cover: attachments/covers/kindred-butler.jpg
 status: to-read
 started:
 finished:

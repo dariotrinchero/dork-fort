@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 17
-year:
+year: 1994
 isbn: "9780552167543"
-pages:
-cover:
+pages: 432
+cover: attachments/covers/interesting-times-pratchett.jpg
 status: read
 started: 2025-07-07
 finished: 2025-08-31

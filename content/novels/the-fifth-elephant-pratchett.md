@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 24
-year:
+year: 1999
 isbn: "9780552154222"
-pages:
-cover:
+pages: 464
+cover: attachments/covers/the-fifth-elephant-pratchett.jpg
 status: read
 started: 2026-03-21
 finished: 2026-03-28

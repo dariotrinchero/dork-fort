@@ -3,10 +3,10 @@ title: The Devotion of Suspect X
 aliases: [The Devotion of Suspect X]
 author: Keigo Higashino
 translator: Alexander O. Smith
-year:
+year: 2011
 isbn: "9780312375065"
-pages:
-cover:
+pages: 298
+cover: attachments/covers/the-devotion-of-suspect-x-higashino.jpg
 status: to-read
 started:
 finished:

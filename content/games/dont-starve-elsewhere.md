@@ -2,7 +2,7 @@
 title: Don't Starve Elsewhere
 aliases: [Don't Starve Elsewhere]
 year:
-developer: " Klei Entertainment"
+developer: Klei Entertainment
 platform: Steam
 igdb:
 cover:

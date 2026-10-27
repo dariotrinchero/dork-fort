@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 34
-year:
+year: 2005
 isbn: "9780385608671"
-pages:
-cover:
+pages: 398
+cover: attachments/covers/thud-pratchett.jpg
 status: to-read
 started:
 finished:

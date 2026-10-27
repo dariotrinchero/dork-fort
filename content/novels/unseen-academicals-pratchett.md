@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 37
-year:
+year: 2008
 isbn: "9780552167710"
-pages:
-cover:
+pages: 544
+cover: attachments/covers/unseen-academicals-pratchett.jpg
 status: to-read
 started:
 finished:

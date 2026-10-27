@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 19
-year:
+year: 1996
 isbn: "9780552153256"
-pages:
-cover:
+pages: 384
+cover: attachments/covers/feet-of-clay-pratchett.jpg
 status: read
 started: 2025-12-06
 finished: 2025-12-07

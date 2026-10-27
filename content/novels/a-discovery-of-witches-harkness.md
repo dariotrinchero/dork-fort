@@ -3,10 +3,12 @@ title: A Discovery of Witches
 aliases: [A Discovery of Witches]
 author: Deborah Harkness
 translator:
-year:
+series: All Souls Trilogy
+series-number: 1
+year: 2011
 isbn: "9780670022410"
-pages:
-cover:
+pages: 579
+cover: attachments/covers/a-discovery-of-witches-harkness.jpg
 status: to-read
 started:
 finished:
