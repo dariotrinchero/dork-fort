@@ -107,6 +107,30 @@ class Browsing(unittest.TestCase):
     def order(self, *entries):
         return [entry.slug for entry in actions.browse_order(SCHEMA, list(entries))]
 
+    def test_by_rating(self):
+        """Best rated first (unrated last), & then by status, as usual."""
+        entries = [note("novels", "unrated", title="A", status="read", finished="2024"),
+                   note("films", "four-old", title="B", status="watched", finished="2020", rating=4),
+                   note("novels", "five", title="C", status="read", rating=5),
+                   note("games", "four-new", title="D", status="played", finished="2023", rating=4),
+                   note("novels", "four-quarter", title="E", status="reading", rating=4.25)]
+        self.assertEqual([e.slug for e in actions.browse_order(SCHEMA, entries, "rating")],
+                         ["five", "four-quarter", "four-new", "four-old", "unrated"])
+
+    def test_by_creator(self):
+        """By surname across collections (a studio by its whole name; no one known last), & an author's series in
+        order."""
+        entries = [note("films", "nobody", title="A", status="watched"),
+                   note("novels", "mort", title="Mort", author="Terry Pratchett", series="Discworld",
+                        **{"series-number": 4}, status="read"),
+                   note("films", "after-hours", title="After Hours", director="Martin Scorsese", status="watched"),
+                   note("novels", "colour", title="The Colour of Magic", author="Terry Pratchett", series="Discworld",
+                        **{"series-number": 1}, status="to-read"),
+                   note("games", "hollow", title="Hollow Knight", developer="Team Cherry", status="played"),
+                   note("novels", "earthsea", title="Earthsea", author="Ursula K. Le Guin", status="read")]
+        self.assertEqual([e.slug for e in actions.browse_order(SCHEMA, entries, "creator")],
+                         ["earthsea", "colour", "mort", "after-hours", "hollow", "nobody"])
+
     def test_roles_first(self):
         self.assertEqual(self.order(note("novels", "dropped", title="A", status="dnf"),
                                     note("novels", "done", title="A", status="read"),
@@ -282,9 +306,9 @@ class Actions(unittest.TestCase):
         entry = new_entry(SCHEMA, "novels", self.vault)
         self.assertEqual(entry.fields["status"], "to-read") # the template's defaults
         fields = {**entry.fields, "title": "Piranesi", "author": "Susanna Clarke",
-                  "cover": "attachments/covers/piranesi-clarke.jpg"}
+                  "cover": "attachments/covers/piranesi-x.jpg"}
         changes = save(entry, fields, template_order(SCHEMA, "novels"), {}, "piranesi-x", self.vault)
-        cover = self.vault / "attachments/covers/piranesi-clarke.jpg"
+        cover = self.vault / "attachments/covers/piranesi-x.jpg"
         changes.write(cover, b"\xff\xd8 jpeg")
         note = self.vault / "novels/piranesi-x.md"
         self.assertTrue(note.read_text(encoding="utf-8").startswith("---\ntitle: Piranesi\naliases: []\nauthor: "))

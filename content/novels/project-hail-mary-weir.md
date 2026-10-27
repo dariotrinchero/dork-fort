@@ -3,10 +3,10 @@ title: Project Hail Mary
 aliases: [Project Hail Mary]
 author: Andy Weir
 translator:
-year:
+year: 2021
 isbn: "9780593135204"
-pages:
-cover:
+pages: 496
+cover: attachments/covers/project-hail-mary-weir.jpg
 status: read
 started:
 finished: "2023"

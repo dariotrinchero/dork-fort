@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 12
-year:
+year: 1991
 isbn: "9780061020612"
-pages:
-cover:
+pages: 384
+cover: attachments/covers/witches-abroad-pratchett.jpg
 status: read
 started:
 finished: "2023"

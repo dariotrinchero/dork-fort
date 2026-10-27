@@ -70,7 +70,7 @@ class Parity(unittest.TestCase):
             shutil.copytree(CONTENT, vault, ignore=shutil.ignore_patterns(".obsidian", ".trash"))
             novel, film, paper = (sorted((vault / name).glob("*.md"))[0] for name in ("novels", "films", "nonfiction"))
             _edit(novel, (r"^status: .*", "status: watched"), (r"^tags: .*", 'tags: [Fantasy, "magical realism"]'))
-            _edit(novel, (r"^translator:.*", "translator:\nseries-number: 3"))  # a number without a series
+            _edit(novel, (r"^series:.*", "series:"), (r"^series-number:.*", "series-number: 3")) # number, no series
             twins = sorted((vault / "novels").glob("*pratchett.md"))[:2]                # two Discworld 8s
             for twin in twins:
                 _edit(twin, (r"^series:.*", "series: Discworld"), (r"^series-number:.*", "series-number: 8"))

@@ -3,10 +3,10 @@ title: The Name of the Wind
 aliases: [The Name of the Wind]
 author: Patrick Rothfuss
 translator:
-year:
+year: 2007
 isbn: "9780756404079"
-pages:
-cover:
+pages: 662
+cover: attachments/covers/the-name-of-the-wind-rothfuss.jpg
 status: read
 started:
 finished:

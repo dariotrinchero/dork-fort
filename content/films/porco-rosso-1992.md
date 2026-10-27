@@ -4,7 +4,7 @@ aliases: [Porco Rosso]
 kind: anime
 year: 1992
 director: Hayao Miyazaki
-tmdb:
+tmdb: movie/11621
 poster:
 status: watched
 started:

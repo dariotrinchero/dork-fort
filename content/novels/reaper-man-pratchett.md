@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 11
-year:
+year: 1991
 isbn: "9780552152952"
-pages:
-cover:
+pages: 289
+cover: attachments/covers/reaper-man-pratchett.jpg
 status: read
 started:
 finished: "2023"

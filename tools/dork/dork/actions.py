@@ -23,6 +23,10 @@ DONE = {"start": "started", "finish": "finished", "pause": "paused", "dnf": "dro
 # order of roles in which entries come, other things being equal (what's in progress first)
 ROLE_ORDER = ["active", "backlog", "paused", "ongoing", "done", "dropped"]
 
+# orders to browse entries in (the finder's o cycles them): by status; best rated first; & by who made them, across
+# collections. They're dork's own: the site orders its lists as suits each one
+ORDERS = ["status", "rating", "creator"]
+
 
 def today() -> str: return date.today().isoformat()
 
@@ -127,7 +131,7 @@ def _sortable(text) -> str: return fold(str(text)).casefold()
 
 def _newest(date: str) -> tuple:
     """Key sorting dates (as precise as known) newest first; a date counts as later than any less precise date
-    it falls within, as the site's sorting has it ("2023-05" before "2023")."""
+    it falls within ("2023-05" before "2023")."""
     return (*(-ord(ch) for ch in date), 1)
 
 
@@ -154,9 +158,26 @@ def _by_name(schema: dict, entry: Entry, latest_first: bool = False) -> tuple:
     return (*key, title)
 
 
-def browse_order(schema: dict, entries: list[Entry]) -> list[Entry]:
-    """Entries in the order to browse them (with no query): by status role (in progress, the backlog, paused,
-    done, dropped), & within each, as the site's reading list orders them:
+def _by_creator(schema: dict, entry: Entry) -> tuple:
+    """Key sorting entries by who made them, across collections: by surname (or a studio's whole name; those with
+    no one known last), then by name (see _by_name, without kinds or authors), then by collection."""
+    from .slugs import surname
+    who, values = creator(entry), entry.fields
+    person = who and not (values.get("developer") and who == str(values["developer"])) # studios have no surnames
+    title = _sortable(values.get("title") or entry.slug)
+    number = values.get("series-number")
+    number = number if isinstance(number, (int, float)) and not isinstance(number, bool) else -1
+    return (not who, _sortable(surname(who) if person else who), _sortable(who),
+            _sortable(values["series"]) if values.get("series") else title, number, title,
+            list(schema["collections"]).index(entry.collection))
+
+
+def browse_order(schema: dict, entries: list[Entry], by: str = "status") -> list[Entry]:
+    """Entries in the order to browse them (with no query), by one of ORDERS: by status (below); by rating, best
+    first (unrated last), & then by status; or by who made them (see _by_creator).
+
+    By status, entries go by status role (in progress, the backlog, paused,
+    done, dropped), & within each:
 
     - done: by date finished (or first played), newest first (undated last), & within a date, a series' latest
       first;
@@ -178,6 +199,13 @@ def browse_order(schema: dict, entries: list[Entry]) -> list[Entry]:
         return roles.get(role, len(roles)), first, names.index(entry.collection), \
             _by_name(schema, entry, latest_first=role == "done")
 
+    if by == "creator": return sorted(entries, key=lambda entry: _by_creator(schema, entry))
+    if by == "rating":
+        def rated(entry: Entry) -> tuple:
+            rating = entry.fields.get("rating")
+            rating = rating if isinstance(rating, (int, float)) and not isinstance(rating, bool) else None
+            return rating is None, -(rating or 0), key(entry)
+        return sorted(entries, key=rated)
     return sorted(entries, key=key)
 
 
@@ -186,12 +214,12 @@ def haystack(entry: Entry) -> str:
     return f"{entry.fields.get('title') or entry.slug}  {creator(entry)}"
 
 
-def rank(schema: dict, entries: list[Entry], query: str) -> list[tuple[Entry, set[int], int]]:
-    """Entries matching query, best first (ties going as browse_order has them, eg. a series in order), with the
-    indices of their haystacks matched, & their scores."""
+def rank(schema: dict, entries: list[Entry], query: str, by: str = "status") -> list[tuple[Entry, set[int], int]]:
+    """Entries matching query, best first (ties going as browse_order has them, by by, eg. a series in order), with
+    the indices of their haystacks matched, & their scores."""
     query = fold(query)
     scored = [(entry, *match) for entry in entries if (match := fuzzy_match(query, fold(haystack(entry))))]
-    position = {id(entry): i for i, entry in enumerate(browse_order(schema, [m[0] for m in scored]))}
+    position = {id(entry): i for i, entry in enumerate(browse_order(schema, [m[0] for m in scored], by))}
     scored.sort(key=lambda m: (-m[2], position[id(m[0])]))
     return scored
 

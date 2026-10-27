@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 6
-year:
+year: 1988
 isbn: "9780061020667"
-pages:
-cover:
+pages: 288
+cover: attachments/covers/wyrd-sisters-pratchett.jpg
 status: read
 started:
 finished: "2022"

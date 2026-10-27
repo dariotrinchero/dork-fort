@@ -3,10 +3,12 @@ title: "The Wise Man's Fear"
 aliases: ["The Wise Man's Fear"]
 author: Patrick Rothfuss
 translator:
-year:
+series: The Kingkiller Chronicle
+series-number: 2
+year: 2011
 isbn: "9780756404734"
-pages:
-cover:
+pages: 994
+cover: attachments/covers/the-wise-mans-fear-rothfuss.jpg
 status: read
 started:
 finished:

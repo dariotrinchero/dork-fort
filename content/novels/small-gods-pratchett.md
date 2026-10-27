@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 13
-year:
+year: 1992
 isbn: "9780552152976"
-pages:
-cover:
+pages: 389
+cover: attachments/covers/small-gods-pratchett.jpg
 status: read
 started:
 finished: "2023-09"

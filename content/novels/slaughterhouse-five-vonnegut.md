@@ -3,10 +3,10 @@ title: Slaughterhouse-Five
 aliases: [Slaughterhouse-Five]
 author: Kurt Vonnegut
 translator:
-year:
+year: 1956
 isbn: "9780385333849"
-pages:
-cover:
+pages: 288
+cover: attachments/covers/slaughterhouse-five-vonnegut.jpg
 status: read
 started:
 finished:

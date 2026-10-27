@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 7
-year:
+year: 1989
 isbn: "9780061020650"
-pages:
-cover:
+pages: 352
+cover: attachments/covers/pyramids-pratchett.jpg
 status: read
 started:
 finished: "2023"

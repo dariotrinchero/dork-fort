@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 14
-year:
+year: 1992
 isbn: "9780552153157"
-pages:
-cover:
+pages: 352
+cover: attachments/covers/lords-and-ladies-pratchett.jpg
 status: read
 started: 2024-06-01
 finished: 2024-06-02

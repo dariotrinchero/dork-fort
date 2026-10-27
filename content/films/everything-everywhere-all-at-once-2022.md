@@ -7,8 +7,8 @@ director: Daniel Kwan & Daniel Scheinert
 tmdb:
 poster:
 status: watched
-started:
-finished:
+started: "2022"
+finished: "2022"
 rating: 5
 shortlist: false
 recommended-by:

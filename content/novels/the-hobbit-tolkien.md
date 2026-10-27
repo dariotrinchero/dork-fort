@@ -3,10 +3,10 @@ title: "The Hobbit: or There and Back Again"
 aliases: [The Hobbit]
 author: J.R.R. Tolkien
 translator:
-year:
+year: 1937
 isbn: "9780618260300"
-pages:
-cover:
+pages: 320
+cover: attachments/covers/the-hobbit-tolkien.jpg
 status: read
 started:
 finished:

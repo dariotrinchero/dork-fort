@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 15
-year:
+year: 1993
 isbn: "9780552140287"
-pages:
-cover:
+pages: 381
+cover: attachments/covers/men-at-arms-pratchett.jpg
 status: read
 started: 2024-06-02
 finished: 2024-12-21

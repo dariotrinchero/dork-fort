@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 4
-year:
+year: 1987
 isbn: "9780061020681"
-pages:
-cover:
+pages: 243
+cover: attachments/covers/mort-pratchett.jpg
 status: read
 started:
 finished: "2022"

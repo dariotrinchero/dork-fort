@@ -4,7 +4,7 @@ aliases: [Kiki's Delivery Service]
 kind: anime
 year: 1989
 director: Hayao Miyazaki
-tmdb:
+tmdb: movie/16859
 poster:
 status: watched
 started:

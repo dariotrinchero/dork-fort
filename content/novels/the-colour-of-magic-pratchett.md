@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 1
-year:
+year: 1983
 isbn: "9780552166591"
-pages:
-cover:
+pages: 287
+cover: attachments/covers/the-colour-of-magic-pratchett.jpg
 status: read
 started:
 finished: "2021"

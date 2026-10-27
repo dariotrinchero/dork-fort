@@ -4,7 +4,7 @@ aliases: [The Truman Show]
 kind: film
 year: 1998
 director: Peter Weir
-tmdb:
+tmdb: movie/37165
 poster:
 status: to-watch
 started:

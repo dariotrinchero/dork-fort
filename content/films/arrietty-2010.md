@@ -4,7 +4,7 @@ aliases: [Arrietty]
 kind: anime
 year: 2010
 director: Hiromasa Yonebayashi
-tmdb:
+tmdb: movie/51739
 poster:
 status: watched
 started:

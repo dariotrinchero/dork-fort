@@ -3,10 +3,10 @@ title: Kafka on the Shore
 aliases: [Kafka on the Shore]
 author: Haruki Murakami
 translator: Philip Gabriel
-year:
+year: 2001
 isbn: "9781400079278"
-pages:
-cover:
+pages: 480
+cover: attachments/covers/kafka-on-the-shore-murakami.jpg
 status: read
 started: 2024-08-11
 finished: 2024-09-17

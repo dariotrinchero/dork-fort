@@ -4,13 +4,13 @@ aliases: [Pulp Fiction]
 kind: film
 year: 1994
 director: Quentin Tarantino
-tmdb:
+tmdb: movie/680
 poster:
 status: to-watch
 started:
 finished:
 rating:
-shortlist: true
+shortlist: false
 recommended-by:
 tags: [crime]
 ---

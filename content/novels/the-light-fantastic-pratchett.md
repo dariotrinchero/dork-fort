@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 2
-year:
+year: 1986
 isbn: "9780061020704"
-pages:
-cover:
+pages: 241
+cover: attachments/covers/the-light-fantastic-pratchett.jpg
 status: read
 started:
 finished: "2021"

@@ -10,7 +10,7 @@ status: to-watch
 started:
 finished:
 rating:
-shortlist: true
+shortlist: false
 recommended-by: DA
 tags: [comedy, reality]
 ---

@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 16
-year:
+year: 1994
 isbn: "9780552140294"
-pages:
-cover:
+pages: 378
+cover: attachments/covers/soul-music-pratchett.jpg
 status: read
 started:
 finished: "2025"

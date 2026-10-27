@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 9
-year:
+year: 1990
 isbn: "9780380821211"
-pages:
-cover:
+pages: 158
+cover: attachments/covers/eric-pratchett.jpg
 status: read
 started:
 finished: "2023"

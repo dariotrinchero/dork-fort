@@ -3,9 +3,9 @@ title: In the Penal Colony
 aliases: [In the Penal Colony]
 author: Franz Kafka
 translator:
-year:
+year: 2018
 isbn: "9781791877439"
-pages:
+pages: 61
 cover:
 status: read
 started:

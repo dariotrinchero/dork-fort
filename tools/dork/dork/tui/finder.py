@@ -27,6 +27,7 @@ HELP = [
     ("^F ^S ^P ^D", "finish / start / pause / dnf it (today's date)"),
     ("^R", "rate it"),
     ("^G", "fill in its empty fields from its source (in the editor, to check)"),
+    ("^O", "sort mode: status, rating, or creator"),
     ("^Z", "undo the last change"),
     ("^A ^N", "add something new (searching for the query)"),
     ("^T", "to the add screen (taking the query, without searching)"),
@@ -39,6 +40,7 @@ HELP = [
     ("f s p d r", "finish / start / pause / dnf / rate"),
     ("⏎ e", "edit"),
     ("^G", "fill in empty fields, from the source"),
+    ("o", "sort mode"),
     ("u", "undo the last change"),
     ("a", "add something new (searching for the query)"),
     ("/ space esc", "back to typing"),
@@ -69,6 +71,7 @@ class Finder:
         self.typing = True
         self.sel = self.top = 0
         self.filter = 0              # index into self.filters (0: all)
+        self.order = 0               # index into actions.ORDERS
         self.armed, self.rating = armed, rating # action Enter does (when dork was told one on the command line)
         self.anchor: Path | None = None         # selected entry, to find again when entries are reloaded
         self._key, self._results = None, []
@@ -79,16 +82,17 @@ class Finder:
     def results(self) -> list[tuple[Entry, set[int]]]:
         """Entries shown: matching the query (best first), or else all (in progress first, then most recently
         changed), of the filtered collection."""
-        key = (self.query.text, self.filter, self.app.version)
+        key = (self.query.text, self.filter, self.order, self.app.version)
         if key == self._key: return self._results
-        changed_query = self._key is None or self._key[:2] != key[:2]
+        changed_query = self._key is None or self._key[:3] != key[:3]
         self._key = key
 
         pool = self.app.entries
         if self.filter: pool = [e for e in pool if e.collection == self.filters[self.filter]]
+        by = actions.ORDERS[self.order]
         if self.query.text.strip():
-            self._results = [(e, indices) for e, indices, _ in actions.rank(self.app.schema, pool, self.query.text)]
-        else: self._results = [(e, set()) for e in actions.browse_order(self.app.schema, pool)]
+            self._results = [(e, indices) for e, indices, _ in actions.rank(self.app.schema, pool, self.query.text, by)]
+        else: self._results = [(e, set()) for e in actions.browse_order(self.app.schema, pool, by)]
 
         # a new query starts at its best match; reloaded entries keep the one selected
         paths = [e.path for e, _ in self._results]
@@ -149,6 +153,10 @@ class Finder:
         self.app.push(editor)
         self.app.push(Fill(editor, alone=True))
 
+    def sort(self):
+        self.order = (self.order + 1) % len(actions.ORDERS)
+        self.app.notify(f"sorted by {actions.ORDERS[self.order]}")
+
     def cycle(self, delta: int):
         self.filter = (self.filter + delta) % len(self.filters)
 
@@ -163,6 +171,7 @@ class Finder:
         if key in CTRL_KEYS: self.act(CTRL_KEYS[key])
         elif key == ctrl("z"): self.app.undo()
         elif key == ctrl("g"): self.fill()
+        elif key == ctrl("o"): self.sort()
         elif key in (ctrl("a"), ctrl("n")): self.add()
         elif key == ctrl("t"): self.app.switch(self)
         elif key == curses.KEY_DOWN: # into the list, moving down as ↓ always does (^-keys act on the top)
@@ -192,6 +201,7 @@ class Finder:
         elif key in CTRL_KEYS: self.act(CTRL_KEYS[key])
         elif key == ord("e"): self.edit()
         elif key == ctrl("g"): self.fill()
+        elif key in (ord("o"), ctrl("o")): self.sort()
         elif key in (ord("u"), ctrl("z")): self.app.undo()
         elif key in (ord("a"), ctrl("a"), ctrl("n")): self.add()
         elif key == ctrl("t"): self.app.switch(self)
@@ -216,6 +226,9 @@ class Finder:
             x = put(win, 0, x, f" {name} ", attr("accent" if current else "dim", bold=current, underline=current))
         count = f"{len(results)}/{len(self.app.entries)} "
         put(win, 0, w - dwidth(count), count, attr("dim"))
+        by = f"by {actions.ORDERS[self.order]}  "
+        if x + dwidth(by) < w - dwidth(count): # the sort mode, in the accent unless the usual
+            put(win, 0, w - dwidth(count) - dwidth(by), by, attr("accent" if self.order else "dim"))
 
         # query
         prompt = attr("accent", bold=True) if self.typing else attr("dim")
@@ -285,8 +298,9 @@ class Finder:
             return [f"⏎ {self.armed} the highlighted entry · ↑↓ choose · esc quit",
                     f"⏎ {self.armed} · esc quit"]
         if self.typing:
-            return ["⏎ edit · ↓ list · ⇥ collection · ^F finish ^S start ^P pause ^D dnf ^R rate · ^G fill · ^Z undo · ^A add",
-                    "⏎ edit · ↓ list · ^F ^S ^P ^D ^R · ^Z undo", "⏎ edit · ↓ list"]
-        return ["f finish  s start  p pause  d dnf  r rate  ⏎ edit  u undo  a add  ←→ collection  space search"
-                "  ? help",
+            return ["⏎ edit · ↓ list · ⇥ collection · ^F finish ^S start ^P pause ^D dnf ^R rate · ^G fill · ^O sort"
+                    " · ^Z undo · ^A add",
+                    "⏎ edit · ↓ list · ^F ^S ^P ^D ^R · ^O sort · ^Z undo", "⏎ edit · ↓ list"]
+        return ["f finish  s start  p pause  d dnf  r rate  ⏎ edit  o sort  u undo  a add  ←→ collection"
+                "  space search  ? help",
                 "f s p d r · ⏎ edit · u undo · ? help", "? help"]

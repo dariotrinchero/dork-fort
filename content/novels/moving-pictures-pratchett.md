@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 10
-year:
+year: 1990
 isbn: "9780552152945"
-pages:
-cover:
+pages: 339
+cover: attachments/covers/moving-pictures-pratchett.jpg
 status: read
 started:
 finished: "2023"

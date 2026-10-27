@@ -3,14 +3,14 @@ title: Stoner
 aliases: [Stoner]
 author: John Williams
 translator:
-year:
+year: 1965
 isbn: "9781590171998"
-pages:
-cover:
+pages: 278
+cover: attachments/covers/stoner-williams.jpg
 status: read
 started: 2024-06-15
 finished: 2024-06-28
-rating:
+rating: 4
 owned: true
 shortlist: false
 recommended-by:

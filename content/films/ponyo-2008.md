@@ -4,7 +4,7 @@ aliases: [Ponyo]
 kind: anime
 year: 2008
 director: Hayao Miyazaki
-tmdb:
+tmdb: movie/12429
 poster:
 status: watched
 started:

@@ -66,6 +66,7 @@ colour; "shortlist", in bold, for a shortlisted entry yet to be begun or resumed
 | `^F` `^S` `^P` `^D` | finish, start, pause, or drop it (dates as above) |
 | `^R` | rate it, in the star meter (↑/↓ by quarter stars, `1`–`5` whole stars, `0` none, Enter to save) |
 | `^G` | fill in its empty fields from its source, in the editor (see [Filling in](#filling-in)) |
+| `^O` | cycle the sort mode: status, rating, creator (see [Finding entries](#finding-entries)) |
 | `^Z` | undo the last change |
 | `^A` (or `^N`) | add something new, searching for the query (in the collection filtered by, else in every one) |
 | `^T` | to the add screen, as it was left, taking the query (without searching) |
@@ -75,7 +76,7 @@ colour; "shortlist", in bold, for a shortlisted entry yet to be begun or resumed
 | Esc | clear the query; with no query, quit |
 
 **In the list**, the same actions take bare letters: `f s p d r`, with `u` to undo, `a` to add, & `e` (or
-Enter) to edit (`^G` still fills in).
+Enter) to edit, & `o` cycles the sort mode (`^G` still fills in).
 ↑/↓ or `j`/`k` move, PgUp/PgDn page, `g`/`G` go to the top or bottom, ←/→ (or `h`/`l`) switch collection,
 Space, `/`, Esc, or ↑ from the top row go back to typing, `?` lists the keys, & `q` quits.
 
@@ -199,7 +200,6 @@ pages, cover or series, is a job for a one-off script, run once, not a feature o
 | reading YAML | the `yaml` package (YAML 1.2, core schema) | `dork/yamlcore.py`: PyYAML, restricted to YAML 1.2's core schema | parsing cases in `tests/validators.yaml` |
 | fuzzy matching | `src/fuzzy.ts` | `dork/fuzzy.py`, a port | a test running both (`src/fuzzy.ts` under Node) on every entry, for a set of queries |
 | star ratings, eg. `★★★★¾` | `stars()` in `src/moonAndStars.ts` | `actions.stars()` | by hand |
-| ordering (eg. finished newest first, then by author's surname, then title) | the comparators of `READING_TABS` in `src/moonAndStars.ts`, with `surname()` | `actions.browse_order()`, with `slugs.surname()` | by hand (each names its twin) |
 | TypeScript types of notes | `src/types/content.d.ts` | — | by hand |
 | Obsidian's property types | `content/.obsidian/types.json` | — | by hand |
 
@@ -284,8 +284,11 @@ letters & starts of words score higher. Accents are ignored, so "jose" finds Jos
 Results come best first. Ties go as the list has them with no query (below), so that eg. "pratchett" lists
 Discworld in order.
 
-With no query (`actions.browse_order`), entries come in that order of roles (ongoing between paused & done).
-Within each role:
+With no query (`actions.browse_order`), entries come in the finder's sort mode, which `o` (or `^O`) cycles, &
+the header names: **status** (the default), **rating**, or **creator**. These are dork's own: the site orders
+(& splits, & shortens) its lists as suits each one, & needn't agree.
+
+**By status**, entries come in that order of roles (ongoing between paused & done). Within each role:
 
 | Role | Sorted by |
 |---|---|
@@ -298,12 +301,17 @@ After that, entries sort by collection (in the schema's order), & then by name w
 - kind first, in the schema's order (eg. film, series, anime), in collections with a `kind`;
 - then the author's surname (or the first author's), in collections with `author` or `authors`;
 - then series (a book outside one, by its title) & number in it, in collections with `series`, so that an
-  author's series come out in order (as on the site's reading list);
+  author's series come out in order;
 - then title.
 
 So the date orders run across collections (what's done reads as one timeline), while the name orders keep each
 collection together. A fuller date counts as later than a partial one it falls within (`2023-05-14`, then
-`"2023-05"`, then `"2023"`), as in the site's sorting. Accents & case are ignored throughout.
+`"2023-05"`, then `"2023"`). Accents & case are ignored throughout.
+
+**By rating**, the best rated come first (in quarter stars; unrated last), & ties go by status, as above.
+
+**By creator**, entries sort across collections by who made them: by surname (a developer, being a studio, by its
+whole name; those with no one known last), then by series & number in it (or title), then title.
 
 ### Headless actions
 

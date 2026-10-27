@@ -5,10 +5,10 @@ author: Terry Pratchett
 translator:
 series: Discworld
 series-number: 3
-year:
+year: 1987
 isbn: "9780060855901"
-pages:
-cover:
+pages: 255
+cover: attachments/covers/equal-rites-pratchett.jpg
 status: read
 started:
 finished: "2021"

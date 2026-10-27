@@ -4,7 +4,7 @@ aliases: [Howl's Moving Castle]
 kind: anime
 year: 2004
 director: Hayao Miyazaki
-tmdb:
+tmdb: movie/4935
 poster:
 status: watched
 started:
