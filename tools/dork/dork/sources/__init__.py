@@ -1,6 +1,7 @@
 """Where new entries come from: a source per collection, each searching for candidates (hits), & filling in the
 one picked. Searching costs one request (or none, for Zotero, read from disk); filling in costs at most one more,
-& only for the candidate picked. Every request goes through net.py, which keeps it polite.
+& only for the candidate picked. Every request goes through net.py, which keeps it polite. Sources also look up
+entries already in the vault (by an id they have, else by title), to fill in their gaps.
 
 A source maps what it's given to fields of the collection's template, keeping only values that validate (a
 value that doesn't is left out, & noted, rather than filled in as junk)."""
@@ -9,6 +10,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date
 
+from ..actions import fold
 from ..validate import check_value, is_empty
 
 
@@ -45,6 +47,11 @@ class Source:
     def fill(self, candidate: Candidate) -> Candidate:
         """Candidate with all its fields (fetching what more it needs)."""
         return candidate
+
+    def lookup(self, fields: dict, slug: str) -> tuple[list[Candidate], bool]:
+        """Hits that could be the entry with fields (named slug), to fill in its gaps, & whether they were found by
+        an id it has (so the first is surely it); without one, by its title (& year, which ranks the hits)."""
+        return self.search(" ".join(str(fields.get(key) or "") for key in ("title", "year")).strip()), False
 
 
 def valid(kind: str, value, **field_) -> bool:
@@ -112,6 +119,35 @@ def suspicious(fields: dict) -> dict[str, str]:
         if isinstance(year, int) and when and when < year:
             found[key] = f"is before {year}, its year: early access, or a preview? (else one of them is wrong)"
     return found
+
+
+# fields a source gives that are the entry's own, & never filled in from it (its title, as you have it); & those
+# it may fill in, but whose values differ by choice, not by mistake (a kind of "textbook" is yours, say)
+OWN, CHOSEN = ("title", "aliases"), ("kind",)
+
+
+def agrees(mine, theirs) -> bool:
+    """Whether values are the same, but for case & accents (so "Le Guin" is "le guin"), & 4 is 4.0."""
+    if isinstance(mine, list) and isinstance(theirs, list):
+        return len(mine) == len(theirs) and all(map(agrees, mine, theirs))
+    if isinstance(mine, str) or isinstance(theirs, str): return fold(str(mine)).casefold() == fold(str(theirs)).casefold()
+    return mine == theirs
+
+
+def proposals(fields: dict, candidate: Candidate, label: str) -> tuple[dict, dict[str, str]]:
+    """What candidate (fetched for an entry with fields, from label) fills in: values for the fields left empty, &
+    notes on them (the source's), & on those filled in that it disagrees with, which are left as they are."""
+    proposed, notes = {}, {}
+    for key in fields:
+        if key in OWN: continue
+        value, mine = candidate.fields.get(key), fields[key]
+        if is_empty(mine):
+            if not is_empty(value): proposed[key] = value
+            if key in candidate.notes: notes[key] = candidate.notes[key] # eg. a guessed edition, or a value left out
+        elif not is_empty(value) and key not in CHOSEN and not agrees(mine, value):
+            shown = ", ".join(map(str, value)) if isinstance(value, list) else value
+            notes[key] = f"{label} has {shown}; left as it is (x, then f, to take that)"
+    return proposed, notes
 
 
 def sources() -> dict[str, Source]:

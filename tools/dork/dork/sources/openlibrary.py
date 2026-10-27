@@ -34,6 +34,13 @@ def isbn_of(edition: dict) -> str | None:
     return next((i for i in [*edition.get("isbn_13", []), *edition.get("isbn_10", [])] if valid("isbn", i)), None)
 
 
+def pages_of(edition: dict) -> int | None:
+    """Edition's page count: as counted, else as its pagination gives it (eg. "912", or "xii, 340 p.")."""
+    if edition.get("number_of_pages"): return edition["number_of_pages"]
+    match = re.fullmatch(r"(?:[ivxlc]+,\s*)?(\d+)\s*(?:p\.?|pages)?", edition.get("pagination", "").strip(), re.I)
+    return int(match[1]) if match else None
+
+
 def likely(edition: dict) -> bool:
     """Whether edition could be the one read: with a valid ISBN-13, in print, & not in another language than
     English."""
@@ -61,7 +68,7 @@ def summaries(editions: list[dict], pages: int | None = None) -> list[dict]:
     """Every edition with a valid ISBN, as the editor lists them to pick from: the likely first (best first), then
     the rest (earliest first)."""
     ranked = sorted(editions, key=lambda e: (not likely(e), score(e, pages) if likely(e) else (0, year_of(_year(e)) or 9999)))
-    return [{"isbn": isbn, "pages": e.get("number_of_pages"), "format": e.get("physical_format", ""),
+    return [{"isbn": isbn, "pages": pages_of(e), "format": e.get("physical_format", ""),
              "year": _year(e), "publisher": (e.get("publishers") or [""])[0],
              "languages": [lang.get("key", "")[-3:] for lang in e.get("languages", [])],
              "cover": COVERS.format(e["covers"][0]) if (e.get("covers") or [0])[0] > 0 else None,
@@ -83,6 +90,11 @@ class OpenLibrary(Source):
         params = {"q": f"isbn:{isbn}" if isbn else query, "fields": FIELDS, "limit": 12}
         docs = fetch_json(f"{API}/search.json?{urlencode(params)}").get("docs", [])
         return [self.candidate(doc, isbn) for doc in docs if doc.get("title")]
+
+    def lookup(self, fields: dict, slug: str) -> tuple[list[Candidate], bool]:
+        isbn = isbn_in(str(fields.get("isbn") or ""))
+        if isbn and (hits := self.search(isbn)): return hits[:1], True
+        return self.search(" ".join(str(fields.get(key) or "") for key in ("title", "author")).strip()), False
 
     def candidate(self, doc: dict, isbn: str | None) -> Candidate:
         authors = doc.get("author_name") or []
@@ -106,23 +118,30 @@ class OpenLibrary(Source):
         except NetError as exc: series, series_notes = {}, {"series": f"couldn't look up its series ({exc})"}
 
         pinned = candidate.extra.get("isbn")
+        covers = candidate.covers
         if pinned:
             edition = next((e for e in editions if pinned in [*e.get("isbn_13", []), *e.get("isbn_10", [])]), None)
+            if not edition: # not among the first hundred (as for a classic): asked for by itself
+                try: edition = fetch_json(f"{API}/isbn/{pinned}.json")
+                except NetError: edition = None
+            if (edition or {}).get("covers") and edition["covers"][0] > 0: # the cover of the edition read
+                covers = {"cover": COVERS.format(edition["covers"][0])}
         else: edition = choose(editions, candidate.extra.get("pages"))
 
         fields, notes = {**candidate.fields, **series}, {**candidate.notes, **series_notes}
         usual = candidate.extra.get("pages")
-        fields["pages"] = (edition or {}).get("number_of_pages") or usual
+        fields["pages"] = pages_of(edition or {}) or usual
         if edition:
             fields["isbn"] = pinned or isbn_of(edition)
             if not pinned:
                 notes["isbn"] = f"a guess at the edition ({describe(edition)}): p picks another"
-        if fields["pages"] and not (edition or {}).get("number_of_pages"):
+        if fields["pages"] and not pages_of(edition or {}):
             notes["pages"] = "the usual page count of its editions: check it"
         elif edition and not pinned: notes["pages"] = notes["isbn"]
         fields = keep(fields, KINDS, notes)
         extra = {**candidate.extra, "editions": summaries(editions, usual)}
-        return Candidate(**{**candidate.__dict__, "fields": fields, "notes": notes, "extra": extra, "complete": True})
+        return Candidate(**{**candidate.__dict__, "fields": fields, "notes": notes, "covers": covers, "extra": extra,
+                            "complete": True})
 
 
 def describe(edition: dict) -> str:

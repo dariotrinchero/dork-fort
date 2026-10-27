@@ -1,8 +1,8 @@
 """Films, series & anime, games, & board games, from Wikidata (no key; its data is public domain, CC0): one SPARQL
-query per search, which searches Wikidata as its own search box does, keeps the hits that are films or series (or
-games, or board games), & gives everything about each (year, director or creators, developers or designers, how
-many can play, & TMDB's, IGDB's or BoardGameGeek's id, to link out) in one go. Also the series a novel is in, &
-its number there, for Open Library's novels (by their Open Library id).
+query per search (or per lookup of an entry by its id elsewhere), which searches Wikidata as its own search box does,
+keeps the hits that are films or series (or games, or board games), & gives everything about each (year, director
+or creators, developers or designers, how many can play, & TMDB's, IGDB's or BoardGameGeek's id, to link out) in
+one go. Also the series a novel is in, & its number there, for Open Library's novels (by their Open Library id).
 
 Wikidata has no posters or covers (they're copyrighted), so these entries come without."""
 
@@ -122,6 +122,11 @@ def _id(row: dict) -> str: return row["item"].rsplit("/", 1)[-1] # eg. "Q846209"
 def _makers(row: dict) -> list[str]: return [name for name in row.get("makers", "").split("|") if name]
 
 
+def _by(prop: str, value) -> str:
+    """Clause finding the item whose prop (an id elsewhere, eg. TMDB's) is value, in place of a search."""
+    return f'\n  ?item wdt:{prop} "{literal(str(value))}" . BIND(1 AS ?rank)'
+
+
 def _ranked(hits: list[Candidate], year: int | None) -> list[Candidate]:
     """Hits, those from year (if given) first, & otherwise in Wikidata's order."""
     return sorted(hits, key=lambda hit: hit.year != str(year)) if year else hits
@@ -134,6 +139,13 @@ class WikidataFilms(Source):
         words, year = split_year(query_)
         return _ranked([self.candidate(row) for row in query(FILMS % (SEARCH % literal(words))) if row.get("title")],
                        year)
+
+    def lookup(self, fields: dict, slug: str) -> tuple[list[Candidate], bool]:
+        kind, _, tmdb = str(fields.get("tmdb") or "").partition("/")
+        if tmdb:
+            clause = _by("P4947" if kind == "movie" else "P4983", tmdb)
+            if hits := [self.candidate(row) for row in query(FILMS % clause) if row.get("title")]: return hits, True
+        return super().lookup(fields, slug)
 
     def candidate(self, row: dict) -> Candidate:
         series, anime = row.get("series") == "true", row.get("anime") == "true"
@@ -156,6 +168,12 @@ class WikidataGames(Source):
         words, year = split_year(query_)
         return _ranked([self.candidate(row) for row in query(GAMES % (SEARCH % literal(words))) if row.get("title")],
                        year)
+
+    def lookup(self, fields: dict, slug: str) -> tuple[list[Candidate], bool]:
+        if fields.get("igdb"):
+            hits = [self.candidate(row) for row in query(GAMES % _by("P5794", fields["igdb"])) if row.get("title")]
+            if hits: return hits, True
+        return super().lookup(fields, slug)
 
     def candidate(self, row: dict) -> Candidate:
         year = year_of(row.get("released"))
@@ -186,6 +204,12 @@ class WikidataBoardGames(Source):
         # an item with no name in any of the languages asked for is labelled by its id (eg. "Q58409118")
         named = [row for row in rows if row.get("title") and not re.fullmatch(r"Q\d+", row["title"])]
         return _ranked([self.candidate(row) for row in named], year)
+
+    def lookup(self, fields: dict, slug: str) -> tuple[list[Candidate], bool]:
+        if fields.get("bgg"):
+            rows = query(BOARD_GAMES % _by("P2339", fields["bgg"]))
+            if hits := [self.candidate(row) for row in rows if row.get("title")]: return hits, True
+        return super().lookup(fields, slug)
 
     def candidate(self, row: dict) -> Candidate:
         year = year_of(row.get("released"))

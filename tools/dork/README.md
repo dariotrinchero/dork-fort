@@ -6,7 +6,7 @@ paused or dropped, rating them, & editing their frontmatter, with every value ch
 site's build.
 
 This README is dork's spec: what it does, & the rules that keep it in step with the site. What is still to be
-built (`dork fill`, & more) is planned in [TODO_DORK.md](../../TODO_DORK.md).
+built is planned in [TODO_DORK.md](../../TODO_DORK.md).
 
 ## Setup
 
@@ -25,7 +25,7 @@ account. Setting `contact` is good manners, though, as Open Library asks for an 
 User-Agent:
 
 ```toml
-download-covers = true    # whether the editor's cover toggle starts on, for new entries
+download-covers = true    # whether the editor's cover toggle starts on, for new entries (& filling in)
 contact = "you@example.org"  # added to requests' User-Agent (the repo's URL is always sent)
 
 [zotero]
@@ -65,6 +65,7 @@ colour; "shortlist", in bold, for a shortlisted entry yet to be begun or resumed
 |---|---|
 | `^F` `^S` `^P` `^D` | finish, start, pause, or drop it (dates as above) |
 | `^R` | rate it, in the star meter (↑/↓ by quarter stars, `1`–`5` whole stars, `0` none, Enter to save) |
+| `^G` | fill in its empty fields from its source, in the editor (see [Filling in](#filling-in)) |
 | `^Z` | undo the last change |
 | `^A` (or `^N`) | add something new, searching for the query (in the collection filtered by, else in every one) |
 | `^T` | to the add screen, as it was left, taking the query (without searching) |
@@ -74,7 +75,7 @@ colour; "shortlist", in bold, for a shortlisted entry yet to be begun or resumed
 | Esc | clear the query; with no query, quit |
 
 **In the list**, the same actions take bare letters: `f s p d r`, with `u` to undo, `a` to add, & `e` (or
-Enter) to edit.
+Enter) to edit (`^G` still fills in).
 ↑/↓ or `j`/`k` move, PgUp/PgDn page, `g`/`G` go to the top or bottom, ←/→ (or `h`/`l`) switch collection,
 Space, `/`, Esc, or ↑ from the top row go back to typing, `?` lists the keys, & `q` quits.
 
@@ -152,12 +153,38 @@ Editing the **filename** row renames the note on writing, & rewrites wikilinks t
   all, then the rest, eg. other languages & audiobooks) to pick the one read, without another request. Picking
   one sets its ISBN & pages, & offers its own cover.
 
+### Filling in
+
+`f` (or `^G`) in the editor, or `^G` on an entry in the finder (which opens the editor on it), fills in the
+entry's **empty** fields from its collection's source (as on the add screen), for when you notice a gap. The
+entry is looked up by an id it has, if any, as the one it names:
+
+| Collection | Looked up by |
+|---|---|
+| novels | `isbn`, as that edition (its pages & cover, & its work's year & series), else title & author |
+| nonfiction | the filename (its citation key in Zotero), else title |
+| films | `tmdb` (on Wikidata), else title & year |
+| games | `igdb` (on Wikidata), else title & year |
+| boardgames | `bgg` (on Wikidata), else title & year |
+
+Looked up by title, the hits are listed, to pick the one it is (Enter), & a novel then gets a guessed edition, as
+when adding (`p` picks another). It costs the same requests as adding: one to look it up, & for a novel, two more
+to fill it in. Esc cancels.
+
+Values filled in show in **green** (or orange, for guesses, with the reason in the footer), & a cover row offers
+the cover to download, as for a new entry. Fields already filled in are left as they are, even where the source
+disagrees: the footer says what it has (eg. `Open Library has 1985`), & `x`, then `f`, takes it. The title,
+aliases & kind are always yours. Nothing is written until `w`, & undo takes it all back, as for any edit.
+
+This is for an entry at a time. (Catching up the novels imported from StoryGraph, which have ISBNs but no year,
+pages, cover or series, is a job for a one-off script, run once, not a feature of dork.)
+
 ## Principles
 
 - **Parity.** dork & the site share one data model, & agree on what is valid (see below).
 - **Minimum friction.** The common things (finishing, starting, rating) take one command or one keystroke, &
   never ask for confirmation, since every change can be undone & says exactly what it did.
-- **No API spamming.** Nothing is fetched without an explicit request (Enter, or a query on the command line),
+- **No API spamming.** Nothing is fetched without an explicit request (Enter, `f`, or a query on the command line),
   each search costs one request per source, & nothing is fetched twice in a session (see "Requests").
 - **Automatic validation.** Values are checked as they are entered or fetched, & bad ones are shown rather than
   written. dork never writes an entry with a problem it didn't already have.
@@ -428,9 +455,10 @@ which the tests check.
 | `dork/tui/finder.py` | the finder |
 | `dork/tui/add.py` | the add screen |
 | `dork/tui/editor.py` | the editor |
+| `dork/tui/fill.py` | filling in an entry's gaps: looking it up, & picking the hit, over the editor |
 | `dork/config.py` | settings, from `config.toml` |
 | `dork/net.py` | requests: throttled, cached, identified & logged |
-| `dork/sources/__init__.py` | candidates (hits), the source interface, keeping only valid values, title-casing, & the warnings of suspicious values |
+| `dork/sources/__init__.py` | candidates (hits), the source interface (searching, filling in & looking up), keeping only valid values, what filling in proposes, title-casing, & the warnings of suspicious values |
 | `dork/sources/openlibrary.py`, `zotero.py`, `wikidata.py` | the sources |
 
 The UI is plain curses (standard library), in the style of `twoey.py` & `wikly.py` in `~/git-repos/cli-tools`.
@@ -459,8 +487,10 @@ npm test                                        # the site's validator (also run
 - quick actions & undo, on a scratch copy of the vault;
 - which queries count as clear.
 
-**`tests/test_sources.py`** covers adding, all offline:
-- each source, on responses saved in `tests/fixtures/` (real ones, each fetched once);
+**`tests/test_sources.py`** covers adding & filling in, all offline:
+- each source, on responses saved in `tests/fixtures/` (real ones, each fetched once), searching & looking up
+  entries (by their ids, & by title);
+- what filling in proposes: empty fields only, & notes where the source disagrees;
 - Zotero, on a made-up database laid out as Zotero's, & that reading the real one (if there is one) changes
   nothing of it, or beside it;
 - the request layer's caching, throttling, User-Agent & log;

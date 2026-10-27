@@ -26,6 +26,7 @@ HELP = [
     ("⏎", "edit the highlighted entry"),
     ("^F ^S ^P ^D", "finish / start / pause / dnf it (today's date)"),
     ("^R", "rate it"),
+    ("^G", "fill in its empty fields from its source (in the editor, to check)"),
     ("^Z", "undo the last change"),
     ("^A ^N", "add something new (searching for the query)"),
     ("^T", "to the add screen (taking the query, without searching)"),
@@ -37,6 +38,7 @@ HELP = [
     ("PgUp PgDn g G", "page, first, last"),
     ("f s p d r", "finish / start / pause / dnf / rate"),
     ("⏎ e", "edit"),
+    ("^G", "fill in empty fields, from the source"),
     ("u", "undo the last change"),
     ("a", "add something new (searching for the query)"),
     ("/ space esc", "back to typing"),
@@ -137,6 +139,16 @@ class Finder:
         entry = self.selected()
         if entry: self.app.push(Editor(entry))
 
+    def fill(self):
+        """The editor on the highlighted entry, filling in its empty fields from its source."""
+        from .editor import Editor
+        from .fill import Fill
+        entry = self.selected()
+        if not entry: return self.app.notify("nothing selected", ok=False)
+        editor = Editor(entry)
+        self.app.push(editor)
+        self.app.push(Fill(editor, alone=True))
+
     def cycle(self, delta: int):
         self.filter = (self.filter + delta) % len(self.filters)
 
@@ -150,6 +162,7 @@ class Finder:
     def handle_typing(self, key: int, ch):
         if key in CTRL_KEYS: self.act(CTRL_KEYS[key])
         elif key == ctrl("z"): self.app.undo()
+        elif key == ctrl("g"): self.fill()
         elif key in (ctrl("a"), ctrl("n")): self.add()
         elif key == ctrl("t"): self.app.switch(self)
         elif key == curses.KEY_DOWN: # into the list, moving down as ↓ always does (^-keys act on the top)
@@ -178,6 +191,7 @@ class Finder:
         elif isinstance(ch, str) and ch in KEYS: self.act(KEYS[ch])
         elif key in CTRL_KEYS: self.act(CTRL_KEYS[key])
         elif key == ord("e"): self.edit()
+        elif key == ctrl("g"): self.fill()
         elif key in (ord("u"), ctrl("z")): self.app.undo()
         elif key in (ord("a"), ctrl("a"), ctrl("n")): self.add()
         elif key == ctrl("t"): self.app.switch(self)
@@ -271,7 +285,7 @@ class Finder:
             return [f"⏎ {self.armed} the highlighted entry · ↑↓ choose · esc quit",
                     f"⏎ {self.armed} · esc quit"]
         if self.typing:
-            return ["⏎ edit · ↓ list · ⇥ collection · ^F finish ^S start ^P pause ^D dnf ^R rate · ^Z undo · ^A add",
+            return ["⏎ edit · ↓ list · ⇥ collection · ^F finish ^S start ^P pause ^D dnf ^R rate · ^G fill · ^Z undo · ^A add",
                     "⏎ edit · ↓ list · ^F ^S ^P ^D ^R · ^Z undo", "⏎ edit · ↓ list"]
         return ["f finish  s start  p pause  d dnf  r rate  ⏎ edit  u undo  a add  ←→ collection  space search"
                 "  ? help",

@@ -1,6 +1,7 @@
 """The editor: an entry's frontmatter, a row per field (& one for its filename), each edited as its type wants.
 Status, enums & booleans cycle with ←/→, ratings step in quarter stars, & everything else is typed. Values the
-build would reject show in red, with the reason in the footer, & block writing."""
+build would reject show in red, with the reason in the footer, & block writing. f fills in the fields left empty
+from the collection's source (see fill.py), in green, to check before writing."""
 
 import csv
 import curses
@@ -15,11 +16,11 @@ from ..actions import Outcome, today, with_role
 from ..config import setting
 from ..net import NetError, fetch
 from ..slugs import make_slug
-from ..sources import Candidate, suspicious
+from ..sources import Candidate, proposals, suspicious
 from ..validate import check_entry, is_empty
 from ..vault import Entry, same, save
-from .base import (BACKSPACES, ENTER, ESC, Confirm, Help, LineEdit, Overlay, Stars, attr, box, dwidth, fit, meter, put,
-                   step_rating)
+from .base import (BACKSPACES, ENTER, ESC, Confirm, Help, LineEdit, Overlay, Stars, attr, box, ctrl, dwidth, fit, meter,
+                   put, step_rating)
 
 CYCLED = ("status", "enum", "bool")
 
@@ -31,7 +32,8 @@ HELP = [
     ("⏎", "edit the field (or rate, or change)"),
     ("1–5 0", "rating: whole stars, or none"),
     ("t", "dates: today"),
-    ("p", "pick another edition (of a new novel; of those already fetched)"),
+    ("p", "pick another edition (of a novel's, as fetched, when its ISBN is too)"),
+    ("f ^G", "fill in the empty fields from the source (looking it up)"),
     ("x ⌫", "clear the field"),
     ("u", "undo changes to the field"),
     ("w", "write"),
@@ -132,6 +134,7 @@ class Editor:
         self.editing: LineEdit | None = None
         self.manual: set[str] = set() # fields changed by hand (so a change of status doesn't stamp over them)
         self.job = None               # covers downloading, before writing
+        self.fetched: set[str] = set() # fields filled in from a source, since opened (in green, unless changed)
 
     def opened(self):
         schema, entry = self.app.schema, self.entry
@@ -202,8 +205,10 @@ class Editor:
     #---- changing fields ---------------------------------------------------------------------
 
     def editions(self) -> list[dict]:
-        """Editions to pick from (a new novel's, as fetched), if any."""
-        return self.candidate.extra.get("editions", []) if self.candidate and self.new else []
+        """Editions to pick from (a novel's, as fetched, when its ISBN was too: as a new entry, or filled in), if
+        any."""
+        fetched = self.new or "isbn" in self.fetched
+        return self.candidate.extra.get("editions", []) if self.candidate and fetched else []
 
     def pick_edition(self):
         def pick(edition: dict):
@@ -213,6 +218,30 @@ class Editor:
             if edition["cover"] and "cover" in self.covers: self.covers["cover"] = edition["cover"]
             self.app.notify(f"edition: {Editions.line(edition)}")
         self.app.push(Editions(self.editions(), self.fields.get("isbn"), pick))
+
+    def fill(self):
+        from .fill import Fill
+        self.app.push(Fill(self))
+
+    def take(self, candidate: Candidate, label: str):
+        """Fill in the fields left empty from candidate (fetched for the entry, from label), & note where it
+        disagrees with those filled in, which are left as they are; nothing is written until w."""
+        proposed, notes = proposals(self.fields, candidate, label)
+        for key, value in proposed.items(): self.set(key, value, by_hand=False)
+        self.manual -= set(proposed)
+        self.fetched |= set(proposed)
+        self.notes.update(notes)
+        covers = {k: url for k, url in candidate.covers.items()
+                  if self.kind(k) == "attachment" and k in self.fields and is_empty(self.fields[k])}
+        for key, url in covers.items():
+            self.covers[key] = url
+            self.download.setdefault(key, bool(setting("download-covers", default=True)))
+        self.candidate = candidate
+        filled = [*proposed, *covers]
+        differ = [k for k in notes if k not in proposed and not is_empty(self.fields.get(k))]
+        said = f"from {label}: {', '.join(filled)}" if filled else f"{label} has nothing to add"
+        if differ: said += f"; it differs on {', '.join(differ)} (left as they are)"
+        self.app.notify(said, seconds=6)
 
     def cycle(self, delta: int):
         key, kind = self.key, self.kind(self.key)
@@ -336,6 +365,7 @@ class Editor:
         elif key in (ord("x"), curses.KEY_DC, *BACKSPACES): self.clear()
         elif key == ord("u"): self.undo_field()
         elif key == ord("p") and self.editions(): self.pick_edition()
+        elif key in (ord("f"), ctrl("g")): self.fill()
         elif key == ord("w"): self.write()
         elif key == ord("e"): self.write(then_edit=True)
         elif key in (ESC, ord("q"), ord("b")): self.back()
@@ -384,6 +414,7 @@ class Editor:
                 self.editing.draw(win, y, 2 + label, w - label - 3, attr("fg", bg, bold=True))
                 continue
             text, colour, bold = self.show(key)
+            if key in self.fetched and key not in self.manual and not is_empty(self.fields.get(key)): colour = "ok"
             style = attr("error" if wrong else "warn" if doubtful else colour, bg, bold=bold)
             put(win, y, 2 + label, fit(text, w - label - 3).rstrip(), style)
 
@@ -427,5 +458,5 @@ class Editor:
         change = "←→ download or not · " if cover else \
             "←→ change · " if kind in (*CYCLED, "rating") else "⏎ edit · "
         today_ = "t today · " if kind in ("date", "partial-date") else ""
-        return [f"{change}{today_}x clear · u undo · w write · e write + review · esc back · ? help",
-                f"{change}w write · e + review · esc back", "w write · esc back"]
+        return [f"{change}{today_}x clear · u undo · f fill · w write · e write + review · esc back · ? help",
+                f"{change}f fill · w write · e + review · esc back", "w write · esc back"]

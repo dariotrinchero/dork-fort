@@ -18,7 +18,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from dork import net
-from dork.sources import split_year, suspicious, title_case
+from dork.sources import Candidate, proposals, split_year, suspicious, title_case
 from dork.sources import openlibrary, wikidata, zotero
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -59,6 +59,21 @@ class Text(unittest.TestCase):
         self.assertEqual(suspicious({"year": 2020, "title": "Piranesi", "author": "Susanna Clarke", "pages": 272}), {})
         self.assertEqual(suspicious({"year": 2017, "started": "2016-08", "finished": 2017}).keys(), {"started"})
         self.assertEqual(suspicious({"year": 2017, "started": "2017-01-02", "finished": "2018"}), {})
+
+    def test_proposals(self):
+        mine = {"title": "Guards! Guards!", "aliases": ["Guards!"], "kind": "textbook", "author": "terry pratchett",
+                "series": "Discworld", "series-number": None, "year": None, "isbn": "9780060850524", "pages": None,
+                "translator": None}
+        theirs = Candidate("openlibrary", "/works/OL453735W", "Guards! Guards!", fields={
+            "title": "Guards! Guards", "aliases": ["Guards"], "kind": "book", "author": "Terry Pratchett",
+            "series": "Discworld", "series-number": 8, "year": 1989, "isbn": "9780141439518", "pages": 288},
+            notes={"pages": "the usual page count of its editions: check it", "isbn": "a guess at the edition"})
+        proposed, notes = proposals(mine, theirs, "Open Library")
+        self.assertEqual(proposed, {"series-number": 8, "year": 1989, "pages": 288}) # only what's empty
+        self.assertEqual(notes.keys(), {"pages", "isbn"})
+        self.assertIn("usual page count", notes["pages"])                           # the source's note
+        self.assertIn("Open Library has 9780141439518; left as it is", notes["isbn"]) # not its guess: it differs
+        # title & aliases are yours; the author agrees but for case; a kind is chosen, so differing isn't noted
 
 
 class OpenLibrary(unittest.TestCase):
@@ -103,6 +118,36 @@ class OpenLibrary(unittest.TestCase):
         filled = self.source.fill(hit)
         self.assertEqual(filled.fields["isbn"], "9781526622426")
         self.assertNotIn("isbn", filled.notes) # pinned, so not a guess
+
+    def test_lookup(self):
+        hits, exact = self.source.lookup({"title": "Piranesi", "author": "Susanna Clarke", "isbn": "9781526622426"},
+                                         "piranesi-clarke")
+        self.assertTrue(exact)
+        self.assertEqual(len(hits), 1)
+        self.assertIn("q=isbn%3A9781526622426", self.fetch.asked[-1][0])
+        self.assertEqual(self.source.fill(hits[0]).fields["isbn"], "9781526622426")
+        hits, exact = self.source.lookup({"title": "Piranesi", "author": "Susanna Clarke", "isbn": None}, "piranesi")
+        self.assertFalse(exact)                                 # by title, so the hit is picked
+        self.assertIn("q=Piranesi+Susanna+Clarke", self.fetch.asked[-1][0])
+
+    def test_pinned_edition_not_listed(self):
+        def fetch(url, headers=None, data=None):
+            if "/isbn/" in url:
+                self.fetch.asked.append((url, data))
+                return {"isbn_13": ["9780747532699"], "number_of_pages": 300, "covers": [123]}
+            return self.fetch(url, headers, data)
+        with mock.patch.object(openlibrary, "fetch_json", fetch):
+            filled = self.source.fill(self.source.search("9780747532699")[0])
+        self.assertIn("/isbn/9780747532699.json", self.fetch.asked[-1][0]) # not among its editions: asked for alone
+        self.assertEqual((filled.fields["isbn"], filled.fields["pages"]), ("9780747532699", 300))
+        self.assertEqual(filled.covers, {"cover": openlibrary.COVERS.format(123)}) # the edition's own cover
+        self.assertNotIn("pages", filled.notes)
+
+    def test_pages_of(self):
+        for edition, pages in [({"number_of_pages": 272}, 272), ({"pagination": "912"}, 912),
+                               ({"pagination": "xii, 340 p."}, 340), ({"pagination": "340 pages"}, 340),
+                               ({"pagination": "2 v."}, None), ({}, None)]:
+            self.assertEqual(openlibrary.pages_of(edition), pages)
 
     def test_choose(self):
         english = {"isbn_13": ["9781526622426"], "number_of_pages": 272, "publish_date": "2020",
@@ -151,6 +196,27 @@ class Wikidata(unittest.TestCase):
         self.assertIn("haswbstatement%3AP2339", fetch.asked[0][0]) # a name too common for the search box alone
         self.assertEqual(root.fields, {"title": "Root", "aliases": ["Root"], "year": 2018, "designer": "Cole Wehrle",
                                        "players": "2–4", "bgg": 237182})
+
+    def test_lookup(self):
+        # by an id the entry has, in place of a search: the hit is surely it
+        for source, fields, prop, fixture in [
+                (wikidata.WikidataFilms(), {"tmdb": "movie/10843"}, 'P4947+%2210843%22', "wikidata-films-after-hours.json"),
+                (wikidata.WikidataFilms(), {"tmdb": "tv/1429"}, 'P4983+%221429%22', "wikidata-films-attack-on-titan.json"),
+                (wikidata.WikidataGames(), {"igdb": "hollow-knight"}, 'P5794+%22hollow-knight%22',
+                 "wikidata-games-hollow-knight.json"),
+                (wikidata.WikidataBoardGames(), {"bgg": 237182}, 'P2339+%22237182%22', "wikidata-boardgames-root.json")]:
+            fetch = serve(("query", fixture))
+            with mock.patch.object(wikidata, "fetch_json", fetch): hits, exact = source.lookup(fields, "slug")
+            self.assertTrue(exact and hits)
+            self.assertIn(prop, fetch.asked[0][0])
+            self.assertNotIn("mwapi", fetch.asked[0][0])
+        # without one, by its title & year (which ranks the hits)
+        fetch = serve(("Hours", "wikidata-films-after-hours.json"))
+        with mock.patch.object(wikidata, "fetch_json", fetch):
+            hits, exact = wikidata.WikidataFilms().lookup({"title": "After Hours", "year": 1985, "tmdb": None}, "s")
+        self.assertFalse(exact)
+        self.assertEqual(hits[0].fields["tmdb"], "movie/10843")
+        self.assertIn("After+Hours%22", fetch.asked[0][0])
 
     def test_players(self):
         self.assertEqual(wikidata.players("2", "4"), "2–4")
@@ -253,6 +319,14 @@ class Zotero(unittest.TestCase):
         self.assertEqual([h.id for h in self.source.search("kripke nam")], ["kripkeNamingNecessity1980"])
         self.assertEqual([h.id for h in self.source.search("krpk")], []) # letters scattered aren't enough
         self.assertEqual(self.source.search(" "), [])
+
+    def test_lookup(self):
+        hits, exact = self.source.lookup({"title": "Something else"}, "kripkeNamingNecessity1980") # by citation key
+        self.assertTrue(exact)
+        self.assertEqual([h.id for h in hits], ["kripkeNamingNecessity1980"])
+        hits, exact = self.source.lookup({"title": "Meditations"}, "aureliusMeditations")
+        self.assertFalse(exact)
+        self.assertEqual([h.id for h in hits], ["aureliusMeditations2002"])
 
     def test_read_only(self):
         before = hashlib.sha256(self.db.read_bytes()).hexdigest()

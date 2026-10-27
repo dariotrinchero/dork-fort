@@ -125,3 +125,7 @@ class Zotero(Source):
                 scored.append((match[1], hit))
         scored.sort(key=lambda pair: -pair[0])
         return [hit for _, hit in scored[:40]]
+
+    def lookup(self, fields: dict, slug: str) -> tuple[list[Candidate], bool]:
+        hit = next((hit for hit in self.items() if hit.id == slug), None) # its citation key
+        return ([hit], True) if hit else (self.search(str(fields.get("title") or "")), False)
