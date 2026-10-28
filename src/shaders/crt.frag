@@ -3,7 +3,7 @@ precision highp float;
 
 uniform float uFlicker;        // pseudorandom value in [0,1), varying per frame
 uniform vec2 uResolution;      // render output size in pixels
-uniform float uPixelScale;     // render output pixels per 'CRT pixel' (whole number)
+uniform float uFontPixel;      // render output pixels per pixel of font (whole number, divisible by 2 or 3)
 uniform sampler2D uPrevRender; // result of previous render pass (to apply CRT effect to)
 uniform float uCRT;            // 1 to apply CRT effect, or 0 to pass previous render pass through unchanged
 uniform float uMono;           // 1 for monochrome screen, or 0 for colour screen
@@ -13,9 +13,7 @@ in vec2 vUV;
 out vec4 fragColor;
 
 // parameters
-const float SCANLINE_WIDTH = 3.0; // should be >= 3
-const float SCANLINE_HEIGHT = 2.0;
-const float SCANLINE_GAP = 1.0;
+const float SCANLINE_GAP = 1.0; // dark rows of 'CRT pixels' per scanline
 
 const float BRIGHTNESS = 0.6;          // brightness of masked subpixels
 const float MASK_MEAN = (1.0 + 2.0 * BRIGHTNESS) / 3.0; // mean brightness through subpixel mask
@@ -31,7 +29,8 @@ const float GOLDEN_ANGLE = 2.39996323;
 
 // chromatic aberration (color separation)
 vec4 separate() {
-    float offset = 0.5 * SEPARATION_PIXELS * uPixelScale / uResolution.x;
+    float crtPixel = uFontPixel / 3.0; // render output pixels per CRT pixel, as if mask were a triad
+    float offset = 0.5 * SEPARATION_PIXELS * crtPixel / uResolution.x;
     vec4 blue = texture(uPrevRender, vUV - vec2(offset, 0.0)) * vec4(0, 0.5, 1, 1);
     vec4 red = texture(uPrevRender, vUV + vec2(offset, 0.0)) * vec4(1, 0.5, 0, 1);
     return vec4(blue.rgb + red.rgb, 0.5 * (blue.a + red.a));
@@ -48,26 +47,34 @@ vec3 phosphor(vec3 color) {
     return uMono > 0.5 ? dot(color, LUMA) * uPhosphor : color;
 }
 
-// scanlines effect via RGB subpixel masking (except on monochrome screen, which has no mask)
+// scanlines effect via subpixel masking (except on monochrome screen, which has no mask): each pixel of font spans
+// one period of mask & one scanline, ie. 3 'CRT pixels' (RGB triad; 2 lit rows & a dark one) where it divides by 3,
+// & else 2 (magenta & green; a lit row & a dimmed one)
 vec4 screenDoor(vec4 color) {
-    vec2 pixelPos = floor(vUV * uResolution / uPixelScale) + 0.5; // center of 'CRT pixel' containing fragment
-    float x = mod(pixelPos.x, SCANLINE_WIDTH) / SCANLINE_WIDTH;
-    float y = mod(pixelPos.y, SCANLINE_HEIGHT + SCANLINE_GAP);
+    float period = mod(uFontPixel, 3.0) < 0.5 ? 3.0 : 2.0;
+    vec2 pixelPos = floor(vUV * uResolution * period / uFontPixel) + 0.5; // center of 'CRT pixel' containing fragment
+    float x = mod(pixelPos.x, period);
+    float y = mod(pixelPos.y, period);
 
     vec2 bvector = vec2(BRIGHTNESS);
     if (uMono > 0.5) color.rgb *= MASK_MEAN;
-    else if (x < 0.33) color.gb *= bvector;
-    else if (x < 0.66) color.rb *= bvector;
+    else if (period < 2.5) {
+        if (x < 1.0) color.g *= BRIGHTNESS;
+        else color.rb *= bvector;
+    }
+    else if (x < 1.0) color.gb *= bvector;
+    else if (x < 2.0) color.rb *= bvector;
     else color.rg *= bvector;
 
-    if (y <= SCANLINE_GAP) color.rgb *= vec3(0.7 * abs(0.5 * SCANLINE_GAP - y));
+    if (y <= SCANLINE_GAP) color.rgb *= period < 2.5 ? vec3(0.5) : vec3(0.7 * abs(0.5 * SCANLINE_GAP - y));
 
     return color;
 }
 
 // soft glow (halation), as weighted average of samples spread evenly over a disc (Vogel spiral)
 vec3 glow() {
-    vec2 radius = GLOW_RADIUS * uPixelScale / uResolution;
+    float crtPixel = uFontPixel / 3.0; // render output pixels per CRT pixel, as if mask were a triad
+    vec2 radius = GLOW_RADIUS * crtPixel / uResolution;
     vec3 sum = vec3(0.0);
     float totalWeight = 0.0;
     for (int i = 0; i < GLOW_TAPS; i++) {

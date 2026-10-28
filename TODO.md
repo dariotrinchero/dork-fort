@@ -362,6 +362,17 @@ like `chicken`; `notes`, `gallery`, `projects`).
 
 The large, grid-aligned font leaves few columns across the QR code, so:
 
+- **Font sizing:** test the smaller canvas font (at most 22 CSS px, with 2 or more render pixels per font pixel;
+  see `textSize()` in `index.ts`) on phones, tablets & large monitors, then settle on a sizing scheme that
+  works across them. Each pixel of the font gets an RGB triad where it spans a multiple of 3 render pixels, & a
+  magenta/green pair otherwise (`crt.frag`). So the triad shows only at a device pixel ratio of 1.5–2, & 2×
+  screens (most phones) now get the doubled magenta/green mask at 22 CSS px, not the triad at 33. Options:
+  prefer multiples of 3 within the cap (16.5 CSS px with the triad at 2×), a cap depending on screen size, or
+  matching the windows' rule (`setWindowMetrics()` in `window.ts`). **Favour whichever option fits the aside
+  beside each place's icon** (`asideFits` in `drawView()`, `terminal.ts`) on a given screen: when it doesn't
+  fit, its lines move in among the rest & the output gets cut off by the pager, which looks bad. This could even
+  be the rule itself: the largest font pixel, within the cap, at which every place's aside fits. Check legibility, the brightness of the
+  dimmed scanline (`vec3(0.5)` in `screenDoor()`), & colour fringes from the magenta/green mask.
 - Output not tied to a destination (`help`, errors), shown over the faded QR code, could use most of the screen
   width rather than just the QR code's.
 - On phones in portrait, output could run into the free space below the QR code (with the prompt at the bottom).

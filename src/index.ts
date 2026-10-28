@@ -26,9 +26,10 @@ import warpFrag from "shaders/warp.frag";
 const TEX_SCALE = 1.0; // global scale factor for intermediate render passes
 const MAX_TEX_DPR = 2; // cap on intermediate render pass pixels per CSS pixel, to limit cost on high-DPI phones
 const FONT_NAME = "DepartureMono";
-const FONT_SIZE = 33; // largest font size, in CSS pixels
-const FONT_CELL = 33; // font size (in CRT pixels) at which each pixel of font, drawn on an 11px grid, covers 3 × 3
-                      // CRT pixels, ie. one triad of subpixel mask & one scanline
+const FONT_SIZE = 22; // largest font size, in CSS pixels
+const FONT_GRID = 11; // font is drawn on an 11px grid
+const MIN_FONT_PIXEL = 2; // fewest intermediate render pass pixels per pixel of font (each covering one period of
+                          // subpixel mask & one scanline; see crt.frag)
 const BG_BRIGHTNESS = 0.8; // multiplier for background colour of QR code (slightly darkening it)
 const MAX_FRAME_TIME = 0.1; // cap (in seconds) on animation time step, eg. after tab was in background
 
@@ -94,15 +95,17 @@ window.onload = () => {
 
     // text renderer for terminal becomes available once font loads (QR code renders in the meantime)
     let textRenderer: TextRenderer | undefined;
-    let crtScale = 1; // intermediate render pass pixels per CRT pixel, chosen along with font size (see textSize())
+    let fontPixel = MIN_FONT_PIXEL; // intermediate render pass pixels per pixel of font (see textSize())
     const textSize = (): TextRendererSizeSpec => {
-        // largest font size that is a whole multiple of FONT_CELL (in CRT pixels, which are scaled to suit), at most
-        // FONT_SIZE, & where possible small enough for suggested commands to fit on one line below QR code
+        // largest font size with a whole number of pixels per pixel of font, divisible by 2 or 3 (to fit subpixel
+        // mask), at most FONT_SIZE, & where possible small enough for suggested commands to fit on one line below QR
+        // code
         const [left, , right] = qrRenderer.contentRect();
         const fitSize = TextRenderer.fitFontSize(FONT_NAME, right - left, terminal.maxLineLength());
-        const maxScale = Math.max(1, Math.floor(FONT_SIZE * texScale / FONT_CELL));
-        crtScale = Math.max(1, Math.min(maxScale, Math.floor(fitSize / FONT_CELL)));
-        return { fontSize: FONT_CELL * crtScale, resolution: texDims };
+        const maxPixel = Math.max(MIN_FONT_PIXEL, Math.floor(FONT_SIZE * texScale / FONT_GRID));
+        fontPixel = Math.max(MIN_FONT_PIXEL, Math.min(maxPixel, Math.floor(fitSize / FONT_GRID)));
+        if (fontPixel % 2 !== 0 && fontPixel % 3 !== 0) fontPixel--;
+        return { fontSize: FONT_GRID * fontPixel, resolution: texDims };
     };
     TextRenderer.new(gl, FONT_NAME, textSize())
         .then(text => {
@@ -143,7 +146,7 @@ window.onload = () => {
                 uniforms: {
                     ...crtUniforms(),
                     uFlicker: { type: "1f", value: Math.random() },
-                    uPixelScale: { type: "1f", value: crtScale },
+                    uFontPixel: { type: "1f", value: fontPixel },
                     uResolution: { type: "2f", value: texDims },
                 },
                 vao: crtVAO,
