@@ -9,7 +9,7 @@ cover:
 status: endless
 started: "2019"
 finished:
-rating: 4.5
+rating: 4.75
 owned: true
 shortlist: false
 recommended-by:

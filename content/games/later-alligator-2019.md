@@ -6,12 +6,12 @@ developer: SmallBü & Pillow Fight
 platform: Steam
 igdb: later-alligator
 cover:
-status: to-play
+status: dnf
 started:
 finished:
 rating:
 owned: true
 shortlist: false
-recommended-by:
-tags: []
+recommended-by: LK
+tags: [graphic-novel, silly]
 ---

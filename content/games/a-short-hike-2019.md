@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2023-02-26
-rating:
+rating: 4.75
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [cozy, exploration]
 ---

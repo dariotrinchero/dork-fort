@@ -13,5 +13,5 @@ rating:
 owned: wishlist
 shortlist: false
 recommended-by:
-tags: []
+tags: [roguelite]
 ---

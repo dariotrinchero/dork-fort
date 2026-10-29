@@ -9,9 +9,9 @@ cover:
 status: dnf
 started:
 finished:
-rating:
+rating: 3.75
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [roguelite]
 ---

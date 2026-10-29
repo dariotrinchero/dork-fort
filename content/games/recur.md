@@ -1,7 +1,7 @@
 ---
 title: Recur
 aliases: [Recur]
-year:
+year: 2026
 developer: kaleidoscube
 platform: Steam
 igdb: recur

@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2022-07-10
-rating:
+rating: 5
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [platformer, story]
 ---

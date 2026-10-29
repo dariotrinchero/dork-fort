@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: "2025"
-rating:
+rating: 5
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [puzzle, adventure]
 ---

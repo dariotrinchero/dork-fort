@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2024-06-28
-rating:
+rating: 4.5
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [metroidvania]
 ---

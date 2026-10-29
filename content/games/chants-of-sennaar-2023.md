@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2024-02-18
-rating:
+rating: 4
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [puzzle]
 ---

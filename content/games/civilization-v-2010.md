@@ -9,7 +9,7 @@ cover:
 status: dnf
 started:
 finished:
-rating:
+rating: 2.5
 owned: true
 shortlist: false
 recommended-by:

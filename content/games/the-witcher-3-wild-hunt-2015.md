@@ -6,12 +6,12 @@ developer: CD Projekt RED
 platform: Steam
 igdb: the-witcher-3-wild-hunt
 cover:
-status: to-play
-started:
-finished:
-rating:
-owned: true
+status: played
+started: "2015"
+finished: "2017"
+rating: 4
+owned: false
 shortlist: false
-recommended-by:
-tags: []
+recommended-by: JLE
+tags: [action, fantasy, rpg]
 ---

@@ -1,7 +1,7 @@
 ---
 title: Neverway
 aliases: [Neverway]
-year:
+year: 2027
 developer: Coldblood Inc.
 platform: Steam
 igdb: neverway

@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2025-04-06
-rating:
+rating: 4.25
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [puzzle, mystery]
 ---

@@ -9,7 +9,7 @@ cover:
 status: paused
 started:
 finished:
-rating:
+rating: 3.75
 owned: true
 shortlist: false
 recommended-by:

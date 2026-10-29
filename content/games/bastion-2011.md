@@ -9,7 +9,7 @@ cover:
 status: played
 started:
 finished: 2019-12-07
-rating:
+rating: 3.5
 owned: true
 shortlist: false
 recommended-by:

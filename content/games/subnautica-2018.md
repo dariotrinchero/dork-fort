@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: "2018"
-rating:
+rating: 3.75
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [survival]
 ---

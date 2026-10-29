@@ -8,11 +8,11 @@ isbn: "9780385333849"
 pages: 288
 cover: attachments/covers/slaughterhouse-five-vonnegut.jpg
 status: read
-started:
-finished:
-rating:
-owned: false
+started: "2025"
+finished: "2025"
+rating: 4.75
+owned: true
 shortlist: false
 recommended-by:
-tags: [literary, satire]
+tags: [literary, satire, war]
 ---

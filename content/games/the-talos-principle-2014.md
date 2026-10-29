@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2016-10-12
-rating:
+rating: 3.75
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [puzzle, adventure]
 ---

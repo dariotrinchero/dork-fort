@@ -9,9 +9,9 @@ cover:
 status: endless
 started:
 finished:
-rating:
+rating: 4.5
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [deck-builder, roguelite]
 ---

@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2024-01-04
-rating:
+rating: 3.75
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [story]
 ---

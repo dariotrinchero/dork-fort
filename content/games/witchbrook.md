@@ -1,7 +1,7 @@
 ---
 title: Witchbrook
 aliases: [Witchbrook]
-year:
+year: 2026
 developer: Chucklefish & Robotality
 platform: Steam
 igdb: witchbrook

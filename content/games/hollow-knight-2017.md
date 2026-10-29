@@ -13,5 +13,5 @@ rating: 5
 owned: true
 shortlist: false
 recommended-by:
-tags: [metroidvania, soulslike]
+tags: [metroidvania, soulslike, adventure]
 ---

@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2023-07-23
-rating:
+rating: 3
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [silly]
 ---

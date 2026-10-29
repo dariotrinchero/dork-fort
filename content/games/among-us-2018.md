@@ -9,7 +9,7 @@ cover:
 status: endless
 started:
 finished:
-rating:
+rating: 3
 owned: true
 shortlist: false
 recommended-by:

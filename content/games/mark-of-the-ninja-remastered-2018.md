@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2019-06-29
-rating:
+rating: 4
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [action, stealth]
 ---

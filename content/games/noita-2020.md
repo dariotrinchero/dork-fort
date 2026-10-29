@@ -13,5 +13,5 @@ rating:
 owned: true
 shortlist: true
 recommended-by:
-tags: []
+tags: [sandbox, mystery, adventure]
 ---

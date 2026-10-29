@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2022-10-31
-rating:
+rating: 4.5
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [mystery, roguelite, deckbuilder]
 ---

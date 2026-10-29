@@ -9,9 +9,9 @@ cover:
 status: played
 started:
 finished: 2023-12-20
-rating:
+rating: 3.75
 owned: true
 shortlist: false
 recommended-by:
-tags: []
+tags: [story, graphic-novel]
 ---
