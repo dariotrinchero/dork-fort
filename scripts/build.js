@@ -1,7 +1,7 @@
 import { execSync } from "child_process";
-import { copyFileSync, cpSync, existsSync, rmSync, mkdirSync } from "fs";
+import { copyFileSync, cpSync, existsSync, rmSync, mkdirSync, readdirSync, statSync } from "fs";
 import { readFile, writeFile } from "fs/promises";
-import { resolve } from "path";
+import { join, resolve } from "path";
 import { context, build } from "esbuild";
 import { glsl } from "esbuild-plugin-glsl";
 import { bakeContent } from "./bakeContent.js";
@@ -10,6 +10,26 @@ import { subsetToGlyphSet } from "./subsetFont.js";
 import { describe, validateVault } from "./validateContent.js";
 
 const isProd = process.argv.includes("--prod");
+
+// inputs of build, whose modification times tell whether anything has changed since last build
+const INPUTS = ["content", "index.html", "public", "src", "eslint.config.mjs", "tsconfig.json"];
+
+/**
+ * Fingerprint inputs of build by paths, sizes & modification times of their files.
+ *
+ * @returns fingerprint, which changes whenever an input file is added, removed, or modified
+ */
+const fingerprint = () => {
+    const parts = [];
+    const visit = path => {
+        if (!existsSync(path)) return;
+        const stat = statSync(path);
+        if (stat.isDirectory()) readdirSync(path).sort().forEach(name => visit(join(path, name)));
+        else parts.push(`${path}:${stat.size}:${stat.mtimeMs}`);
+    };
+    INPUTS.forEach(visit);
+    return parts.join("\n");
+};
 
 const buildOptions = {
     entryPoints: [
@@ -49,8 +69,16 @@ const buildOptions = {
         {
             name: "typecheck-and-copy-assets",
             setup(build) {
+                // the dev server rebuilds on each request after a short idle gap (eg. for sounds, fetched lazily), so
+                // checks & copying are skipped while no input has changed since the last build
+                let lastInputs, lastErrors = [], unchanged = false;
+
                 // validate content, typecheck & lint (content & lint errors only block production builds)
                 build.onStart(async () => {
+                    const inputs = isProd ? undefined : fingerprint();
+                    unchanged = inputs !== undefined && inputs === lastInputs;
+                    if (unchanged) return { errors: lastErrors };
+                    lastInputs = inputs;
                     console.log(" ⟳ Rebuilding...");
                     const errors = [];
                     try {
@@ -70,12 +98,13 @@ const buildOptions = {
                         if (isProd) errors.push({ text: "Content validation failed; skipping build" });
                         else console.log("Content validation failed; building anyway...");
                     }
+                    lastErrors = errors;
                     return { errors };
                 });
 
                 // copy static assets & subset font to glyphs used by text renderer
                 build.onEnd(async result => {
-                    if (result.errors.length > 0) return;
+                    if (result.errors.length > 0 || unchanged) return;
                     copyFileSync("index.html", "build/index.html");
                     if (existsSync("public")) cpSync("public", "build", { recursive: true }); // served from site root
                     mkdirSync("build/fonts", { recursive: true });

@@ -1,6 +1,6 @@
 import type { RGB } from "types/global";
 
-import { DIM, FG, INVERSE } from "palette";
+import { DIM, FG, INVERSE, STAR } from "palette";
 import { fuzzyMatch } from "fuzzy";
 
 // contents of window, whose behaviour follows from classes in its markup (eg. an index with a filter box; see
@@ -60,6 +60,7 @@ export const setWindowColors = (background: RGB): void => {
     root.setProperty("--fg", cssColor(FG));
     root.setProperty("--dim", cssColor(DIM));
     root.setProperty("--inverse", cssColor(INVERSE));
+    root.setProperty("--star", cssColor(STAR));
 };
 
 /**

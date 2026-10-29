@@ -83,15 +83,26 @@ const contentsOf = (place?: number): PlaceContents | undefined =>
     CONTENTS.get(place === undefined ? "" : PLACES[place]?.words[0] ?? "");
 
 /**
+ * Order sections of menu as printed: those beside icon last, so that the rest come first wherever they are drawn
+ * (eg. typed out first, & at the top when sections beside icon move in among them, for want of room).
+ *
+ * @param sections sections of menu
+ * @returns sections, in order printed
+ */
+const printOrder = (sections: MenuSection[]): MenuSection[] => [
+    ...sections.filter(({ aside = false }) => !aside), ...sections.filter(({ aside = false }) => aside),
+];
+
+/**
  * Get menu of place.
  *
  * @param place index of place (or undefined if none)
  * @returns entries of menu (empty if none)
  */
 export const menuOf = (place?: number): (MenuEntry & { key: string })[] =>
-    (contentsOf(place)?.menu?.(PLACES[place ?? -1]?.accent ?? FG) ?? [])
+    printOrder(contentsOf(place)?.menu?.(PLACES[place ?? -1]?.accent ?? FG) ?? [])
         .flatMap(({ entries }) => entries)
-        .map((entry, i) => ({ ...entry, key: (i + 1).toString() })); // hotkeys in reading order (digits, which never begin a command)
+        .map((entry, i) => ({ ...entry, key: (i + 1).toString() })); // hotkeys in order printed (digits, which never begin a command)
 
 /**
  * Get contents of window opened from place.
@@ -258,25 +269,26 @@ export const execute = (sh: Shell, line: string): void => {
             return;
         }
 
-        // lines beside icon, description, & menu, whose entries open windows (by clicking, hotkey, or name)
-        const lines = contents.aside?.(place.accent) ?? [];
-        if (lines.length > 0) sh.aside(() => { lines.forEach(segments => { sh.print(...segments); }); });
+        // description, menu (whose entries open windows, by clicking, hotkey, or name), & then lines beside icon
+        // (see printOrder()), including sections of menu meant for there
         contents.intro?.(place.accent).forEach(segments => { sh.print(...segments); });
         let key = 0;
-        (contents.menu?.(place.accent) ?? []).forEach(({ aside = false, entries, heading }) => {
-            const printSection = (): void => {
-                if (heading) {
-                    sh.print(...heading);
-                    sh.print();
-                }
-                entries.forEach(({ label, marker, name: entryName }) => {
-                    const prefix = [{ color: DIM, text: `[${(++key).toString()}] ` }, ...marker ? [marker] : []];
-                    const indent = prefix.reduce((sum, { text }) => sum + text.length, 0);
-                    sh.link(entryName, indent, ...prefix, ...label);
-                });
-            };
-            if (aside) sh.aside(printSection);
-            else printSection();
+        const printSection = ({ entries, heading }: MenuSection): void => {
+            if (heading) {
+                sh.print(...heading);
+                sh.print();
+            }
+            entries.forEach(({ label, marker, name: entryName }) => {
+                const prefix = [{ color: DIM, text: `[${(++key).toString()}] ` }, ...marker ? [marker] : []];
+                const indent = prefix.reduce((sum, { text }) => sum + text.length, 0);
+                sh.link(entryName, indent, ...prefix, ...label);
+            });
+        };
+        const sections = printOrder(contents.menu?.(place.accent) ?? []);
+        sections.filter(({ aside = false }) => !aside).forEach(printSection);
+        sh.aside(() => {
+            contents.aside?.(place.accent).forEach(segments => { sh.print(...segments); });
+            sections.filter(({ aside = false }) => aside).forEach(printSection);
         });
         return;
     }

@@ -7,6 +7,7 @@ import { crtUniforms } from "crt";
 import { parseHex } from "palette";
 import { warpUniforms } from "warp";
 
+import Ambience from "ambience";
 import DESTINATIONS from "destinations";
 import QRMenu from "menu";
 import QRRenderer from "qrRenderer";
@@ -91,6 +92,9 @@ window.onload = () => {
     setWindowColors(parseHex(qrData.background).map(c => c * BG_BRIGHTNESS / 255) as RGB);
     setWindowMetrics();
     const menu = new QRMenu(canvas, qrRenderer, DESTINATIONS.length);
+    const ambience = new Ambience(); // sound of destination shown, faded in & out with it
+    menu.onOpen = index => { ambience.play(index === undefined ? undefined : DESTINATIONS[index]?.sound); };
+    menu.onClose = () => { ambience.stop(); };
     const terminal = new Terminal(canvas, input, menu);
 
     // text renderer for terminal becomes available once font loads (QR code renders in the meantime)

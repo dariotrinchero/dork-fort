@@ -313,6 +313,30 @@ Start with 1 & 2, which show the details without adding columns to rows already 
 
 ---
 
+## Moon & stars: making the media fun
+
+Books, films, games & board games each have an explorer (tabs by status, & a filter) & a window per entry
+(`src/moonAndStars.ts`). These work, but read like laundry lists. Ideas (start with 1, 2 & 4):
+
+1. **Entries as man pages:** NAME, a short synopsis, the fields, & **SEE ALSO**, linking the rest of the series,
+   the same author (director, designer…), & entries sharing tags, so entries lead to one another.
+2. **A neofetch header** atop each explorer (as on whoami): `96 books · 54 read · 18,230 pages · avg ★★★½ ·
+   most read: Le Guin (6)`, with a sparkline of entries finished per year (`▁▂▄█▆`), or a `░▒▓█` grid of months
+   (like GitHub's contribution graph).
+3. **Covers,** dithered at build time to match the pixel art (the files are already in
+   `attachments/covers/`), on entries' pages.
+4. **A star chart:** finished entries as stars in a text-mode sky, brighter for higher ratings (`·` `∙` `•` `✦`
+   `★`), with a series (or an author's books) joined into a constellation. Hovering names a star, & clicking
+   opens it. It could be each explorer's first tab, with the list one tab away.
+5. **The `sort` animation** (see Destinations): entries appear jumbled, then visibly swap into order, on opening
+   an explorer or switching tabs.
+6. **Commands:** `roll --players 3` picks a board game for that many players (with a dice animation), & `shuf`
+   picks the next book or film from the shortlist.
+7. **Voice:** short lines with some personality, eg. `recommended by JS`, `abandoned on p. 112`, or a remark
+   chosen by rating.
+
+---
+
 ## The prompt as a real shell (`dsh`)
 
 ### Input

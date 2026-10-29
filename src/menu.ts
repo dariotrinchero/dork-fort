@@ -23,6 +23,8 @@ export default class QRMenu {
     public onChoose?: (index: number) => void;
     public onDismiss?: () => void;
     public claimPress?: (event: PointerEvent) => boolean; // given first refusal of presses (eg. on clickable text)
+    public onOpen?: (index?: number) => void; // called on showing output (with destination shown, if any)
+    public onClose?: () => void; // called on hiding output
 
     private pointed?: number; // index of destination under pointer
     private typed?: number | null = null; // index of destination named by command being typed (null if not typing)
@@ -148,6 +150,7 @@ export default class QRMenu {
     public open(index?: number): void {
         [this.shown, this.showing] = [index ?? null, true];
         if (index === undefined) this.pointAt(undefined); // pointer finds nothing on faded QR code (see regionAt())
+        this.onOpen?.(index);
     }
 
     /**
@@ -155,6 +158,7 @@ export default class QRMenu {
      */
     public close(): void {
         this.showing = false;
+        this.onClose?.();
     }
 
     /**

@@ -45,7 +45,7 @@ export const whoamiAside = (accent: RGB): Line[] => {
         ["Host", "Cape Town, SA"],
         ["Uptime", `${plural(years, "year")}, ${plural(days, "day")}`],
         ["Shell", "no, I'm a mammal"],
-        ["Resolution", "have more adventures"],
+        ["Resolution", "join a bookclub"],
         ["Hobbies", "climbing, cooking, TTRPG, frogs…"],
 		["Memory", "already forgotten your name"]
     ];

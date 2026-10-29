@@ -477,9 +477,10 @@ export default class Terminal implements Shell {
         const charHeight = text.getCharDims()[1];
         const outTop = echoTop + echo.length * charHeight;
         const [, visibleRows] = text.fit([left, outTop, right, paneBottom]);
-        // lines meant for beside icon, printed among others instead, are followed by a blank line
+        // lines meant for beside icon, printed among others instead, are set apart from lines before them by a blank
+        // line
         const inline = this.view.lines.flatMap((line, i, lines) =>
-            line.aside && !lines[i + 1]?.aside ? [line, { aside: false, indent: 0, line: [] }] : [line]);
+            line.aside && i > 0 && !lines[i - 1]?.aside ? [{ aside: false, indent: 0, line: [] }, line] : [line]);
         const rows = toRows(asideFits ? this.view.lines.filter(line => !line.aside) : inline, cols);
         if (this.typeRows(asideFits ? [...asideRows, ...rows] : rows)) this.view.typed = undefined;
         if (aside && asideFits) this.drawRows(text, asideRows, aside, asideCols);

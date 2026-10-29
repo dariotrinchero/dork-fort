@@ -198,6 +198,27 @@ canvas {
     text-decoration: none;
 }
 
+/* filled stars of ratings (empty ones being dim) */
+.window-body .stars {
+    color: var(--star);
+}
+
+/* fields of entry (eg. of a book), with names in a dim column at left */
+.window-body .fields {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    column-gap: 2ch;
+    margin: 0 0 var(--line);
+}
+
+.fields dt {
+    color: var(--dim);
+}
+
+.fields dd {
+    margin: 0;
+}
+
 .window-body :is(ul, ol) {
     padding-left: 3ch;
 }
@@ -370,9 +391,9 @@ canvas {
 }
 
 /* text within highlighted items, which otherwise keeps its own colours (eg. details of entries, or '[x]') */
-.window.keyboard:not(.hovering) .index li.selected :is(a, .dim, .match),
+.window.keyboard:not(.hovering) .index li.selected :is(a, .dim, .match, .stars),
 .window.keyboard:not(.hovering) .checklist input:focus + span::before,
-.window.hovering .index li:hover :is(a, .dim, .match),
+.window.hovering .index li:hover :is(a, .dim, .match, .stars),
 .window.hovering .checklist label:hover span::before {
     color: inherit;
 }

@@ -22,12 +22,15 @@ const FAVOURITES = 3;
 const slug = (title: string): string => title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 /**
- * Get menu of campfire: favourite recipes (starred, beside icon where there is room), then cookbook & journal.
+ * Get menu of campfire: cookbook & journal, then favourite recipes (starred, beside icon where there is room).
  *
  * @param accent accent colour of campfire
  * @returns sections of menu
  */
 export const campfireMenu = (accent: RGB): MenuSection[] => [
+    {
+        entries: ["cookbook", "journal"].map(name => ({ label: [{ color: accent, text: name }], name })),
+    },
     {
         aside: true,
         entries: RECIPES.slice(0, FAVOURITES).map(title => ({
@@ -36,9 +39,6 @@ export const campfireMenu = (accent: RGB): MenuSection[] => [
             name: slug(title),
         })),
         heading: [{ color: DIM, text: "favourites:" }],
-    },
-    {
-        entries: ["cookbook", "journal"].map(name => ({ label: [{ color: accent, text: name }], name })),
     },
 ];
 

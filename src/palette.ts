@@ -36,4 +36,5 @@ export const FG: RGB = [0.85, 0.81, 0.71];    // default, eg. known commands
 export const DIM = scale(FG, 0.6);            // secondary, eg. arguments
 export const GHOST = scale(FG, 0.35);         // suggested but not typed, eg. completions & hints
 export const ERROR: RGB = [0.86, 0.26, 0.26]; // unknown commands & error messages
+export const STAR: RGB = [0.95, 0.78, 0.25]; // filled stars of ratings
 export const INVERSE: RGB = [0.05, 0.05, 0.05]; // text in inverse video, on accent colour (eg. hovered links)

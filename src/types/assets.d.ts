@@ -20,6 +20,18 @@ declare module "content/films" {
 	export default value;
 }
 
+declare module "content/games" {
+	import type { Game } from "types/content";
+	const value: Game[];
+	export default value;
+}
+
+declare module "content/boardgames" {
+	import type { BoardGame } from "types/content";
+	const value: BoardGame[];
+	export default value;
+}
+
 declare module "content/pages" {
 	import type { Page } from "types/content";
 	const value: Page[];
