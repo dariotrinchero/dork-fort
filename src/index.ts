@@ -1,4 +1,4 @@
-import type { Dimensions, RGB } from "types/global";
+import type { Dimensions, RGB, Rect } from "types/global";
 import type { TextRendererSizeSpec } from "types/textRenderer";
 
 import { createProgram, createQuadBuffer, createVertexArray } from "webglHelpers";
@@ -9,6 +9,7 @@ import { warpUniforms } from "warp";
 
 import Ambience from "ambience";
 import DESTINATIONS from "destinations";
+import Particles from "particles";
 import QRMenu from "menu";
 import QRRenderer from "qrRenderer";
 import RenderPipeline from "renderPipeline";
@@ -93,9 +94,13 @@ window.onload = () => {
     setWindowMetrics();
     const menu = new QRMenu(canvas, qrRenderer, DESTINATIONS.length);
     const ambience = new Ambience(); // sound of destination shown, faded in & out with it
-    menu.onOpen = index => { ambience.play(index === undefined ? undefined : DESTINATIONS[index]?.sound); };
+    menu.onOpen = index => {
+        const destination = index === undefined ? undefined : DESTINATIONS[index];
+        ambience.play(destination?.sound, destination?.volume);
+    };
     menu.onClose = () => { ambience.stop(); };
     const terminal = new Terminal(canvas, input, menu);
+    const particles = new Particles(gl); // particle effect of destination shown, faded in & out with it
 
     // text renderer for terminal becomes available once font loads (QR code renders in the meantime)
     let textRenderer: TextRenderer | undefined;
@@ -140,9 +145,17 @@ window.onload = () => {
         textDrawn = textRenderer !== undefined;
         menu.update(dt);
         terminal.update(dt, time / 1000);
+        const shown = menu.shownDestination();
+        const { left, promptTop, right } = menu.textLayout(); // text column, from QR code to just below prompt
+        const lineHeight = textRenderer?.getCharDims()[1] ?? 0;
+        const textRect: Rect = [left, qrRenderer.contentRect()[1], right, promptTop + 2 * lineHeight];
+        particles.update(dt, shown && DESTINATIONS[shown.index]?.particles, shown?.icon, textRect);
+        const font = textRenderer && { atlas: textRenderer.getFontAtlas(), charDims: textRenderer.getCharDims() };
+        const particlesPass = particles.renderPass(texDims, fontPixel, time / 1000, font);
 
         pipeline.runPasses([
             qrRenderer.renderPass(),
+            ...particlesPass ? [particlesPass] : [],
             ...textRenderer ? [textRenderer.renderPass()] : [],
             {
                 composition: { mode: "series" },

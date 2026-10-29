@@ -1,5 +1,5 @@
 import type { Dimensions, Pos, RGB, Rect } from "types/global";
-import type { TextRendererSize, TextRendererSizeSpec } from "types/textRenderer";
+import type { FontAtlas, TextRendererSize, TextRendererSizeSpec } from "types/textRenderer";
 import type { RenderPass } from "types/renderPipeline";
 
 import { createProgram, createQuadBuffer, createTexture, createVertexArray } from "webglHelpers";
@@ -16,12 +16,6 @@ type GlyphSet = (string | [number, number])[];
 const GLYPHS = glyphs as GlyphSet;
 
 const SCREEN_PADDING = 10; // minimum padding (in pixels) between text & edges of output
-
-interface FontAtlas {
-    atlas: WebGLTexture;       // texture with grid of pre-rendered characters
-    charMap: Map<string, Pos>; // map from character to pixel location on atlas
-    atlasDims: Dimensions;     // dimensions of atlas
-}
 
 // printed character, positioned in pixels
 interface Glyph {
@@ -271,6 +265,15 @@ export default class TextRenderer {
         });
 
         return { atlas: createTexture(gl, canvas, gl.NEAREST), atlasDims, charMap };
+    }
+
+    /**
+     * Get font atlas (regenerated whenever font size changes), eg. for drawing characters elsewhere.
+     *
+     * @returns font atlas
+     */
+    public getFontAtlas(): FontAtlas {
+        return this.fontAtlas;
     }
 
     /**

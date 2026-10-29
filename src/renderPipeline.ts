@@ -190,6 +190,8 @@ export default class RenderPipeline {
             else if (type === "1fv") this.gl.uniform1fv(location, value);
             else if (type === "2f") this.gl.uniform2f(location, ...value);
             else if (type === "3f") this.gl.uniform3f(location, ...value);
+            else if (type === "4f") this.gl.uniform4f(location, ...value);
+            else if (type === "4fv") this.gl.uniform4fv(location, value);
             else { // type === "tex"
                 this.gl.activeTexture(this.gl.TEXTURE0 + unit);
                 this.gl.bindTexture(this.gl.TEXTURE_2D, value);

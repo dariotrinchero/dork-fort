@@ -1,4 +1,4 @@
-import type { Pos } from "types/global";
+import type { Pos, Rect } from "types/global";
 import type { TextLayout } from "types/menu";
 
 import type QRRenderer from "qrRenderer";
@@ -168,6 +168,20 @@ export default class QRMenu {
      */
     public isOpen(): boolean {
         return this.shown !== undefined;
+    }
+
+    /**
+     * Get destination shown, while output is shown (not while its animation reverses), with bounds of its icon,
+     * following its slide.
+     *
+     * @returns index of destination shown, & left, top, right, & bottom of its icon, in pixels from top-left of
+     * output (or undefined if none)
+     */
+    public shownDestination(): { index: number; icon?: Rect } | undefined {
+        if (!this.showing || typeof this.shown !== "number") return undefined;
+        const rect = this.qr.iconRect(this.shown);
+        const slide = rect ? Math.round(smoothstep(this.showProgress) * (this.qr.contentRect()[1] - rect[1])) : 0;
+        return { icon: rect && [rect[0], rect[1] + slide, rect[2], rect[3] + slide], index: this.shown };
     }
 
     /**

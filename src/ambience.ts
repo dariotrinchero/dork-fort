@@ -14,13 +14,16 @@ export default class Ambience {
     private context?: AudioContext; // created lazily, as browsers refuse to start audio before a user gesture
     private tracks = new Map<string, Track>(); // by URL of sound
     private playing?: string; // URL of sound playing (or fading in)
+    private volume = 1; // volume of sound playing, relative to VOLUME
 
     constructor() {
         // browsers keep audio suspended until a user gesture, so retry whenever one happens (eg. when page was
-        // loaded straight onto a destination)
+        // loaded straight onto a destination); touch screens only count pointerup, touchend, & click as gestures, &
+        // listening in capture phase retries before the gesture is handled (eg. dismissing destination, & its sound)
         const resume = (): void => { this.resume(); };
-        window.addEventListener("pointerdown", resume);
-        window.addEventListener("keydown", resume);
+        ["pointerdown", "pointerup", "touchend", "click", "keydown"].forEach(type => {
+            window.addEventListener(type, resume, { capture: true });
+        });
     }
 
     /**
@@ -71,16 +74,17 @@ export default class Ambience {
      * Fade in given sound (resuming where it left off), fading out any other.
      *
      * @param url URL of sound (or undefined for silence)
+     * @param volume volume of sound, relative to VOLUME
      */
-    public play(url?: string): void {
-        if (url === this.playing) return;
+    public play(url?: string, volume = 1): void {
+        if (url === this.playing && volume === this.volume) return;
         this.stop();
         if (url === undefined) return;
 
-        this.playing = url;
+        [this.playing, this.volume] = [url, volume];
         const track = this.track(url);
         clearTimeout(track.pauseTimer);
-        this.ramp(track, VOLUME, FADE_IN_TIME);
+        this.ramp(track, VOLUME * volume, FADE_IN_TIME);
         this.resume();
     }
 
