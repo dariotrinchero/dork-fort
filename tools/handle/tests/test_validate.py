@@ -1,7 +1,7 @@
-"""Tests of dork's validator, on the cases the build's validator must also pass (tests/validators.yaml), on the
+"""Tests of handle's validator, on the cases the build's validator must also pass (tests/validators.yaml), on the
 vault itself, & against the build's validator directly, on a copy of the vault with all manner of problems.
 
-Run with: python3 -m unittest discover tools/dork/tests
+Run with: python3 -m unittest discover tools/handle/tests
 """
 
 import json
@@ -15,9 +15,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from dork.schema import CONTENT, load_schema
-from dork.validate import check_entry, check_value, validate_vault
-from dork.yamlcore import load
+from handle.schema import CONTENT, load_schema
+from handle.validate import check_entry, check_value, validate_vault
+from handle.yamlcore import load
 
 REPO = Path(__file__).resolve().parents[3]
 CASES = load((REPO / "tests/validators.yaml").read_text(encoding="utf-8"))

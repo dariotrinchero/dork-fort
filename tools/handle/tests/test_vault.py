@@ -1,7 +1,7 @@
 """Tests of reading & writing notes (byte for byte where nothing changed), slugs, fuzzy matching (against the
 site's own src/fuzzy.ts), & quick actions, on a scratch copy of the vault.
 
-Run with: python3 -m unittest discover tools/dork/tests
+Run with: python3 -m unittest discover tools/handle/tests
 """
 
 import json
@@ -14,12 +14,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from dork import actions
-from dork.fuzzy import fuzzy_match
-from dork.schema import CONTENT, load_schema
-from dork.slugs import make_slug, short, slugify, surname
-from dork.vault import emit, load_entries, parse, reload, render, save, template_order, tracked
-from dork.yamlcore import load
+from handle import actions
+from handle.fuzzy import fuzzy_match
+from handle.schema import CONTENT, load_schema
+from handle.slugs import make_slug, short, slugify, surname
+from handle.vault import emit, load_entries, parse, reload, render, save, template_order, tracked
+from handle.yamlcore import load
 
 REPO = Path(__file__).resolve().parents[3]
 SCHEMA = load_schema()
@@ -88,7 +88,7 @@ class Editing(unittest.TestCase):
     def test_lists_survive_the_editor(self):
         """Every list in the vault, shown in the editor & typed back unchanged, is the same list (an alias holding a
         comma, say, isn't split in two)."""
-        from dork.tui.editor import as_text, from_text
+        from handle.tui.editor import as_text, from_text
         for entry in load_entries(SCHEMA, list(SCHEMA["collections"])):
             for key, value in entry.fields.items():
                 if isinstance(value, list) and value:
@@ -195,7 +195,7 @@ class Browsing(unittest.TestCase):
             ["unnumbered", "colour", "between", "guards", "nation", "long-earth"])
 
     def test_labels(self):
-        from dork.tui.finder import label_of, label_width
+        from handle.tui.finder import label_of, label_width
         self.assertEqual(label_of(SCHEMA, note("nonfiction", "a", title="A", kind="paper", status="read")), "paper")
         self.assertEqual(label_of(SCHEMA, note("nonfiction", "a", title="A", status="read")), "nonfic")
         self.assertEqual(label_of(SCHEMA, note("films", "a", title="A", kind="series", status="watched")), "series")
@@ -302,7 +302,7 @@ class Actions(unittest.TestCase):
         self.assertTrue(actions.act(SCHEMA, entry, "rate", 4.6).failed)
 
     def test_new_entry_with_cover_then_undo(self):
-        from dork.vault import new_entry
+        from handle.vault import new_entry
         entry = new_entry(SCHEMA, "novels", self.vault)
         self.assertEqual(entry.fields["status"], "to-read") # the template's defaults
         fields = {**entry.fields, "title": "Piranesi", "author": "Susanna Clarke",

@@ -395,7 +395,7 @@ class Editor:
     def draw(self, win):
         h, w = win.getmaxyx()
         problems, warnings = self.problems(), self.warnings()
-        x = put(win, 0, 0, " dork ", attr("ink", "accent", bold=True)) + 1
+        x = put(win, 0, 0, " handle ", attr("ink", "accent", bold=True)) + 1
         put(win, 0, x, f"{'new' if self.new else 'edit'}  {self.entry.collection}/{self.slug}.md", curses.A_BOLD)
         if self.dirty(): put(win, 0, w - 11, "● unsaved", attr("accent"))
         put(win, 1, 0, "─" * w, attr("dim"))

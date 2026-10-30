@@ -4,7 +4,7 @@ import { FG, accent as accentOf } from "palette";
 
 import DESTINATIONS from "destinations";
 
-const [USER, HOST] = ["dario", "dork-fort"];
+const [USER, HOST] = ["dario", "handlebody"];
 const BIRTH = { day: 6, month: 4, year: 1998 }; // date of birth (month counted from 0, as by Date), for uptime
 const DAY = 24 * 60 * 60 * 1000; // in milliseconds
 
@@ -41,11 +41,12 @@ const plural = (count: number, unit: string): string => `${count.toString()} ${u
 export const whoamiAside = (accent: RGB): Line[] => {
     const [years, days] = uptime(new Date());
     const fields = [
-        ["OS", "DorkFort 1.0"],
+        ["OS", "Handlebody 1.0"],
         ["Host", "Cape Town, SA"],
         ["Uptime", `${plural(years, "year")}, ${plural(days, "day")}`],
+		["Genus", "default (7)"],
         ["Shell", "no, I'm a mammal"],
-        ["Resolution", "join a bookclub"],
+        ["Resolution", "increase genus (get a piercing)"],
         ["Hobbies", "climbing, cooking, TTRPG, frogs…"],
 		["Memory", "already forgotten your name"]
     ];

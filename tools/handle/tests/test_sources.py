@@ -1,7 +1,7 @@
 """Tests of where new entries come from, all offline: each source, on responses saved in fixtures/ (as they gave them), Zotero on a made-up database (& on the real one, if there is one,
-only to show dork leaves it untouched), & the politeness of net.py. Wikidata's responses are real too, saved once.
+only to show handle leaves it untouched), & the politeness of net.py. Wikidata's responses are real too, saved once.
 
-Run with: python3 -m unittest discover tools/dork/tests
+Run with: python3 -m unittest discover tools/handle/tests
 """
 
 import hashlib
@@ -17,9 +17,9 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from dork import net
-from dork.sources import Candidate, proposals, split_year, suspicious, title_case
-from dork.sources import openlibrary, wikidata, zotero
+from handle import net
+from handle.sources import Candidate, proposals, split_year, suspicious, title_case
+from handle.sources import openlibrary, wikidata, zotero
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -238,7 +238,7 @@ class Wikidata(unittest.TestCase):
 
 
 def zotero_database(path: Path):
-    """A database laid out as Zotero's (the tables dork reads), holding a few items."""
+    """A database laid out as Zotero's (the tables handle reads), holding a few items."""
     con = sqlite3.connect(path)
     con.executescript("""
         CREATE TABLE itemTypes (itemTypeID INTEGER PRIMARY KEY, typeName TEXT);
@@ -382,12 +382,12 @@ class Net(unittest.TestCase):
             net.fetch("https://example.org/b")
         (first, request), (second, _) = self.sent
         self.assertGreaterEqual(second - first, 0.29)
-        self.assertIn("github.com/dariotrinchero/dork-fort", request.get_header("User-agent"))
+        self.assertIn("github.com/dariotrinchero/handlebody", request.get_header("User-agent"))
 
     def test_log(self):
         with tempfile.TemporaryDirectory() as scratch:
             log = Path(scratch) / "requests.log"
-            with mock.patch.dict(os.environ, {"DORK_LOG": str(log)}):
+            with mock.patch.dict(os.environ, {"HANDLE_LOG": str(log)}):
                 net.fetch("https://example.org/logged")
             self.assertIn("GET https://example.org/logged → 12 bytes", log.read_text())
 

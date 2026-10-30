@@ -1,11 +1,11 @@
 /**
  * Validator for the content vault (see content/), checking every note against content/schema.yaml: its slug, its
  * fields' types & values, & whether its status agrees with its dates. Also checks the templates list the schema's
- * fields, attachments exist, & no two notes share a URL. dork (tools/dork/) implements the same rules in Python;
+ * fields, attachments exist, & no two notes share a URL. handle (tools/handle/) implements the same rules in Python;
  * tests/validators.yaml holds cases both must agree on.
  *
  * Run directly (npm run check) to validate the vault, exiting with failure if anything is wrong: `node
- * scripts/validateContent.js [--json] [vault]`, where --json prints the problems as JSON instead (for dork's tests).
+ * scripts/validateContent.js [--json] [vault]`, where --json prints the problems as JSON instead (for handle's tests).
  */
 
 import { existsSync } from "fs";

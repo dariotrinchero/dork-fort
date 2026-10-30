@@ -295,5 +295,5 @@ export const execute = (sh: Shell, line: string): void => {
 
     const command = COMMANDS.get(name);
     if (command) command.run(sh, args);
-    else fail(sh, `dsh: command not found: ${name}`);
+    else fail(sh, `hdl: command not found: ${name}`);
 };

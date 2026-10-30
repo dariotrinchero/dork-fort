@@ -72,7 +72,7 @@ class Finder:
         self.sel = self.top = 0
         self.filter = 0              # index into self.filters (0: all)
         self.order = 0               # index into actions.ORDERS
-        self.armed, self.rating = armed, rating # action Enter does (when dork was told one on the command line)
+        self.armed, self.rating = armed, rating # action Enter does (when handle was told one on the command line)
         self.anchor: Path | None = None         # selected entry, to find again when entries are reloaded
         self._key, self._results = None, []
 
@@ -122,7 +122,7 @@ class Finder:
         self.done(actions.act(self.app.schema, entry, action, self.rating))
 
     def done(self, outcome: actions.Outcome):
-        """Report what an action did; when armed by the command line, a success also ends dork."""
+        """Report what an action did; when armed by the command line, a success also ends handle."""
         self.app.record(outcome)
         if self.armed and not outcome.failed:
             self.app.result = outcome.message
@@ -220,7 +220,7 @@ class Finder:
         results = self.results()
 
         # collection tabs, & how many match
-        x = put(win, 0, 0, " dork ", attr("ink", "accent", bold=True)) + 1
+        x = put(win, 0, 0, " handle ", attr("ink", "accent", bold=True)) + 1
         for i, name in enumerate(self.filters):
             current = i == self.filter
             x = put(win, 0, x, f" {name} ", attr("accent" if current else "dim", bold=current, underline=current))

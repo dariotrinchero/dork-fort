@@ -1,4 +1,4 @@
-"""A PyYAML loader reading YAML 1.2's core schema, as the site's `yaml` package does, so dork & the build read
+"""A PyYAML loader reading YAML 1.2's core schema, as the site's `yaml` package does, so handle & the build read
 notes alike: dates stay text, "3:45" isn't sexagesimal, yes/no aren't booleans, & "<<" isn't a merge key (see the
 parsing cases in tests/validators.yaml)."""
 

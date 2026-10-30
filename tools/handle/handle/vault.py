@@ -61,7 +61,7 @@ def tracked(schema: dict) -> list[str]:
 
 
 def load_entries(schema: dict, names: list[str], content: Path = CONTENT) -> list[Entry]:
-    """Every note of collections that has frontmatter (dork check reports those that don't)."""
+    """Every note of collections that has frontmatter (hdl check reports those that don't)."""
     entries = []
     for name in names:
         for path in sorted((content / name).glob("*.md")):
@@ -167,7 +167,7 @@ class Changes:
 def _write(path: Path, data: str | bytes):
     """Write file whole or not at all (through a temporary file, renamed over it)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.dork")
+    temporary = path.with_name(f".{path.name}.handle")
     temporary.write_bytes(data.encode("utf-8") if isinstance(data, str) else data)
     os.replace(temporary, path)
 

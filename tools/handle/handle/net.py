@@ -1,6 +1,6 @@
-"""dork's requests, kept polite: each host is sent requests no faster than it asks (Open Library: one a second),
+"""handle's requests, kept polite: each host is sent requests no faster than it asks (Open Library: one a second),
 every response is kept in memory for the session (so nothing is fetched twice), & every request says who sends
-it. Requests can be logged, one line each, to $DORK_LOG."""
+it. Requests can be logged, one line each, to $HANDLE_LOG."""
 
 import json
 import os
@@ -15,7 +15,7 @@ from urllib.request import HTTPSHandler, Request, build_opener
 from . import __version__
 from .config import setting
 
-AGENT = f"dork/{__version__} (+https://github.com/dariotrinchero/dork-fort)"
+AGENT = f"handle/{__version__} (+https://github.com/dariotrinchero/handlebody)"
 
 # least time between requests to each host, in seconds (the rest get DEFAULT_INTERVAL)
 INTERVALS = {"openlibrary.org": 1.0, "covers.openlibrary.org": 0.5, "query.wikidata.org": 1.0}
@@ -67,7 +67,7 @@ def agent() -> str:
 
 
 def _log(line: str):
-    if path := os.environ.get("DORK_LOG"):
+    if path := os.environ.get("HANDLE_LOG"):
         with open(path, "a", encoding="utf-8") as log: log.write(f"{time.strftime('%H:%M:%S')} {line}\n")
 
 

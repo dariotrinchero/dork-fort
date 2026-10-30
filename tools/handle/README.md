@@ -1,26 +1,26 @@
-# dork
+# handle
 
 A terminal tool for keeping track of novels, nonfiction, films, games & board games in the site's content vault
 (`content/`): adding them (from Open Library, Zotero & Wikidata), finding them, marking them started, finished,
 paused or dropped, rating them, & editing their frontmatter, with every value checked by the same rules as the
 site's build.
 
-This README is dork's spec: what it does, & the rules that keep it in step with the site. What is still to be
-built is planned in [TODO_DORK.md](../../TODO_DORK.md).
+This README is handle's spec: what it does, & the rules that keep it in step with the site. What is still to be
+built is planned in [TODO_HANDLE.md](../../TODO_HANDLE.md).
 
 ## Setup
 
 Needs Python 3.11+ & PyYAML (`python3-yaml` on Debian & Ubuntu), & nothing else. Put the launcher on PATH:
 
 ```bash
-ln -s "$PWD/tools/dork/bin/dork" ~/.local/bin/dork
+ln -s "$PWD/tools/handle/bin/hdl" ~/.local/bin/hdl
 ```
 
 The launcher finds its package, & through it the vault (`content/` in this repo), from its own real path, so it
-works from anywhere. `DORK_CONTENT=<path>` points it at another vault instead (eg. a scratch copy, for trying
+works from anywhere. `HANDLE_CONTENT=<path>` points it at another vault instead (eg. a scratch copy, for trying
 things out).
 
-Settings live in `~/.config/dork/config.toml` (or `$DORK_CONFIG`). None are needed: no source needs a key or an
+Settings live in `~/.config/handle/config.toml` (or `$HANDLE_CONFIG`). None are needed: no source needs a key or an
 account. Setting `contact` is good manners, though, as Open Library asks for an email in each request's
 User-Agent:
 
@@ -38,15 +38,15 @@ data-dir = "~/Zotero"     # where zotero.sqlite is (by default, ~/Zotero or ~/Do
 
 | Command | Does |
 |---|---|
-| `dork` | opens the finder |
-| `dork <query>` | opens the finder, prefiltered by query |
-| `dork add [collection] [query]` | opens the add screen, searching for query at once if given; collection (`novel`, `nonfiction`, `film`, `game` or `board`, or eg. `paper`, `movie`, `anime`, `tabletop`) picks its tab, & otherwise every tab is searched |
-| `dork finish <query>` | marks the entry the query clearly means as finished (read, watched, played), dated today (a board game's `first-played`, if not yet set); if it isn't clear which, opens the finder with the action armed |
-| `dork start <query>` | likewise, as started (dated today) |
-| `dork pause <query>` | likewise, as paused |
-| `dork dnf <query>` | likewise, as dropped |
-| `dork rate <query> [n]` | rates it `n` (1–5 in quarter steps, or 0 for no rating); without `n`, opens the star meter |
-| `dork check` | validates the whole vault, as the build does; exits with failure if anything is wrong |
+| `hdl` | opens the finder |
+| `hdl <query>` | opens the finder, prefiltered by query |
+| `hdl add [collection] [query]` | opens the add screen, searching for query at once if given; collection (`novel`, `nonfiction`, `film`, `game` or `board`, or eg. `paper`, `movie`, `anime`, `tabletop`) picks its tab, & otherwise every tab is searched |
+| `hdl finish <query>` | marks the entry the query clearly means as finished (read, watched, played), dated today (a board game's `first-played`, if not yet set); if it isn't clear which, opens the finder with the action armed |
+| `hdl start <query>` | likewise, as started (dated today) |
+| `hdl pause <query>` | likewise, as paused |
+| `hdl dnf <query>` | likewise, as dropped |
+| `hdl rate <query> [n]` | rates it `n` (1–5 in quarter steps, or 0 for no rating); without `n`, opens the star meter |
+| `hdl check` | validates the whole vault, as the build does; exits with failure if anything is wrong |
 
 Each action prints one line saying what changed, eg.
 `novels/a-discovery-of-witches-harkness.md: to-read → read, finished 2026-10-26`. An action that would leave an
@@ -83,8 +83,8 @@ Space, `/`, Esc, or ↑ from the top row go back to typing, `?` lists the keys, 
 Every change is written at once, & reported in the footer. Undo goes back through every change of the session,
 last first.
 
-When opened by a command-line action (eg. `dork finish witches`, if more than one entry could be meant), the
-finder has that action **armed**: Enter does it to the highlighted entry, & dork then exits, printing what
+When opened by a command-line action (eg. `hdl finish witches`, if more than one entry could be meant), the
+finder has that action **armed**: Enter does it to the highlighted entry, & handle then exits, printing what
 changed.
 
 ### The add screen
@@ -100,7 +100,7 @@ A tab for each collection, each with its source:
 | boardgames | Wikidata | on Enter |
 
 Type a query & press Enter: the current tab is searched. Arriving with a query but no collection searches every
-tab at once (so `dork add piranesi`, or `^A` from the unfiltered finder, searches each source once). Each tab
+tab at once (so `hdl add piranesi`, or `^A` from the unfiltered finder, searches each source once). Each tab
 shows its count of hits (or a spinner, while searching); tabs only change when you change them. Enter again opens
 the top hit; or ↓ into the list, & Enter (or `e`) on any hit. Tab (or ←/→ in the list, or with no query) switches
 tab, `^Z` (or `u` in the list) undoes, `^U` (or `^T`) goes to the finder (taking the query), & Esc clears the
@@ -178,27 +178,27 @@ disagrees: the footer says what it has (eg. `Open Library has 1985`), & `x`, the
 aliases & kind are always yours. Nothing is written until `w`, & undo takes it all back, as for any edit.
 
 This is for an entry at a time. (Catching up the novels imported from StoryGraph, which have ISBNs but no year,
-pages, cover or series, is a job for a one-off script, run once, not a feature of dork.)
+pages, cover or series, is a job for a one-off script, run once, not a feature of handle.)
 
 ## Principles
 
-- **Parity.** dork & the site share one data model, & agree on what is valid (see below).
+- **Parity.** handle & the site share one data model, & agree on what is valid (see below).
 - **Minimum friction.** The common things (finishing, starting, rating) take one command or one keystroke, &
   never ask for confirmation, since every change can be undone & says exactly what it did.
 - **No API spamming.** Nothing is fetched without an explicit request (Enter, `f`, or a query on the command line),
   each search costs one request per source, & nothing is fetched twice in a session (see "Requests").
 - **Automatic validation.** Values are checked as they are entered or fetched, & bad ones are shown rather than
-  written. dork never writes an entry with a problem it didn't already have.
+  written. handle never writes an entry with a problem it didn't already have.
 
 ## Parity with the site
 
-| What | The site | dork | Kept in step by |
+| What | The site | handle | Kept in step by |
 |---|---|---|---|
 | fields of each collection, in order, & their defaults | `content/Templates/*.md` (also Obsidian's templates) | reads the same files | the build failing if a template & the schema list different fields |
-| each field's type & allowed values; status words & what they mean; slug rules | `content/schema.yaml`, read by `scripts/validateContent.js` | `dork/schema.py`, reading the same file | the one file |
-| validation | `scripts/validateContent.js` | `dork/validate.py` | shared cases (`tests/validators.yaml`) run by both, & a test that breaks a copy of the vault in every way they check & insists both report exactly the same problems, word for word |
-| reading YAML | the `yaml` package (YAML 1.2, core schema) | `dork/yamlcore.py`: PyYAML, restricted to YAML 1.2's core schema | parsing cases in `tests/validators.yaml` |
-| fuzzy matching | `src/fuzzy.ts` | `dork/fuzzy.py`, a port | a test running both (`src/fuzzy.ts` under Node) on every entry, for a set of queries |
+| each field's type & allowed values; status words & what they mean; slug rules | `content/schema.yaml`, read by `scripts/validateContent.js` | `handle/schema.py`, reading the same file | the one file |
+| validation | `scripts/validateContent.js` | `handle/validate.py` | shared cases (`tests/validators.yaml`) run by both, & a test that breaks a copy of the vault in every way they check & insists both report exactly the same problems, word for word |
+| reading YAML | the `yaml` package (YAML 1.2, core schema) | `handle/yamlcore.py`: PyYAML, restricted to YAML 1.2's core schema | parsing cases in `tests/validators.yaml` |
+| fuzzy matching | `src/fuzzy.ts` | `handle/fuzzy.py`, a port | a test running both (`src/fuzzy.ts` under Node) on every entry, for a set of queries |
 | star ratings, eg. `★★★★¾` | `stars()` in `src/moonAndStars.ts` | `actions.stars()` | by hand |
 | TypeScript types of notes | `src/types/content.d.ts` | — | by hand |
 | Obsidian's property types | `content/.obsidian/types.json` | — | by hand |
@@ -220,19 +220,19 @@ To add or change a field, a status word, or a collection, change:
 5. the notes themselves, if existing values no longer pass;
 6. the Bases in `content/Bases/`, if their views should show it.
 
-Then run `npm run check` (or `dork check`), & both test suites. dork needs no changes for any of this, unless
+Then run `npm run check` (or `hdl check`), & both test suites. handle needs no changes for any of this, unless
 the change adds a field *type*.
 
 ### Changing a validation rule, or adding a field type
 
 Change both validators (`checkValue` & `checkEntry` in `scripts/validateContent.js`, & `check_value` &
-`check_entry` in `dork/validate.py`), keeping their messages word for word the same, & add cases for it to
-`tests/validators.yaml`. Document a new type in the comment at the top of `schema.yaml`. In dork, a new type may
-also want tidying of what's typed (`TIDY` & `from_text` in `dork/tui/editor.py`), & a way of being shown & changed
+`check_entry` in `handle/validate.py`), keeping their messages word for word the same, & add cases for it to
+`tests/validators.yaml`. Document a new type in the comment at the top of `schema.yaml`. In handle, a new type may
+also want tidying of what's typed (`TIDY` & `from_text` in `handle/tui/editor.py`), & a way of being shown & changed
 in the editor (`Editor.show` & `Editor.cycle`).
 
 The shared validators report only **errors**: what the build rejects. Anything merely suspicious (a year in the
-future, say) is for dork alone to warn of, & doesn't belong in them.
+future, say) is for handle alone to warn of, & doesn't belong in them.
 
 ## Behaviour
 
@@ -285,7 +285,7 @@ Results come best first. Ties go as the list has them with no query (below), so 
 Discworld in order.
 
 With no query (`actions.browse_order`), entries come in the finder's sort mode, which `o` (or `^O`) cycles, &
-the header names: **status** (the default), **rating**, or **creator**. These are dork's own: the site orders
+the header names: **status** (the default), **rating**, or **creator**. These are handle's own: the site orders
 (& splits, & shortens) its lists as suits each one, & needn't agree.
 
 **By status**, entries come in that order of roles (ongoing between paused & done). Within each role:
@@ -315,7 +315,7 @@ whole name; those with no one known last), then by series & number in it (or tit
 
 ### Headless actions
 
-`dork finish|start|pause|dnf|rate <query>` act without opening the finder only when the query clearly means one
+`hdl finish|start|pause|dnf|rate <query>` act without opening the finder only when the query clearly means one
 entry. They consider:
 
 1. **only entries the action can follow:**
@@ -336,7 +336,7 @@ Among those, the match is **clear** if:
 - it outscores the runner-up by half as much again.
 
 Otherwise the finder opens, prefiltered & armed. Without a terminal (eg. in a script), the candidates are listed
-instead, & dork exits with failure.
+instead, & handle exits with failure.
 
 ### Writing notes
 
@@ -353,7 +353,7 @@ instead, & dork exits with failure.
   - whole-number ratings as integers.
 - **New keys** go after the last key that comes before them in the template. Unknown keys are kept (& flagged
   by validation).
-- **Files are written whole or not at all**, through a temporary file (`.<name>.dork`) renamed over the note.
+- **Files are written whole or not at all**, through a temporary file (`.<name>.handle`) renamed over the note.
   A note is only written if its text changed.
 
 ### Undo
@@ -411,27 +411,27 @@ ISBNs), it takes the first valid one.
 Sources were chosen for their terms, as well as their data. TMDB's terms forbid keeping anything from it for over
 six months, or deriving anything from its images, & require its logo on the site; IGDB's are less clear. Wikidata
 has neither problem, & needs no account. Open Library asks clients to identify themselves (with an email), not to
-bulk-download, & that public pages show its covers from its own server; dork downloads one cover per book added,
+bulk-download, & that public pages show its covers from its own server; handle downloads one cover per book added,
 for the site to dither, which departs from that last wish, so the site should credit Open Library.
 
-**Zotero's data is never changed.** dork opens `zotero.sqlite` read-only & immutable (`mode=ro&immutable=1`), so
+**Zotero's data is never changed.** handle opens `zotero.sqlite` read-only & immutable (`mode=ro&immutable=1`), so
 SQLite refuses to write, & makes no lock, journal or WAL files beside it; nothing else of Zotero's is touched,
-& its API isn't used. If Zotero is writing the database as dork reads it, & the read fails, dork reads a temporary
+& its API isn't used. If Zotero is writing the database as handle reads it, & the read fails, handle reads a temporary
 copy instead. A test checks the real database's hash, & its directory's listing, are unchanged by a search.
 
 ### Requests
 
-`dork/net.py` makes every request, keeping them polite:
+`handle/net.py` makes every request, keeping them polite:
 - **Throttled per host:** Open Library & the Wikidata Query Service get one a second, Open Library's covers one
   each half second, & others one each 0.2 s.
 - **Cached:** every response is kept in memory for the session, so searching again, switching tabs, or going
   back to the hits costs nothing. (Covers aren't cached, being downloaded only once, on writing.)
-- **Identified:** `User-Agent: dork/<version> (+https://github.com/dariotrinchero/dork-fort)`, with the
+- **Identified:** `User-Agent: handle/<version> (+https://github.com/dariotrinchero/handlebody)`, with the
   `contact` setting added if set.
-- **Logged,** if `$DORK_LOG` names a file: a line per request, with its size or error.
+- **Logged,** if `$HANDLE_LOG` names a file: a line per request, with its size or error.
 - **Off the screen's thread:** requests run in the background (four at most), so the screen never waits on them.
 - **IPv4 first:** where a network routes IPv6 but it doesn't get through, Python would wait out a whole timeout
-  (20 s) on every request before trying IPv4; dork tries IPv4 first (as cli-tools' `twoey.py` does).
+  (20 s) on every request before trying IPv4; handle tries IPv4 first (as cli-tools' `twoey.py` does).
 
 ### Slugs
 
@@ -449,35 +449,35 @@ which the tests check.
 
 | Module | Holds |
 |---|---|
-| `bin/dork` | the launcher |
-| `dork/__main__.py` | the command line |
-| `dork/schema.py` | finding the vault, & reading `schema.yaml` |
-| `dork/yamlcore.py` | the YAML 1.2 loader |
-| `dork/validate.py` | the validator (the twin of `scripts/validateContent.js`) |
-| `dork/vault.py` | reading notes, writing them line-preservingly, renaming them, & undoable changes |
-| `dork/slugs.py` | making slugs |
-| `dork/fuzzy.py` | fuzzy matching (the twin of `src/fuzzy.ts`) |
-| `dork/actions.py` | status roles, quick actions, describing changes, ranking, & clear matches |
-| `dork/tui/base.py` | colours, text measurement & drawing, the line editor, & the overlays (star meter, yes-or-no question, help) |
-| `dork/tui/app.py` | the screen stack, main loop, footer messages, undo history, & handing over to `$EDITOR` |
-| `dork/tui/finder.py` | the finder |
-| `dork/tui/add.py` | the add screen |
-| `dork/tui/editor.py` | the editor |
-| `dork/tui/fill.py` | filling in an entry's gaps: looking it up, & picking the hit, over the editor |
-| `dork/config.py` | settings, from `config.toml` |
-| `dork/net.py` | requests: throttled, cached, identified & logged |
-| `dork/sources/__init__.py` | candidates (hits), the source interface (searching, filling in & looking up), keeping only valid values, what filling in proposes, title-casing, & the warnings of suspicious values |
-| `dork/sources/openlibrary.py`, `zotero.py`, `wikidata.py` | the sources |
+| `bin/hdl` | the launcher |
+| `handle/__main__.py` | the command line |
+| `handle/schema.py` | finding the vault, & reading `schema.yaml` |
+| `handle/yamlcore.py` | the YAML 1.2 loader |
+| `handle/validate.py` | the validator (the twin of `scripts/validateContent.js`) |
+| `handle/vault.py` | reading notes, writing them line-preservingly, renaming them, & undoable changes |
+| `handle/slugs.py` | making slugs |
+| `handle/fuzzy.py` | fuzzy matching (the twin of `src/fuzzy.ts`) |
+| `handle/actions.py` | status roles, quick actions, describing changes, ranking, & clear matches |
+| `handle/tui/base.py` | colours, text measurement & drawing, the line editor, & the overlays (star meter, yes-or-no question, help) |
+| `handle/tui/app.py` | the screen stack, main loop, footer messages, undo history, & handing over to `$EDITOR` |
+| `handle/tui/finder.py` | the finder |
+| `handle/tui/add.py` | the add screen |
+| `handle/tui/editor.py` | the editor |
+| `handle/tui/fill.py` | filling in an entry's gaps: looking it up, & picking the hit, over the editor |
+| `handle/config.py` | settings, from `config.toml` |
+| `handle/net.py` | requests: throttled, cached, identified & logged |
+| `handle/sources/__init__.py` | candidates (hits), the source interface (searching, filling in & looking up), keeping only valid values, what filling in proposes, title-casing, & the warnings of suspicious values |
+| `handle/sources/openlibrary.py`, `zotero.py`, `wikidata.py` | the sources |
 
 The UI is plain curses (standard library), in the style of `twoey.py` & `wikly.py` in `~/git-repos/cli-tools`.
-It runs in raw mode, so that `^S`, `^Z` & `^C` reach dork rather than the terminal. Screens are objects with
+It runs in raw mode, so that `^S`, `^Z` & `^C` reach handle rather than the terminal. Screens are objects with
 `draw(win)` & `handle(key, ch)` methods (& optionally `opened()`, & `poll()` with `busy`, for screens waiting on
 requests), pushed on the app's stack. An `overlay` is drawn over the screen below it, rather than in its place.
 
 ## Testing
 
 ```bash
-python3 -m unittest discover tools/dork/tests   # dork (from the repo root)
+python3 -m unittest discover tools/handle/tests   # handle (from the repo root)
 npm test                                        # the site's validator (also run in CI)
 ```
 
@@ -510,8 +510,8 @@ Tests needing Node skip themselves without it.
 
 ```bash
 cp -r content /tmp/vault
-tmux new-session -d -s dork -x 110 -y 30 "DORK_CONTENT=/tmp/vault DORK_LOG=/tmp/requests.log tools/dork/bin/dork; sleep 60"
-tmux send-keys -t dork -l "witches"; tmux send-keys -t dork C-f
-tmux capture-pane -p -t dork        # -e to see colours, as escape codes
-tmux kill-session -t dork
+tmux new-session -d -s handle -x 110 -y 30 "HANDLE_CONTENT=/tmp/vault HANDLE_LOG=/tmp/requests.log tools/handle/bin/hdl; sleep 60"
+tmux send-keys -t handle -l "witches"; tmux send-keys -t handle C-f
+tmux capture-pane -p -t handle        # -e to see colours, as escape codes
+tmux kill-session -t handle
 ```

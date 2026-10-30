@@ -148,5 +148,5 @@ vite.config.ts.timestamp-*
 content/.obsidian/workspace*.json
 content/.trash/
 
-# Python bytecode (tools/dork/)
+# Python bytecode (tools/handle/)
 __pycache__/

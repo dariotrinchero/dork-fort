@@ -1,6 +1,6 @@
-# Schema of the content vault, read by the build (scripts/validateContent.js) & by dork (tools/dork/), so both
+# Schema of the content vault, read by the build (scripts/validateContent.js) & by handle (tools/handle/), so both
 # agree on what a note may hold. The templates (Templates/) give each collection's fields, in order, & their
-# defaults (dork fills a collection's first template); this file gives their types. The build checks that the two
+# defaults (handle fills a collection's first template); this file gives their types. The build checks that the two
 # list the same fields.
 #
 # Field types (any field may be left empty, unless required):
@@ -31,13 +31,13 @@
 #
 # Slugs (filenames, which are also URLs) take a style: kebab ("after-hours-1985"), citekey (Zotero's, eg.
 # "kripkeNamingNecessity1980"), or dated ("2026-10-01-table-mountain", whose date must match the `date` field).
-# `from` says how dork makes one: fields in braces, with `|short` (title without its subtitle) & `|surname`.
+# `from` says how handle makes one: fields in braces, with `|short` (title without its subtitle) & `|surname`.
 
 # What each status means, shared across collections, which name them in their own words (a collection needn't name
 # every role). Each role may stamp date fields with today when an entry takes it on, & may forbid fields, which
 # must then be empty, or false (as nothing in the backlog has been started, & only what's yet to be begun or
 # resumed is shortlisted); both apply only to fields the collection has (board games have first-played, rather
-# than started & finished). Its colour is dork's.
+# than started & finished). Its colour is handle's.
 roles:
   backlog: { colour: yellow, forbids: [ started, finished, first-played ] }
   active: { colour: cyan, stamps: [ started ], forbids: [ finished, shortlist ] }

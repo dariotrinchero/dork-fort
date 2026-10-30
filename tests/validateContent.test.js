@@ -1,5 +1,5 @@
 /**
- * Tests of the content validator (scripts/validateContent.js), on the cases dork's validator must also pass (see
+ * Tests of the content validator (scripts/validateContent.js), on the cases handle's validator must also pass (see
  * tests/validators.yaml), & on the vault itself.
  */
 

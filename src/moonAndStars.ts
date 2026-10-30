@@ -43,8 +43,8 @@ interface Shelf {
     window: (name: string) => WindowContent | undefined; // window exploring entries, or of an entry, by name
 }
 
-// words belonging to a surname when they come before it (as in Le Guin, or de Beauvoir); as in dork's surname()
-// (tools/dork/dork/slugs.py), so that both order authors alike
+// words belonging to a surname when they come before it (as in Le Guin, or de Beauvoir); as in handle's surname()
+// (tools/handle/handle/slugs.py), so that both order authors alike
 const PARTICLES = new Set([ "le", "la", "de", "du", "des", "del", "della", "di", "da", "van", "von", "der", "den",
     "ter", "ten", "st", "st." ]);
 
@@ -63,7 +63,7 @@ const surname = (name: string): string => {
 
 /**
  * Order novels by author's surname (those without an author last), then by author, then by series (or a book outside
- * one, by its title) & number in it, then by title, as dork lists them.
+ * one, by its title) & number in it, then by title, as handle lists them.
  *
  * @param a novel
  * @param b novel

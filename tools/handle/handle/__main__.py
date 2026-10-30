@@ -1,11 +1,11 @@
-"""dork's command line (see tools/dork/README.md):
+"""handle's command line (see tools/handle/README.md):
 
-    dork [query]                         the update screen (prefiltered by query)
-    dork add [collection] [query]        the add screen (searching for query at once, if given; collection is novel,
-                                         nonfiction, film, game or board, & if not given, every one is searched)
-    dork start|finish|pause|dnf <query>  set the status of the entry query clearly means, else pick in the finder
-    dork rate <query> [rating]           likewise, rating it (0 to clear; without a rating, the star meter opens)
-    dork check                           validate the vault, as the build does
+    hdl [query]                         the update screen (prefiltered by query)
+    hdl add [collection] [query]        the add screen (searching for query at once, if given; collection is novel,
+                                        nonfiction, film, game or board, & if not given, every one is searched)
+    hdl start|finish|pause|dnf <query>  set the status of the entry query clearly means, else pick in the finder
+    hdl rate <query> [rating]           likewise, rating it (0 to clear; without a rating, the star meter opens)
+    hdl check                           validate the vault, as the build does
 """
 
 import re
@@ -41,7 +41,7 @@ def interactive() -> bool: return sys.stdin.isatty() and sys.stdout.isatty()
 
 
 def finder(query: str = "") -> int:
-    if not interactive(): return fail("dork's update screen needs an interactive terminal")
+    if not interactive(): return fail("handle's update screen needs an interactive terminal")
     from .tui.app import start
     from .tui.finder import Finder
     result = start(load_schema(), Finder(query))
@@ -51,7 +51,7 @@ def finder(query: str = "") -> int:
 
 def add(words: list[str]) -> int:
     """The add screen, searching at once for the query given (in the collection given first, if one is)."""
-    if not interactive(): return fail("dork's add screen needs an interactive terminal")
+    if not interactive(): return fail("handle's add screen needs an interactive terminal")
     collection = COLLECTIONS.get(words[0].lower()) if words else None
     query = " ".join(words[1:] if collection else words)
     from .tui.add import Add
@@ -70,7 +70,7 @@ def quick(action: str, words: list[str]) -> int:
         if rating is not None and (problem := check_value({"type": "rating"}, rating)):
             return fail(f"rating {problem}")
     query = " ".join(words).strip()
-    if not query: return fail(f"usage: dork {action} <query>{' [rating]' if action == 'rate' else ''}")
+    if not query: return fail(f"usage: hdl {action} <query>{' [rating]' if action == 'rate' else ''}")
 
     schema = load_schema()
     entries = load_entries(schema, tracked(schema))
@@ -104,7 +104,7 @@ def quick(action: str, words: list[str]) -> int:
 
 
 def fail(message: str) -> int:
-    print(f"dork: {message}", file=sys.stderr)
+    print(f"hdl: {message}", file=sys.stderr)
     return 1
 
 
@@ -116,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
         print(__doc__.strip())
         return 0
     if command == "--version":
-        print(f"dork {__version__}")
+        print(f"hdl {__version__}")
         return 0
     if command == "check": return check()
     if command == "add": return add(rest)

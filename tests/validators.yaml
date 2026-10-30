@@ -1,5 +1,5 @@
-# Cases that the build's validator (scripts/validateContent.js) & dork's (tools/dork/) must agree on, each run by
-# its own tests (tests/validateContent.test.js & tools/dork/tests/test_validate.py). Values are YAML, so each side
+# Cases that the build's validator (scripts/validateContent.js) & handle's (tools/handle/) must agree on, each run by
+# its own tests (tests/validateContent.test.js & tools/handle/tests/test_validate.py). Values are YAML, so each side
 # reads them with the same YAML reader it uses for notes.
 
 # How each side's YAML reader (YAML 1.2, core schema) reads plain scalars: `yaml` read as a value, should equal

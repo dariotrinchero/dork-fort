@@ -3,7 +3,7 @@ filename is the citation key (as Better BibTeX keeps it, in Zotero's citationKey
 edition (its title in title case, as Zotero keeps sentence case), & its kind follows its item type (books are
 "book", most else "paper"; "textbook" is yours to choose).
 
-dork never changes Zotero's data. It opens zotero.sqlite read-only & immutable (so SQLite refuses to write, &
+handle never changes Zotero's data. It opens zotero.sqlite read-only & immutable (so SQLite refuses to write, &
 makes no lock, journal or WAL files), & touches nothing else of Zotero's. While Zotero runs, it may be writing the
 database; if that leaves a read failing, the read is retried on a temporary copy (made by reading the file)."""
 
@@ -39,7 +39,7 @@ def database() -> Path | None:
 
 
 def connect(path: Path) -> sqlite3.Connection:
-    """Read-only, immutable connection to database (the only way dork opens Zotero's)."""
+    """Read-only, immutable connection to database (the only way handle opens Zotero's)."""
     return sqlite3.connect(f"file:{quote(str(path))}?mode=ro&immutable=1", uri=True)
 
 
@@ -106,7 +106,7 @@ class Zotero(Source):
 
     def problem(self) -> str | None:
         if not database():
-            return "can't find zotero.sqlite: set data-dir under [zotero] in ~/.config/dork/config.toml"
+            return "can't find zotero.sqlite: set data-dir under [zotero] in ~/.config/handle/config.toml"
         return None
 
     def items(self) -> list[Candidate]:

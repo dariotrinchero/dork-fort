@@ -5,8 +5,8 @@ from pathlib import Path
 
 from .yamlcore import load
 
-# the vault: DORK_CONTENT, or else content/ in the repo holding dork (tools/dork/dork/ → content/)
-CONTENT = Path(os.environ.get("DORK_CONTENT") or Path(__file__).resolve().parents[3] / "content")
+# the vault: HANDLE_CONTENT, or else content/ in the repo holding handle (tools/handle/handle/ → content/)
+CONTENT = Path(os.environ.get("HANDLE_CONTENT") or Path(__file__).resolve().parents[3] / "content")
 
 
 def load_schema(content: Path = CONTENT) -> dict:

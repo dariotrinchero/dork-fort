@@ -1,4 +1,4 @@
-"""Building blocks of dork's screens: colours, text measurement & drawing (as in cli-tools' twoey.py & wikly.py),
+"""Building blocks of handle's screens: colours, text measurement & drawing (as in cli-tools' twoey.py & wikly.py),
 a line editor, & the overlays (star meter, yes-or-no question, help)."""
 
 import curses

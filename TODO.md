@@ -1,4 +1,4 @@
-# Dork Fort Neocities Project
+# Handlebody Neocities Project
 
 ## Migrating content, one topic at a time
 
@@ -10,11 +10,11 @@ delete the original. See [Content](#content-organisation--workflow) for where ev
 3. **Music backlog:** process it into your new system, then delete it (not published).
 4. **Books:** imported from StoryGraph (96 in `novels/`, 21 in `nonfiction/`). Check the split, `kind`s, tags &
    topics in the Novels & Nonfiction Bases, then close the StoryGraph account.
-5. **Build `dork`** (see [TODO_DORK.md](TODO_DORK.md)); a one-off script then gives the imported novels their
+5. **Build `handle`** (see [TODO_HANDLE.md](TODO_HANDLE.md)); a one-off script then gives the imported novels their
    `year`, `pages` & `cover` from Open Library.
 6. **Letterboxd:** either close the account, or keep logging there & pull its RSS feed
    (`letterboxd.com/<user>/rss/`) into `films/` at build, as with iNaturalist.
-7. **Papers:** `dork add nonfiction` (from Zotero) as you go.
+7. **Papers:** `hdl add nonfiction` (from Zotero) as you go.
 8. **Recipes** (in their own vault): `rating:`, the `favourite` tag, & `Journal/` (see Campfire).
 9. **Garden:** log on iNaturalist from now on, & upload past sightings' photos (it reads dates & places from
    EXIF); add `content/garden/` notes only where there's more to say.
@@ -66,7 +66,7 @@ window's markup.
   `exit` (see the easter eggs).
 - **CRT power-on** when booting, including from a deep link to a window's static page.
 - **404 page as a joke that works:** `not_found.html` boots the same app, & the shell "runs" the bad path:
-  `>> cd /gardn/tomatos` → `dsh: no such destination: gardn` → `did you mean garden?` (clickable).
+  `>> cd /gardn/tomatos` → `hdl: no such destination: gardn` → `did you mean garden?` (clickable).
 
 ---
 
@@ -116,8 +116,8 @@ files. Each folder holds one lorem-ipsum placeholder until its real content arri
 | `blog/` | blog posts, dated (newest first on the site) | realm-of-forms |
 | `pages/` | standalone pages (packlist, wishlist) & ranked lists | each names its own `destination` |
 | `attachments/` | `covers/`, `posters/`, `photos/` (Obsidian pastes here), `gpx/` | — |
-| `Templates/`, `Bases/` | templates (also read by `dork`), & table views | — |
-| `schema.yaml` | the type of every field, read by the build & `dork` | — |
+| `Templates/`, `Bases/` | templates (also read by `handle`), & table views | — |
+| `schema.yaml` | the type of every field, read by the build & `handle` | — |
 
 The repo is public, so all of `content/` is visible on GitHub, even what the site leaves out; anything private
 stays in `~/Documents/Notes`.
@@ -143,7 +143,7 @@ vault keeps human names (no slugs in the kitchen).
 ### Schemas
 
 The templates give each collection's fields (in order) & defaults; `content/schema.yaml` gives their types,
-& is read by both the build & `dork`, which check notes by the same rules. Novels, nonfiction, films & games
+& is read by both the build & `handle`, which check notes by the same rules. Novels, nonfiction, films & games
 share (& board games, but for their dates):
 - **`status`:** `to-read | reading | paused | read | dnf` (films: `to-watch | watching | paused | watched |
   dnf`; games: `to-play | playing | paused | endless | played | dnf`, where `endless` is for games with nothing
@@ -182,15 +182,15 @@ windows until clicked.
 
 Obsidian & vim both work on the same files. Obsidian is for browsing, Bases, the property editor, the phone,
 pasting photos, & renames (which update links); its Templates cover adventures, sightings, blog posts, & pages
-(Page, or List for a ranking). The `dork` CLI is the template engine for novels, nonfiction, & films, as it fills
+(Page, or List for a ranking). The `handle` CLI is the template engine for novels, nonfiction, & films, as it fills
 in metadata.
 
-### `dork` CLI
+### `handle` CLI
 
-Designed, & tracked, in [TODO_DORK.md](TODO_DORK.md): a TUI & CLI in `tools/dork/` (in this repo, for parity
+Designed, & tracked, in [TODO_HANDLE.md](TODO_HANDLE.md): a TUI & CLI in `tools/handle/` (in this repo, for parity
 with the build) for adding & updating novels, nonfiction, films & games. Metadata is fetched when adding, never
 at build time, so builds don't depend on the APIs.
-- Maybe later: a `workflow_dispatch` action running `dork add` (taking the top match) from the GitHub app on
+- Maybe later: a `workflow_dispatch` action running `hdl add` (taking the top match) from the GitHub app on
   the phone.
 
 ### Build
@@ -278,7 +278,7 @@ Start with 1 & 2, which show the details without adding columns to rows already 
   - `build/campfire/<slug>.html` per recipe, `index.html` & `journal.html`, from one template.
 - **Fetching:** clone at build. Locally, the vault is read in place. `deploy.yml` adds an `actions/checkout`
   step for `dariotrinchero/recipes` into `./recipes` (public, so no token), plus `schedule` (nightly) &
-  `workflow_dispatch` triggers, so recipe pushes reach the site without touching dork-fort.
+  `workflow_dispatch` triggers, so recipe pushes reach the site without touching handlebody.
 
 ### Changes, by file
 
@@ -337,7 +337,7 @@ Books, films, games & board games each have an explorer (tabs by status, & a fil
 
 ---
 
-## The prompt as a real shell (`dsh`)
+## The prompt as a real shell (`hdl`)
 
 ### Input
 
@@ -367,7 +367,7 @@ like `chicken`; `notes`, `gallery`, `projects`).
 - `vim` → `you are now trapped.`, & `:q` actually frees you; `emacs` → `M-x butterfly` (xkcd 378)
 - `xyzzy` → `Nothing happens.`; `fortune` → a rotating aphorism (Plato-flavoured?); `cmatrix` → glyph rain for
   5 s in the accent colours; the Konami code → the QR goes rainbow
-- `uname -a` → `DorkFort 1.0 campfire-kernel #1 SMP PREEMPT_DYNAMIC dsh x86_64`
+- `uname -a` → `Handlebody 1.0 campfire-kernel #1 SMP PREEMPT_DYNAMIC hdl x86_64`
 - campfire: the modules flicker (noise on its hover intensity) when it is touched; `make <recipe>` (above)
 
 ### Syntax highlighting
@@ -427,7 +427,7 @@ The large, grid-aligned font leaves few columns across the QR code, so:
    4. *Journal:* the vault conventions, derived backlinks, & journal rows & pages.
    5. *Kitchen extras:* ticked ingredients saved per recipe in `localStorage`, a `--serves 4` scaler,
       tappable durations in the method starting countdown timers, & keeping the screen awake.
-3. **Other destinations:** the `dork` CLI, generalising the bake script to the `content/` collections (see
+3. **Other destinations:** the `handle` CLI, generalising the bake script to the `content/` collections (see
    Content), the in-canvas outputs, the power-off/on transitions, & the 404-as-shell.
 4. **Delight:** the easter eggs & shader effects (degauss & CRT corner effects, crumble, cmatrix, the ssh
    sub-shell, the campfire flicker).

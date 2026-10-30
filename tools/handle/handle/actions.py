@@ -1,4 +1,4 @@
-"""What dork does to entries: setting status by role (start, finish, pause, dnf) & rating, describing changes,
+"""What handle does to entries: setting status by role (start, finish, pause, dnf) & rating, describing changes,
 & finding the entry a query means."""
 
 import unicodedata
@@ -24,7 +24,7 @@ DONE = {"start": "started", "finish": "finished", "pause": "paused", "dnf": "dro
 ROLE_ORDER = ["active", "backlog", "paused", "ongoing", "done", "dropped"]
 
 # orders to browse entries in (the finder's o cycles them): by status; best rated first; & by who made them, across
-# collections. They're dork's own: the site orders its lists as suits each one
+# collections. They're handle's own: the site orders its lists as suits each one
 ORDERS = ["status", "rating", "creator"]
 
 

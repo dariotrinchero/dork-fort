@@ -1,5 +1,5 @@
 """Validation of notes against the vault's schema: the same rules as the build's (scripts/validateContent.js), &
-passing the same cases (tests/validators.yaml). Only what the build rejects belongs here; dork's warnings about
+passing the same cases (tests/validators.yaml). Only what the build rejects belongs here; handle's warnings about
 merely suspicious values live elsewhere."""
 
 import json

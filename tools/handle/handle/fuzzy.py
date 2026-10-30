@@ -1,4 +1,4 @@
-"""Fuzzy matching as in fzf: a port of the site's src/fuzzy.ts, so dork ranks as the site's shell does."""
+"""Fuzzy matching as in fzf: a port of the site's src/fuzzy.ts, so handle ranks as the site's shell does."""
 
 import re
 

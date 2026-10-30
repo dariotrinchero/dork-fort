@@ -1,4 +1,4 @@
-"""dork's terminal UI: a stack of screens (the finder, the editor, & overlays over them), with the vault's
+"""handle's terminal UI: a stack of screens (the finder, the editor, & overlays over them), with the vault's
 entries, the changes made this session (to undo), & the footer's messages."""
 
 import curses
@@ -167,7 +167,7 @@ def start(schema: dict, first, then=None) -> str | None:
     os.environ.setdefault("ESCDELAY", "25")
 
     def run(scr) -> str | None:
-        curses.raw() # so ^S, ^Z & ^C reach dork, rather than the terminal
+        curses.raw() # so ^S, ^Z & ^C reach handle, rather than the terminal
         init_colours()
         try: curses.curs_set(0)
         except curses.error: pass

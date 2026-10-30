@@ -60,7 +60,7 @@ class Add:
 
     def __init__(self, query: str = "", collection: str | None = None, search: bool = False):
         self.query = LineEdit(query)
-        self.typed = collection     # the collection dork was given, if any (else a query given searches every tab)
+        self.typed = collection     # the collection handle was given, if any (else a query given searches every tab)
         self.search_now = search and bool(query.strip())
         self.typing = True
         self.opening: tuple[Future, Tab] | None = None # a hit being filled in, to open once it is
@@ -179,7 +179,7 @@ class Add:
         self.typing = True
 
     def back(self):
-        """Back to the finder (if dork has one open), else out."""
+        """Back to the finder (if handle has one open), else out."""
         if self.app.has_other(self): self.app.switch(self)
         else: self.app.pop(self)
 
@@ -239,7 +239,7 @@ class Add:
 
     def draw(self, win):
         h, w = win.getmaxyx()
-        x = put(win, 0, 0, " dork ", attr("ink", "accent", bold=True))
+        x = put(win, 0, 0, " handle ", attr("ink", "accent", bold=True))
         x = put(win, 0, x + 1, "add", curses.A_BOLD) + 2
         for i, tab in enumerate(self.tabs):
             count = self.app.spinner() if tab.job else "!" if tab.error else \
