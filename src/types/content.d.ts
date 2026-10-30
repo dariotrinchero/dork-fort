@@ -76,4 +76,7 @@ export interface BoardGame extends Tracked<BoardGameStatus> {
 // standalone page (eg. a packlist, or a ranked list), from content/pages/
 export interface Page extends Note {
     destination?: string; // name of destination in whose menu page appears, eg. "moon-and-stars"
+    menu?: string;        // label of its own entry in menu of destination, if any, eg. "eek! a rat!!"
+    commands?: string[];  // commands (besides its slug) opening it from menu of destination, eg. ["eek", "rat"]
+    body: string;         // HTML of body (see scripts/renderMarkdown.js)
 }

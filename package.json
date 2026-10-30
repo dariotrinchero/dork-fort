@@ -19,6 +19,7 @@
     "@eslint/js": "^9.32.0",
     "esbuild": "^0.25.6",
     "esbuild-plugin-glsl": "^1.4.0",
+    "marked": "^18.1.2",
     "subset-font": "^2.9.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.0",

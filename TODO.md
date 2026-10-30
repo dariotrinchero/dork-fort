@@ -2,10 +2,9 @@
 
 ## Top priority
 
-1. Add a rat to the garden (Baraka).
-2. Add moon spoon to companion.
-3. Ingest isiXhosa cue card library into companion; have it be searchable, show Anki stats etc.
-4. Add knitted frogs to garden.
+1. Add moon spoon to companion.
+2. Ingest isiXhosa cue card library into companion; have it be searchable, show Anki stats etc.
+3. Add knitted frogs to garden.
 
 ## Migrating content, one topic at a time
 

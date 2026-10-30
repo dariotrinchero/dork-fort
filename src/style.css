@@ -219,6 +219,35 @@ canvas {
     margin: 0;
 }
 
+/* tables of pages (see scripts/renderMarkdown.js), like fields: their first column dim, & no rules */
+.window-body table {
+    border-collapse: collapse;
+    margin: 0 0 var(--line);
+}
+
+.window-body :is(th, td) {
+    padding: 0 2ch 0 0;
+    text-align: left;
+    vertical-align: top;
+    font: inherit;
+}
+
+.window-body td:first-child {
+    color: var(--dim);
+    white-space: nowrap;
+}
+
+.window-body th {
+    color: var(--accent);
+}
+
+/* images of pages, as wide as body at most */
+.window-body img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
 .window-body :is(ul, ol) {
     padding-left: 3ch;
 }

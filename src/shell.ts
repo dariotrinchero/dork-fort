@@ -5,6 +5,8 @@ import { DIM, ERROR, FG, accent } from "palette";
 import { SCREEN_MODES, setScreenMode } from "crt";
 import { campfireIntro, campfireMenu, campfireWindow } from "campfire";
 import { moonAndStarsIntro, moonAndStarsMenu, moonAndStarsWindow } from "moonAndStars";
+import { pageWindow, pagesMenu } from "pages";
+import { gardenIntro } from "garden";
 import { whoamiAside } from "whoami";
 
 import DESTINATIONS from "destinations";
@@ -13,6 +15,7 @@ import DESTINATIONS from "destinations";
 export interface MenuEntry {
     name: string;     // name, which opens entry when entered as a command while place is shown, & appears in URL
     label: Line;      // label in menu
+    aliases?: string[]; // other names, which also open entry when entered as commands while place is shown
     marker?: Segment; // printed before label (eg. a star), such that wrapped label hangs past it
 }
 
@@ -66,21 +69,40 @@ export const PLACES: Place[] = DESTINATIONS.map(({ aliases = [], color, name }) 
     return { accent: accent(color), phrase: name.replace(/[{}]/g, ""), words: [target, ...aliases] };
 });
 
-// contents of places (so far, campfire, moon & stars, & whoami), keyed by name of place
+// contents of places (so far, campfire, moon & stars, garden, & whoami), keyed by name of place; pages may add to them (see
+// contentsOf())
 const CONTENTS = new Map<string, PlaceContents>([
     ["campfire", { intro: campfireIntro, menu: campfireMenu, window: campfireWindow }],
     ["moon-and-stars", { intro: moonAndStarsIntro, menu: moonAndStarsMenu, window: moonAndStarsWindow }],
+    ["garden", { intro: gardenIntro }],
     ["whoami", { aside: whoamiAside }],
 ]);
 
 /**
- * Get contents of place.
+ * Get contents of place: its own, & any pages with menu entries there (see pages.ts), in a section of their own
+ * (after the rest).
  *
  * @param place index of place (or undefined if none)
  * @returns contents of place (or undefined if it has none yet)
  */
-const contentsOf = (place?: number): PlaceContents | undefined =>
-    CONTENTS.get(place === undefined ? "" : PLACES[place]?.words[0] ?? "");
+const contentsOf = (place?: number): PlaceContents | undefined => {
+    const name = place === undefined ? "" : PLACES[place]?.words[0] ?? "";
+    const own = CONTENTS.get(name);
+    if (!pagesMenu(name, FG)) return own;
+    return {
+        ...own,
+        menu: accent => [...own?.menu?.(accent) ?? [], ...[pagesMenu(name, accent) ?? []].flat()],
+        window: entry => own?.window?.(entry) ?? pageWindow(name, entry),
+    };
+};
+
+/**
+ * Get names of menu entry: its name, & its aliases.
+ *
+ * @param entry menu entry
+ * @returns names
+ */
+const namesOf = ({ aliases = [], name }: MenuEntry): string[] => [name, ...aliases];
 
 /**
  * Order sections of menu as printed: those beside icon last, so that the rest come first wherever they are drawn
@@ -212,7 +234,7 @@ export const resolve = (line: string): number | undefined => {
  * @returns remainder of suggested command (empty if none)
  */
 export const suggest = (line: string, shown?: number): string => line === "" ? "" : [
-    ...menuOf(shown).map(({ name }) => name), ...COMPLETIONS,
+    ...menuOf(shown).flatMap(namesOf), ...COMPLETIONS,
 ].find(c => c.startsWith(line) && c !== line)?.slice(line.length) ?? "";
 
 /**
@@ -226,12 +248,12 @@ export const suggest = (line: string, shown?: number): string => line === "" ? "
  */
 export const highlight = (line: string, shown?: number): Line => {
     let first = true;
-    const entries = menuOf(shown);
+    const entries = menuOf(shown).flatMap(namesOf);
     return line.split(/(\s+)/).filter(text => text !== "").map(text => {
         if (/^\s/.test(text)) return { color: FG, text };
-        const place = (entries.some(({ name }) => name === text) ? PLACES[shown ?? -1] : undefined)
+        const place = (entries.includes(text) ? PLACES[shown ?? -1] : undefined)
             ?? PLACES.find(({ words }) => words.includes(text));
-        const known = [...entries.map(({ name }) => name), ...COMPLETIONS].some(c => c.startsWith(text));
+        const known = [...entries, ...COMPLETIONS].some(c => c.startsWith(text));
         const color = place ? place.accent : first ? known ? FG : ERROR : DIM;
         first = false;
         return { color, text };
@@ -251,7 +273,7 @@ export const execute = (sh: Shell, line: string): void => {
     // entries of menu of place shown open windows (taking precedence over names of places); entries without one
     // yet do nothing
     const shown = sh.shown();
-    const entry = args.length === 0 ? menuOf(shown).find(({ name: entryName }) => entryName === name) : undefined;
+    const entry = args.length === 0 ? menuOf(shown).find(found => namesOf(found).includes(name)) : undefined;
     if (shown !== undefined && entry) {
         if (windowOf(shown, entry.name)) sh.go([PLACES[shown]?.words[0] ?? "", entry.name]);
         return;

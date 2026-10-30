@@ -201,4 +201,8 @@ collections:
       title: { type: text, required: true }
       aliases: { type: list }
       destination: { type: enum, values: *destinations, required: true }
+      # an entry of its own in the menu of its destination: its label, & the commands (besides its slug) opening it
+      # there (pages without one are only reachable otherwise, eg. ranked lists, through moon & stars' lists)
+      menu: { type: text }
+      commands: { type: list, item: tag, requires: menu }
       draft: { type: bool }

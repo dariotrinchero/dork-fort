@@ -43,6 +43,8 @@
     "species": "text",
     "draft": "checkbox",
     "destination": "text",
+    "menu": "text",
+    "commands": "multitext",
     "status": "text",
     "owned": "text",
     "translator": "text",

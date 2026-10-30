@@ -1,7 +1,7 @@
 import { execSync } from "child_process";
 import { copyFileSync, cpSync, existsSync, rmSync, mkdirSync, readdirSync, statSync } from "fs";
 import { readFile, writeFile } from "fs/promises";
-import { join, resolve } from "path";
+import { dirname, join, resolve } from "path";
 import { context, build } from "esbuild";
 import { glsl } from "esbuild-plugin-glsl";
 import { bakeContent } from "./bakeContent.js";
@@ -62,12 +62,23 @@ const buildOptions = {
             name: "bake-content",
             setup(build) {
                 // imports of "content/<folder>" give frontmatter of notes in that folder of content vault, bundled
-                // as JSON (& rebuilt when notes are edited, added, or removed)
+                // as JSON (& rebuilt when notes are edited, added, or removed), & deploy attachments embedded in
+                // bodies baked (eg. images), at the same paths as in the vault
                 build.onResolve({ filter: /^content\/[\w-]+$/ }, ({ path }) => ({ namespace: "content", path }));
                 build.onLoad({ filter: /.*/, namespace: "content" }, async ({ path }) => {
                     const dir = resolve(path);
-                    const { entries, files } = await bakeContent(dir);
-                    return { contents: JSON.stringify(entries), loader: "json", watchDirs: [ dir ], watchFiles: files };
+                    const { attachments, entries, files } = await bakeContent(dir);
+                    const sources = attachments.map(attachment => join("content", attachment));
+                    attachments.forEach((attachment, i) => {
+                        mkdirSync(dirname(join("build", attachment)), { recursive: true });
+                        copyFileSync(sources[ i ], join("build", attachment));
+                    });
+                    return {
+                        contents: JSON.stringify(entries),
+                        loader: "json",
+                        watchDirs: [ dir ],
+                        watchFiles: [ ...files, ...sources ],
+                    };
                 });
             }
         },

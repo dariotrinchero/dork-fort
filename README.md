@@ -36,6 +36,8 @@ webpage in the browser. Changes to the build scripts themselves require restarti
   `src/fuzzy.ts`), & `src/route.ts` keeps what is shown (eg. `#campfire/cookbook`) in the URL.
 - `src/campfire.ts` holds the contents of the campfire: its menu & windows (placeholders, for now).
 - `src/whoami.ts` holds the contents of whoami: a neofetch-style card beside the nametag.
+- `src/garden.ts` holds the contents of the garden of its own (so far, only its description).
+- `src/pages.ts` adds pages of the content vault with menu entries of their own to the menus of their destinations.
 - `src/shell.ts` defines the commands: their syntax highlighting, completion, & what they do.
 - `src/destinations.ts` maps groups in the QR code SVG to the destinations they link to, with their icons, commands,
   aliases, accent colours, & sounds (played by `src/ambience.ts`).
@@ -85,6 +87,12 @@ without moving files:
 | `blog/` | blog posts, dated | realm-of-forms |
 | `pages/` | standalone pages (packlist, wishlist) & ranked lists | each names its own `destination` |
 | `attachments/` | `covers/`, `posters/`, `photos/` (Obsidian pastes here), `gpx/` | — |
+
+Pages may give themselves an entry in the menu of their destination, with `menu:` (its label, eg. `eek! a rat!!`) &
+`commands:` (names which open it while the destination is shown, besides its slug, eg. `[eek, rat]`); `src/pages.ts`
+adds these to the menus. Bodies of pages (alone among notes) are rendered to HTML at build time by
+`scripts/renderMarkdown.js`, which understands Obsidian's wikilinks (linking to windows of notes) & embeds (eg.
+`![[baraka.jpg]]`, deployed at their paths in the vault, eg. `attachments/photos/baraka.jpg`).
 
 The repo is public, so all of `content/` is visible on GitHub, even what the site leaves out.
 

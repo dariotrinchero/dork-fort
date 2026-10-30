@@ -12,8 +12,8 @@ import GAMES from "content/games";
 import NOVELS from "content/novels";
 import PAGES from "content/pages";
 
-// ranked lists are pages shown by moon & stars
-const LISTS = PAGES.filter(({ destination }) => destination === "moon-and-stars");
+// ranked lists are pages shown by moon & stars (besides any with menu entries of their own; see pages.ts)
+const LISTS = PAGES.filter(({ destination, menu }) => destination === "moon-and-stars" && menu === undefined);
 
 // entry of any medium, & order of entries (negative if a comes first, positive if b does, & otherwise 0)
 type Entry = Novel | Film | Game | BoardGame;
