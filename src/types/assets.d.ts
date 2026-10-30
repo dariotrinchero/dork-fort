@@ -1,5 +1,7 @@
 // ambient declarations required for asset file imports
 
+declare const MEDIA_URL: string; // root URL of media/ (eg. sounds), defined at compile time by scripts/build.js
+
 declare module "*.svg" { // QR code SVGs are baked into module data at compile time
 	import type { QRData } from "types/qrRenderer";
 	const value: QRData;

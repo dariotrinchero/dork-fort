@@ -6,7 +6,34 @@ on:
       - main
 
 jobs:
+  # media (eg. sounds), which Neocities' free plan won't host, go to the repo's GitHub Pages site instead, at
+  # https://dariotrinchero.github.io/handlebody/ (deployed first, so the site never links to media not yet there)
+  deploy-media:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Upload media
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: media
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
   build-and-deploy:
+    needs: deploy-media
     runs-on: ubuntu-latest
 
     steps:

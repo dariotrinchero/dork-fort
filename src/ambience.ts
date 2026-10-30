@@ -29,14 +29,18 @@ export default class Ambience {
     /**
      * Get track playing given sound, creating it on first use.
      *
-     * @param url URL of sound
+     * @param url URL of sound, relative to MEDIA_URL
      * @returns track
      */
     private track(url: string): Track {
         const existing = this.tracks.get(url);
         if (existing) return existing;
         this.context ??= new AudioContext();
-        const audio = new Audio(url);
+        const audio = new Audio();
+        // in production, sounds come from another origin, whose audio a media element source silences unless
+        // fetched with CORS
+        audio.crossOrigin = "anonymous";
+        audio.src = MEDIA_URL + url;
         audio.loop = true;
         const gain = this.context.createGain();
         gain.gain.value = 0;

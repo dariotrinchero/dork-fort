@@ -1,6 +1,6 @@
 /**
  * Compile-time reader turning a folder of the content vault (see content/) into compact module data: the
- * frontmatter of each note, keyed by its filename (a slug; see "Naming" in TODO.md). Bodies are left out, as they
+ * frontmatter of each note, keyed by its filename (a slug; see "Content" in README.md). Bodies are left out, as they
  * belong in windows rather than in the bundle.
  */
 

@@ -11,8 +11,12 @@ import { describe, validateVault } from "./validateContent.js";
 
 const isProd = process.argv.includes("--prod");
 
+// root of media (eg. sounds), which Neocities' free plan won't host, so production builds leave them to the repo's
+// GitHub Pages site (see .github/workflows/deploy.yml), & dev builds serve them locally
+const MEDIA_URL = isProd ? "https://dariotrinchero.github.io/handlebody/" : "/";
+
 // inputs of build, whose modification times tell whether anything has changed since last build
-const INPUTS = ["content", "index.html", "public", "src", "eslint.config.mjs", "tsconfig.json"];
+const INPUTS = ["content", "index.html", "media", "public", "src", "eslint.config.mjs", "tsconfig.json"];
 
 /**
  * Fingerprint inputs of build by paths, sizes & modification times of their files.
@@ -37,6 +41,7 @@ const buildOptions = {
         "src/style.css", // expand if more stylesheets are added
     ],
     bundle: true,
+    define: { MEDIA_URL: JSON.stringify(MEDIA_URL) },
     outdir: "build",
     inject: isProd ? [] : [ "scripts/hot-reload.js" ],
     sourcemap: !isProd,
@@ -107,6 +112,7 @@ const buildOptions = {
                     if (result.errors.length > 0 || unchanged) return;
                     copyFileSync("index.html", "build/index.html");
                     if (existsSync("public")) cpSync("public", "build", { recursive: true }); // served from site root
+                    if (!isProd) cpSync("media", "build", { recursive: true }); // in production, served from Pages
                     mkdirSync("build/fonts", { recursive: true });
                     await writeFile(
                         "build/fonts/DepartureMono.woff2",
