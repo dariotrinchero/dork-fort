@@ -8,6 +8,12 @@ canvas {
     display: block;
 }
 
+/* screenshot of screen, shown until canvas draws over it (or if it never does, eg. without WebGL, as for screenshot
+   bots), on black like the screen's corners */
+html {
+    background: black url(/screenshot.webp) center / contain no-repeat;
+}
+
 /* hidden input receiving keystrokes for prompt, which is drawn on canvas (see src/terminal.ts) */
 #prompt {
     position: fixed;

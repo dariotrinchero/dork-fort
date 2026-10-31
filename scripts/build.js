@@ -49,6 +49,15 @@ const buildOptions = {
     plugins: [
         glsl({ minify: true }), // loads shader sources (.frag, .vert, etc.) as strings
         {
+            name: "public-urls",
+            setup(build) {
+                // URLs in stylesheets from site root (eg. url(/screenshot.webp)) refer to files of public/, copied to
+                // build as they are, so are left unbundled
+                build.onResolve({ filter: /^\// }, ({ kind, path }) =>
+                    kind === "url-token" ? { path, external: true } : undefined);
+            }
+        },
+        {
             name: "bake-qr-svg",
             setup(build) {
                 // parse imported QR code SVGs into module data, bundled as JSON

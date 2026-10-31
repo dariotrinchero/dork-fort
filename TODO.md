@@ -83,8 +83,46 @@ containing the window's markup.
 - **Feeds:** iNaturalist observations (`api.inaturalist.org/v1/observations?user_id=…`, no key), fetched at
   build with a fallback snapshot so an outage doesn't fail the deploy, & joined with `garden/` notes by
   `inaturalist` id. GPX files become elevation sparklines.
-- **Triggers:** a nightly schedule (& `workflow_dispatch`) to pick up recipes & iNaturalist.
+- **Triggers:** pushes to the recipe vault redeploy the site (see [Pipeline](#pipeline) under Campfire); a nightly
+  schedule (& `workflow_dispatch`) picks up iNaturalist & Anki (see [isiXhosa vocab](#isixhosa-vocab)).
 - Maybe: a `workflow_dispatch` action running `hdl add` (taking the top match) from the GitHub app on the phone.
+
+---
+
+## isiXhosa vocab
+
+Companion surfaces the Anki deck (`isiXhosa`, ~1,075 notes of the `English-isiXhosa Translation` type, both
+directions, FSRS on) as a searchable vocab table, with stats from the review log: a heatmap of reviews, words
+learnt over time, retention (overall & per tag), leeches, & each word's FSRS stability.
+
+### Pipeline: pulling from AnkiWeb in CI (to be confirmed)
+
+The collection only lives on devices synced through AnkiWeb, so CI can't read it as it can the recipe vault. The
+plan is for the nightly build to download it from AnkiWeb itself, with nothing to do locally:
+- `pip install anki` (Anki's own backend, on PyPI), log in with the AnkiWeb username & password (secrets), &
+  do a one-way full **download** of the collection into a scratch directory.
+- Bake it (`node:sqlite`, read-only): words (fields, tags, date added, & per direction stability, difficulty,
+  reps & lapses) & per-day review totals, with the deck to read named in the config file (`config.yaml`).
+- Phone reviews then reach the site within a day, without opening desktop Anki.
+
+**To test first, against a throwaway AnkiWeb account** (with a copy of the deck), before trusting it with the
+real one:
+1. That the `anki` package can log in & fully download headlessly, & which calls do it (eg.
+   `Collection.sync_login`, then a full download rather than `sync_collection`, which may ask for or do a full
+   upload from a fresh client).
+2. That nothing is ever uploaded: the account's collection is unchanged afterwards (modification time, & the
+   last sync shown on another device), including when the download fails partway.
+3. That it works on `ubuntu-latest` (Python version, wheel availability), & how long it takes.
+4. That AnkiWeb tolerates a nightly login from GitHub's IPs (no rate limits, captchas or emails about new
+   logins), & that its terms allow it.
+5. That a failed download (AnkiWeb down, password changed) falls back to the last good one (eg. kept with
+   `actions/cache`, as iNaturalist keeps a fallback snapshot) rather than failing the deploy.
+6. Whether the password in GitHub secrets is acceptable (it has full access to the account), or a dedicated
+   account, kept in step by sharing the deck, is worth the bother.
+
+**Fallback,** if any of these fails: `npm run sync` reads the local collection (path in `config.yaml`) & writes a
+committed snapshot of the same data (deterministic, so no diff without new reviews), refreshed by a git pre-push
+hook; CI only ever reads the snapshot. Desktop Anki must have synced first.
 
 ---
 
@@ -127,7 +165,10 @@ a list of favourites, & a cooking journal. `src/campfire.ts` still shows placeho
 - **Outputs:** a compact `recipes` index (slug, title, folder, meta, tags, favourite, ingredient words, latest
   cook) as a virtual module, with `watchDirs` for hot reload; `build/campfire/<slug>.html` per recipe,
   `index.html` & `journal.html`.
-- **CI:** `deploy.yml` checks out `dariotrinchero/recipes` into `./recipes` (public, so no token).
+- **CI:** `deploy.yml` checks out `dariotrinchero/recipes` into `./recipes` (public, so no token). A small workflow
+  in the recipes repo, on push to `main`, triggers handlebody's deploy (`repository_dispatch`, which `deploy.yml`
+  listens for), using a fine-grained token scoped to handlebody (Contents: write), stored as a secret in the
+  recipes repo.
 
 ---
 
